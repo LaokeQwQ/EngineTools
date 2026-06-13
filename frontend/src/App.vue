@@ -3,7 +3,7 @@ import { ref, onMounted, computed } from 'vue'
 import { GetStatus, FixCJKIssues, HandleUTF8AlreadyEnabled, OpenRegionSettings, SetLanguage, GetMessages, GetAvailableLanguages, OpenRepository, ScanLibraries, RestoreOverviewFiles, RestoreAllLibraries } from '../wailsjs/go/main/App.js'
 import { EventsOn } from '../wailsjs/runtime/runtime.js'
 
-const APP_VERSION = '1.2.0'
+const APP_VERSION = '1.3.0'
 
 const installPath = ref('')
 const engineVersion = ref('')
