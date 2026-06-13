@@ -34,6 +34,18 @@ export function Refresh() {
   return window['go']['main']['App']['Refresh']();
 }
 
+export function RestoreAllLibraries() {
+  return window['go']['main']['App']['RestoreAllLibraries']();
+}
+
+export function RestoreOverviewFiles(arg1) {
+  return window['go']['main']['App']['RestoreOverviewFiles'](arg1);
+}
+
+export function ScanLibraries() {
+  return window['go']['main']['App']['ScanLibraries']();
+}
+
 export function SetLanguage(arg1) {
   return window['go']['main']['App']['SetLanguage'](arg1);
 }
