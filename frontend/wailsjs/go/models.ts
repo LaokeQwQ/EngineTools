@@ -48,6 +48,19 @@ export namespace i18n {
 	    adminStatusLabel: string;
 	    adminYes: string;
 	    adminNo: string;
+	    libraryStatusLabel: string;
+	    restoringOverview: string;
+	    restoreComplete: string;
+	    restoreError: string;
+	    restoreWritten: string;
+	    restoreSkipped: string;
+	    restoreButton: string;
+	    restoreConfirmTitle: string;
+	    restoreConfirmMsg: string;
+	    restoreDone: string;
+	    restoreDoneTip: string;
+	    restoreNone: string;
+	    restoreAllButton: string;
 	
 	    static createFrom(source: any = {}) {
 	        return new Messages(source);
@@ -102,6 +115,19 @@ export namespace i18n {
 	        this.adminStatusLabel = source["adminStatusLabel"];
 	        this.adminYes = source["adminYes"];
 	        this.adminNo = source["adminNo"];
+	        this.libraryStatusLabel = source["libraryStatusLabel"];
+	        this.restoringOverview = source["restoringOverview"];
+	        this.restoreComplete = source["restoreComplete"];
+	        this.restoreError = source["restoreError"];
+	        this.restoreWritten = source["restoreWritten"];
+	        this.restoreSkipped = source["restoreSkipped"];
+	        this.restoreButton = source["restoreButton"];
+	        this.restoreConfirmTitle = source["restoreConfirmTitle"];
+	        this.restoreConfirmMsg = source["restoreConfirmMsg"];
+	        this.restoreDone = source["restoreDone"];
+	        this.restoreDoneTip = source["restoreDoneTip"];
+	        this.restoreNone = source["restoreNone"];
+	        this.restoreAllButton = source["restoreAllButton"];
 	    }
 	}
 
@@ -109,6 +135,26 @@ export namespace i18n {
 
 export namespace main {
 	
+	export class LibraryInfo {
+	    path: string;
+	    drive: string;
+	    uuid: string;
+	    totalTracks: number;
+	    missingRGB: number;
+	
+	    static createFrom(source: any = {}) {
+	        return new LibraryInfo(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.path = source["path"];
+	        this.drive = source["drive"];
+	        this.uuid = source["uuid"];
+	        this.totalTracks = source["totalTracks"];
+	        this.missingRGB = source["missingRGB"];
+	    }
+	}
 	export class ProcessItem {
 	    name: string;
 	    pid: number;
