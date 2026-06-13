@@ -1,0 +1,20 @@
+{
+  "$schema": "https://wails.io/schemas/config.v2.json",
+  "name": "EngineTools",
+  "outputfilename": "EngineTools",
+  "frontend:install": "npm install",
+  "frontend:build": "npm run build",
+  "frontend:dev:watcher": "npm run dev",
+  "frontend:dev:serverUrl": "auto",
+  "author": {
+    "name": "EngineTools",
+    "email": ""
+  },
+  "info": {
+    "companyName": "EngineTools",
+    "productName": "Engine DJ Unicode Fix Tool",
+    "productVersion": "1.0.0",
+    "copyright": "Copyright 2024 EngineTools. Licensed under Apache 2.0.",
+    "comments": "Fix CJK character display issues in Engine DJ by applying per-application UTF-8 manifest."
+  }
+}
