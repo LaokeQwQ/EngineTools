@@ -5,18 +5,22 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"syscall"
+	"unsafe"
 
 	"golang.org/x/sys/windows/registry"
 )
 
 func FindEngineDJInstallPath() (string, error) {
-	path, err := findInUninstall("Engine DJ")
+	path, ver, err := findInUninstall("Engine DJ")
 	if err == nil && path != "" {
+		engineDJVersion = ver
 		return path, nil
 	}
 
-	path, err = findInSoftware("Engine DJ")
+	path, ver, err = findInSoftware("Engine DJ")
 	if err == nil && path != "" {
+		engineDJVersion = ver
 		return path, nil
 	}
 
@@ -35,7 +39,95 @@ func FindEngineDJInstallPath() (string, error) {
 	return "", fmt.Errorf("Engine DJ install path not found")
 }
 
-func findInUninstall(name string) (string, error) {
+var engineDJVersion string
+
+func GetEngineDJVersion() string {
+	return engineDJVersion
+}
+
+func FindEngineDJVersionFromPath(installPath string) string {
+	exePath := filepath.Join(installPath, "Engine DJ.exe")
+	ver, _ := getFileVersion(exePath)
+	return ver
+}
+
+func getFileVersion(path string) (string, error) {
+	kernel32 := syscall.NewLazyDLL("kernel32.dll")
+	getFileVersionInfoSize := kernel32.NewProc("GetFileVersionInfoSizeW")
+	getFileVersionInfo := kernel32.NewProc("GetFileVersionInfoW")
+	verQueryValue := kernel32.NewProc("VerQueryValueW")
+
+	pathPtr, err := syscall.UTF16PtrFromString(path)
+	if err != nil {
+		return "", err
+	}
+
+	size, _, _ := getFileVersionInfoSize.Call(uintptr(unsafe.Pointer(pathPtr)), 0)
+	if size == 0 {
+		return "", fmt.Errorf("no version info")
+	}
+
+	data := make([]byte, size)
+	ret, _, _ := getFileVersionInfo.Call(
+		uintptr(unsafe.Pointer(pathPtr)),
+		0,
+		size,
+		uintptr(unsafe.Pointer(&data[0])),
+	)
+	if ret == 0 {
+		return "", fmt.Errorf("GetFileVersionInfo failed")
+	}
+
+	var bufPtr uintptr
+	var bufLen uint32
+
+	subBlock, _ := syscall.UTF16PtrFromString(`\VarFileInfo\Translation`)
+	ret, _, _ = verQueryValue.Call(
+		uintptr(unsafe.Pointer(&data[0])),
+		uintptr(unsafe.Pointer(subBlock)),
+		uintptr(unsafe.Pointer(&bufPtr)),
+		uintptr(unsafe.Pointer(&bufLen)),
+	)
+	if ret == 0 {
+		return "", fmt.Errorf("VerQueryValue Translation failed")
+	}
+
+	if bufLen < 4 {
+		return "", fmt.Errorf("translation data too short")
+	}
+
+	translation := *(*uint32)(unsafe.Pointer(bufPtr))
+	langID := uint16(translation & 0xFFFF)
+	codePage := uint16((translation >> 16) & 0xFFFF)
+
+	queryPath := fmt.Sprintf(`\StringFileInfo\%04x%04x\ProductVersion`, langID, codePage)
+	subBlock2, _ := syscall.UTF16PtrFromString(queryPath)
+
+	ret, _, _ = verQueryValue.Call(
+		uintptr(unsafe.Pointer(&data[0])),
+		uintptr(unsafe.Pointer(subBlock2)),
+		uintptr(unsafe.Pointer(&bufPtr)),
+		uintptr(unsafe.Pointer(&bufLen)),
+	)
+	if ret == 0 {
+		queryPath2 := fmt.Sprintf(`\StringFileInfo\%04x%04x\FileVersion`, langID, codePage)
+		subBlock3, _ := syscall.UTF16PtrFromString(queryPath2)
+		ret, _, _ = verQueryValue.Call(
+			uintptr(unsafe.Pointer(&data[0])),
+			uintptr(unsafe.Pointer(subBlock3)),
+			uintptr(unsafe.Pointer(&bufPtr)),
+			uintptr(unsafe.Pointer(&bufLen)),
+		)
+		if ret == 0 {
+			return "", fmt.Errorf("VerQueryValue ProductVersion/FileVersion failed")
+		}
+	}
+
+	versionStr := syscall.UTF16ToString((*[1024]uint16)(unsafe.Pointer(bufPtr))[:bufLen])
+	return strings.TrimSpace(versionStr), nil
+}
+
+func findInUninstall(name string) (string, string, error) {
 	paths := []registry.Key{
 		registry.LOCAL_MACHINE,
 		registry.CURRENT_USER,
@@ -87,11 +179,14 @@ func findInUninstall(name string) (string, error) {
 							installLocation = filepath.Dir(installLocation)
 						}
 					}
+
+					displayVersion, _, _ := sk.GetStringValue("DisplayVersion")
+
 					sk.Close()
 
 					if installLocation != "" {
 						if _, err := os.Stat(filepath.Join(installLocation, "Engine DJ.exe")); err == nil {
-							return installLocation, nil
+							return installLocation, displayVersion, nil
 						}
 					}
 				}
@@ -100,10 +195,10 @@ func findInUninstall(name string) (string, error) {
 		}
 	}
 
-	return "", fmt.Errorf("not found in uninstall keys")
+	return "", "", fmt.Errorf("not found in uninstall keys")
 }
 
-func findInSoftware(name string) (string, error) {
+func findInSoftware(name string) (string, string, error) {
 	for _, wow64 := range []bool{false, true} {
 		var access uint32 = registry.READ
 		if wow64 {
@@ -127,7 +222,7 @@ func findInSoftware(name string) (string, error) {
 
 		for _, subkey := range subkeys {
 			if strings.Contains(strings.ToLower(subkey), strings.ToLower(name)) {
-			 fullPath := `SOFTWARE\` + subkey
+				fullPath := `SOFTWARE\` + subkey
 				sk, err := registry.OpenKey(
 					registry.LOCAL_MACHINE,
 					fullPath,
@@ -148,33 +243,33 @@ func findInSoftware(name string) (string, error) {
 
 				if installDir != "" {
 					if _, err := os.Stat(filepath.Join(installDir, "Engine DJ.exe")); err == nil {
-						return installDir, nil
+						return installDir, "", nil
 					}
 				}
 			}
 		}
 	}
 
-	return "", fmt.Errorf("not found in software keys")
+	return "", "", fmt.Errorf("not found in software keys")
 }
 
-func IsUTF8Enabled() (bool, error) {
+func IsUTF8Enabled() (bool, string, error) {
 	k, err := registry.OpenKey(
 		registry.LOCAL_MACHINE,
 		`SYSTEM\CurrentControlSet\Control\Nls\CodePage`,
 		registry.READ,
 	)
 	if err != nil {
-		return false, fmt.Errorf("failed to read CodePage registry: %w", err)
+		return false, "", fmt.Errorf("failed to read CodePage registry: %w", err)
 	}
 	defer k.Close()
 
 	acp, _, err := k.GetStringValue("ACP")
 	if err != nil {
-		return false, fmt.Errorf("failed to read ACP value: %w", err)
+		return false, "", fmt.Errorf("failed to read ACP value: %w", err)
 	}
 
-	return acp == "65001", nil
+	return acp == "65001", acp, nil
 }
 
 func SetPreferExternalManifest() error {
@@ -213,4 +308,34 @@ func GetPreferExternalManifest() (bool, error) {
 	}
 
 	return val == 1, nil
+}
+
+func GetWindowsVersion() string {
+	k, err := registry.OpenKey(
+		registry.LOCAL_MACHINE,
+		`SOFTWARE\Microsoft\Windows NT\CurrentVersion`,
+		registry.READ,
+	)
+	if err != nil {
+		return "Unknown"
+	}
+	defer k.Close()
+
+	productName, _, err := k.GetStringValue("ProductName")
+	if err != nil {
+		return "Unknown"
+	}
+
+	displayVersion, _, _ := k.GetStringValue("DisplayVersion")
+	currentBuild, _, _ := k.GetStringValue("CurrentBuildNumber")
+
+	result := productName
+	if displayVersion != "" {
+		result += " " + displayVersion
+	}
+	if currentBuild != "" {
+		result += " (Build " + currentBuild + ")"
+	}
+
+	return result
 }
