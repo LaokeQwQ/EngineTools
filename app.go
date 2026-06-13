@@ -17,21 +17,26 @@ import (
 )
 
 type App struct {
-	ctx     context.Context
-	lang    i18n.Lang
-	Logs    []string
-	InstallPath string
-	UTF8Enabled bool
-	ManifestConfigured bool
-	Progress float64
+	ctx                 context.Context
+	lang                i18n.Lang
+	Logs                []string
+	InstallPath         string
+	EngineVersion       string
+	WindowsVersion      string
+	UTF8Enabled         bool
+	ManifestConfigured  bool
+	Progress            float64
 }
 
 type StatusInfo struct {
-	InstallPath      string `json:"installPath"`
-	UTF8Enabled      bool   `json:"utf8Enabled"`
-	ManifestConfigured bool `json:"manifestConfigured"`
-	ProcessRunning   bool   `json:"processRunning"`
-	RunningProcesses []ProcessItem `json:"runningProcesses"`
+	InstallPath        string         `json:"installPath"`
+	EngineVersion      string         `json:"engineVersion"`
+	WindowsVersion     string         `json:"windowsVersion"`
+	UTF8Enabled        bool           `json:"utf8Enabled"`
+	ACPValue           string         `json:"acpValue"`
+	ManifestConfigured bool           `json:"manifestConfigured"`
+	ProcessRunning     bool           `json:"processRunning"`
+	RunningProcesses   []ProcessItem  `json:"runningProcesses"`
 }
 
 type ProcessItem struct {
@@ -67,31 +72,44 @@ func (a *App) detectStatus() {
 	msgs := i18n.Get(a.lang)
 
 	a.log(msgs.StatusChecking)
-	a.setProgress(0.1)
+	a.setProgress(0.05)
+
+	a.WindowsVersion = registry.GetWindowsVersion()
+	a.log(fmt.Sprintf("%s: %s", msgs.WindowsVersionLabel, a.WindowsVersion))
+	a.setProgress(0.15)
 
 	path, err := registry.FindEngineDJInstallPath()
 	if err != nil {
 		a.InstallPath = ""
+		a.EngineVersion = ""
 		a.log(msgs.InstallPathNotFound)
 	} else {
 		a.InstallPath = path
-		a.log(fmt.Sprintf("%s: %s", msgs.InstallPathLabel, path))
+		a.EngineVersion = registry.GetEngineDJVersion()
+		if a.EngineVersion == "" {
+			a.EngineVersion = registry.FindEngineDJVersionFromPath(path)
+		}
+		if a.EngineVersion != "" {
+			a.log(fmt.Sprintf("%s: %s (v%s)", msgs.InstallPathLabel, path, a.EngineVersion))
+		} else {
+			a.log(fmt.Sprintf("%s: %s", msgs.InstallPathLabel, path))
+		}
 	}
-	a.setProgress(0.4)
+	a.setProgress(0.35)
 
-	utf8Enabled, err := registry.IsUTF8Enabled()
+	utf8Enabled, acpValue, err := registry.IsUTF8Enabled()
 	if err != nil {
 		a.UTF8Enabled = false
 		a.log(fmt.Sprintf("%s: %s", msgs.UTF8StatusLabel, err.Error()))
 	} else {
 		a.UTF8Enabled = utf8Enabled
 		if utf8Enabled {
-			a.log(fmt.Sprintf("%s: %s", msgs.UTF8StatusLabel, msgs.UTF8Enabled))
+			a.log(fmt.Sprintf("%s: %s (ACP=%s)", msgs.UTF8StatusLabel, msgs.UTF8Enabled, acpValue))
 		} else {
-			a.log(fmt.Sprintf("%s: %s", msgs.UTF8StatusLabel, msgs.UTF8Disabled))
+			a.log(fmt.Sprintf("%s: %s (ACP=%s)", msgs.UTF8StatusLabel, msgs.UTF8Disabled, acpValue))
 		}
 	}
-	a.setProgress(0.7)
+	a.setProgress(0.65)
 
 	manifestOK, _ := registry.GetPreferExternalManifest()
 	if a.InstallPath != "" {
@@ -126,12 +144,22 @@ func (a *App) GetStatus() StatusInfo {
 		}
 	}
 
+	acpValue := ""
+	if a.UTF8Enabled {
+		acpValue = "65001"
+	} else {
+		acpValue = "936"
+	}
+
 	return StatusInfo{
-		InstallPath:      a.InstallPath,
-		UTF8Enabled:     a.UTF8Enabled,
+		InstallPath:        a.InstallPath,
+		EngineVersion:      a.EngineVersion,
+		WindowsVersion:     a.WindowsVersion,
+		UTF8Enabled:        a.UTF8Enabled,
+		ACPValue:           acpValue,
 		ManifestConfigured: a.ManifestConfigured,
-		ProcessRunning:  len(running) > 0,
-		RunningProcesses: procs,
+		ProcessRunning:     len(running) > 0,
+		RunningProcesses:   procs,
 	}
 }
 
@@ -164,10 +192,10 @@ func (a *App) FixCJKIssues() string {
 
 		confirmMsg := fmt.Sprintf(msgs.ProcessRunningMessage, strings.Join(names, "\n"))
 		result, err := wailsRuntime.MessageDialog(a.ctx, wailsRuntime.MessageDialogOptions{
-			Type:          wailsRuntime.QuestionDialog,
-			Title:         msgs.ProcessRunningTitle,
-			Message:       confirmMsg,
-			Buttons:       []string{"Yes", "No"},
+			Type:    wailsRuntime.QuestionDialog,
+			Title:   msgs.ProcessRunningTitle,
+			Message: confirmMsg,
+			Buttons: []string{"Yes", "No"},
 		})
 
 		if err != nil || result != "Yes" {

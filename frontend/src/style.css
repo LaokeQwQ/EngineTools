@@ -5,12 +5,18 @@
     --border: #2a3a5c;
     --text: #e0e0e0;
     --text-dim: #8892a8;
+    --text-muted: #5a6478;
     --accent: #ff6b00;
     --accent-hover: #ff8533;
     --success: #4caf50;
+    --success-bg: rgba(76, 175, 80, 0.08);
+    --success-border: rgba(76, 175, 80, 0.25);
     --warning: #ff9800;
-    --danger: #f44336;
-    --error: #ef5350;
+    --warning-bg: rgba(255, 152, 0, 0.08);
+    --warning-border: rgba(255, 152, 0, 0.25);
+    --error: #f44336;
+    --error-bg: rgba(244, 67, 54, 0.08);
+    --error-border: rgba(244, 67, 54, 0.25);
     --radius: 8px;
     --radius-sm: 6px;
     --font-mono: 'Cascadia Code', 'Consolas', 'Courier New', monospace;
@@ -44,15 +50,76 @@ html, body {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 16px 20px 12px;
+    padding: 10px 16px;
     border-bottom: 1px solid var(--border);
+    min-height: 40px;
 }
 
-.header h1 {
-    font-size: 16px;
+.header-left {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    min-width: 0;
+    overflow: hidden;
+}
+
+.app-title {
+    font-size: 14px;
     font-weight: 600;
     color: var(--text);
-    letter-spacing: -0.01em;
+    white-space: nowrap;
+    flex-shrink: 0;
+}
+
+.marquee-text {
+    font-size: 12px;
+    color: var(--text-dim);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    animation: marquee-fade 0.4s ease;
+}
+
+@keyframes marquee-fade {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+.header-right {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-shrink: 0;
+}
+
+.github-link {
+    display: flex;
+    align-items: center;
+    cursor: pointer;
+    color: var(--text-dim);
+    transition: color 0.15s;
+    text-decoration: none;
+}
+
+.github-link:hover {
+    color: var(--text);
+}
+
+.github-icon {
+    width: 18px;
+    height: 18px;
+}
+
+.author-handle {
+    font-size: 12px;
+    color: var(--text-dim);
+    cursor: pointer;
+    transition: color 0.15s;
+    white-space: nowrap;
+}
+
+.author-handle:hover {
+    color: var(--accent);
 }
 
 .lang-select {
@@ -60,17 +127,17 @@ html, body {
     color: var(--text);
     border: 1px solid var(--border);
     border-radius: var(--radius-sm);
-    padding: 4px 10px;
+    padding: 3px 8px;
     font-size: 12px;
     font-family: var(--font-sans);
     cursor: pointer;
     outline: none;
     appearance: none;
     -webkit-appearance: none;
-    padding-right: 24px;
+    padding-right: 22px;
     background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%238892a8'/%3E%3C/svg%3E");
     background-repeat: no-repeat;
-    background-position: right 8px center;
+    background-position: right 6px center;
 }
 
 .lang-select:hover {
@@ -80,78 +147,98 @@ html, body {
 .content {
     flex: 1;
     overflow-y: auto;
-    padding: 16px 20px;
+    padding: 14px 16px;
     display: flex;
     flex-direction: column;
-    gap: 12px;
+    gap: 10px;
 }
 
-.status-card {
+.info-card {
     background: var(--bg-card);
     border: 1px solid var(--border);
     border-radius: var(--radius);
-    padding: 14px 16px;
+    padding: 10px 14px;
     display: flex;
-    align-items: center;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.info-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
     gap: 12px;
-    transition: background 0.15s;
 }
 
-.status-card:hover {
-    background: var(--bg-card-hover);
-}
-
-.status-icon {
-    width: 36px;
-    height: 36px;
-    border-radius: 50%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 16px;
+.info-label {
+    font-size: 12px;
+    color: var(--text-dim);
+    white-space: nowrap;
     flex-shrink: 0;
 }
 
-.status-icon.success {
-    background: rgba(76, 175, 80, 0.15);
+.info-value {
+    font-size: 13px;
+    color: var(--text);
+    text-align: right;
+    word-break: break-all;
+    font-weight: 500;
+}
+
+.info-value.muted {
+    color: var(--text-muted);
+    font-weight: 400;
+}
+
+.status-card {
+    border-radius: var(--radius);
+    padding: 10px 14px;
+    border: 1px solid var(--border);
+    transition: background 0.15s;
+}
+
+.status-success {
+    background: var(--success-bg);
+    border-color: var(--success-border);
+}
+
+.status-warning {
+    background: var(--warning-bg);
+    border-color: var(--warning-border);
+}
+
+.status-error {
+    background: var(--error-bg);
+    border-color: var(--error-border);
+}
+
+.status-text {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.status-title {
+    font-size: 12px;
+    color: var(--text-dim);
+}
+
+.status-detail {
+    font-size: 14px;
+    font-weight: 600;
+}
+
+.status-success .status-detail {
     color: var(--success);
 }
 
-.status-icon.warning {
-    background: rgba(255, 152, 0, 0.15);
+.status-warning .status-detail {
     color: var(--warning);
 }
 
-.status-icon.danger {
-    background: rgba(244, 67, 54, 0.15);
-    color: var(--danger);
+.status-error .status-detail {
+    color: var(--error);
 }
-
-.status-icon.info {
-    background: rgba(255, 107, 0, 0.15);
-    color: var(--accent);
-}
-
-.status-info {
-    flex: 1;
-    min-width: 0;
-}
-
-.status-label {
-    font-size: 12px;
-    color: var(--text-dim);
-    margin-bottom: 2px;
-}
-
-.status-value {
-    font-size: 14px;
-    font-weight: 500;
-    color: var(--text);
-    word-break: break-all;
-}
-
-.status-value.enabled { color: var(--success); }
-.status-value.disabled { color: var(--danger); }
 
 .actions {
     display: flex;
@@ -212,7 +299,7 @@ html, body {
 }
 
 .progress-wrapper {
-    padding: 0 20px;
+    padding: 0 16px;
 }
 
 .progress-bar {
@@ -245,7 +332,7 @@ html, body {
 }
 
 .log-header {
-    padding: 8px 20px;
+    padding: 6px 16px;
     font-size: 11px;
     font-weight: 600;
     color: var(--text-dim);
@@ -257,7 +344,7 @@ html, body {
 .log-body {
     flex: 1;
     overflow-y: auto;
-    padding: 0 20px 12px;
+    padding: 0 16px 10px;
     font-family: var(--font-mono);
     font-size: 12px;
     line-height: 1.6;
@@ -267,15 +354,6 @@ html, body {
 .log-entry {
     white-space: pre-wrap;
     word-break: break-all;
-}
-
-.log-entry .timestamp {
-    color: var(--text-dim);
-    opacity: 0.5;
-}
-
-.log-entry .message {
-    color: var(--text);
 }
 
 .loading-spinner {
