@@ -47,28 +47,40 @@ func GetEngineDJVersion() string {
 
 func FindEngineDJVersionFromPath(installPath string) string {
 	exePath := filepath.Join(installPath, "Engine DJ.exe")
-	ver, _ := getFileVersion(exePath)
+	if _, err := os.Stat(exePath); err != nil {
+		return ""
+	}
+	ver, err := getFileVersion(exePath)
+	if err != nil {
+		return ""
+	}
 	return ver
 }
 
+var (
+	versionDLL            = syscall.NewLazyDLL("version.dll")
+	procGetFileVersionInfoSizeW = versionDLL.NewProc("GetFileVersionInfoSizeW")
+	procGetFileVersionInfoW      = versionDLL.NewProc("GetFileVersionInfoW")
+	procVerQueryValueW          = versionDLL.NewProc("VerQueryValueW")
+)
+
 func getFileVersion(path string) (string, error) {
-	kernel32 := syscall.NewLazyDLL("kernel32.dll")
-	getFileVersionInfoSize := kernel32.NewProc("GetFileVersionInfoSizeW")
-	getFileVersionInfo := kernel32.NewProc("GetFileVersionInfoW")
-	verQueryValue := kernel32.NewProc("VerQueryValueW")
+	if err := versionDLL.Load(); err != nil {
+		return "", fmt.Errorf("version.dll not available: %w", err)
+	}
 
 	pathPtr, err := syscall.UTF16PtrFromString(path)
 	if err != nil {
 		return "", err
 	}
 
-	size, _, _ := getFileVersionInfoSize.Call(uintptr(unsafe.Pointer(pathPtr)), 0)
+	size, _, _ := procGetFileVersionInfoSizeW.Call(uintptr(unsafe.Pointer(pathPtr)), 0)
 	if size == 0 {
 		return "", fmt.Errorf("no version info")
 	}
 
 	data := make([]byte, size)
-	ret, _, _ := getFileVersionInfo.Call(
+	ret, _, _ := procGetFileVersionInfoW.Call(
 		uintptr(unsafe.Pointer(pathPtr)),
 		0,
 		size,
@@ -82,7 +94,7 @@ func getFileVersion(path string) (string, error) {
 	var bufLen uint32
 
 	subBlock, _ := syscall.UTF16PtrFromString(`\VarFileInfo\Translation`)
-	ret, _, _ = verQueryValue.Call(
+	ret, _, _ = procVerQueryValueW.Call(
 		uintptr(unsafe.Pointer(&data[0])),
 		uintptr(unsafe.Pointer(subBlock)),
 		uintptr(unsafe.Pointer(&bufPtr)),
@@ -103,7 +115,7 @@ func getFileVersion(path string) (string, error) {
 	queryPath := fmt.Sprintf(`\StringFileInfo\%04x%04x\ProductVersion`, langID, codePage)
 	subBlock2, _ := syscall.UTF16PtrFromString(queryPath)
 
-	ret, _, _ = verQueryValue.Call(
+	ret, _, _ = procVerQueryValueW.Call(
 		uintptr(unsafe.Pointer(&data[0])),
 		uintptr(unsafe.Pointer(subBlock2)),
 		uintptr(unsafe.Pointer(&bufPtr)),
@@ -112,7 +124,7 @@ func getFileVersion(path string) (string, error) {
 	if ret == 0 {
 		queryPath2 := fmt.Sprintf(`\StringFileInfo\%04x%04x\FileVersion`, langID, codePage)
 		subBlock3, _ := syscall.UTF16PtrFromString(queryPath2)
-		ret, _, _ = verQueryValue.Call(
+		ret, _, _ = procVerQueryValueW.Call(
 			uintptr(unsafe.Pointer(&data[0])),
 			uintptr(unsafe.Pointer(subBlock3)),
 			uintptr(unsafe.Pointer(&bufPtr)),
