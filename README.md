@@ -4,15 +4,6 @@
 
 Fix CJK (Chinese/Japanese/Korean) and other special character display issues in Engine DJ by applying per-application UTF-8 manifest configuration.
 
-## Problem
-
-Engine DJ may display garbled or missing characters for CJK file names and metadata when the system code page is not set to UTF-8. This tool resolves the issue by:
-
-1. Writing an external manifest file (`Engine DJ.exe.manifest`) that enables UTF-8 code page for the application
-2. Setting the `PreferExternalManifest` registry key so Windows reads the manifest
-
-This approach uses per-application UTF-8 configuration, which is safer than enabling system-wide UTF-8 support (which can break other applications).
-
 ## Features
 
 - Auto-detects Engine DJ installation path from registry
@@ -48,43 +39,9 @@ This approach uses per-application UTF-8 configuration, which is safer than enab
 3. Click **Fix CJK Character Reading Issues** to apply the fix
 4. If the issue persists after fixing, restart your computer
 
-### If System UTF-8 Is Already Enabled
-
-If the tool detects that system-wide UTF-8 support is already enabled ("Use Unicode UTF-8 for worldwide language support"), it will suggest you:
-
-1. Go to Control Panel → Region → Administrative → Change system locale
-2. Disable "Beta: Use Unicode UTF-8 for worldwide language support"
-3. Then use this tool to apply the per-application fix
-
-This is because system-wide UTF-8 can cause compatibility issues with other software.
-
 ## How It Works
 
-The tool applies the following changes:
-
-### 1. External Manifest File
-
-Creates `Engine DJ.exe.manifest` in the Engine DJ installation directory:
-
-```xml
-<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<assembly manifestVersion="1.0" xmlns="urn:schemas-microsoft-com:asm.v1">
-  <assemblyIdentity type="win32" name="EngineDJ" version="1.0.0.0"/>
-  <application>
-    <windowsSettings>
-      <activeCodePage xmlns="http://schemas.microsoft.com/SMI/2019/WindowsSettings">UTF-8</activeCodePage>
-    </windowsSettings>
-  </application>
-</assembly>
-```
-
-### 2. Registry Key
-
-Sets `HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\SideBySide\PreferExternalManifest` to `1` (DWORD), which tells Windows to read external `.manifest` files.
-
-### 3. System Refresh
-
-Sends `WM_SETTINGCHANGE` broadcast to refresh system settings without requiring a full reboot.
+See [HOW_IT_WORKS.md](HOW_IT_WORKS.md) for technical details.
 
 ## Development
 
