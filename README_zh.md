@@ -4,15 +4,6 @@
 
 修复 Engine DJ 中日韩等特殊字符显示问题，通过应用级别的 UTF-8 manifest 配置实现。
 
-## 问题
-
-Engine DJ 在系统代码页未设置为 UTF-8 时，可能对中日韩文件名和元数据显示乱码或缺失字符。本工具通过以下方式解决：
-
-1. 写入外部 manifest 文件（`Engine DJ.exe.manifest`），为应用程序启用 UTF-8 代码页
-2. 设置注册表 `PreferExternalManifest` 键，使 Windows 读取该 manifest
-
-此方法使用应用级别的 UTF-8 配置，比启用系统全局 UTF-8 支持更安全（系统全局 UTF-8 可能导致其他软件兼容性问题）。
-
 ## 功能
 
 - 自动从注册表检测 Engine DJ 安装路径
@@ -48,41 +39,9 @@ Engine DJ 在系统代码页未设置为 UTF-8 时，可能对中日韩文件名
 3. 点击 **修复中日韩等特殊字符读取问题** 应用修复
 4. 如果修复后仍有问题，请重启电脑
 
-### 如果系统 UTF-8 支持已开启
-
-如果工具检测到系统全局 UTF-8 支持已开启（"使用 Unicode UTF-8 提供全球语言支持"），会建议你：
-
-1. 前往 控制面板 → 区域 → 管理 → 更改系统区域设置
-2. 关闭「使用 Unicode UTF-8 提供全球语言支持」
-3. 然后使用本工具按应用级别开启
-
-因为系统全局 UTF-8 可能导致其他软件出现兼容性问题。
-
 ## 工作原理
 
-### 1. 外部 Manifest 文件
-
-在 Engine DJ 安装目录下创建 `Engine DJ.exe.manifest`：
-
-```xml
-<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<assembly manifestVersion="1.0" xmlns="urn:schemas-microsoft-com:asm.v1">
-  <assemblyIdentity type="win32" name="EngineDJ" version="1.0.0.0"/>
-  <application>
-    <windowsSettings>
-      <activeCodePage xmlns="http://schemas.microsoft.com/SMI/2019/WindowsSettings">UTF-8</activeCodePage>
-    </windowsSettings>
-  </application>
-</assembly>
-```
-
-### 2. 注册表键
-
-设置 `HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\SideBySide\PreferExternalManifest` 为 `1`（DWORD），使 Windows 读取外部 `.manifest` 文件。
-
-### 3. 系统刷新
-
-发送 `WM_SETTINGCHANGE` 广播刷新系统设置，通常无需重启。
+详见 [HOW_IT_WORKS_zh.md](HOW_IT_WORKS_zh.md)。
 
 ## 开发
 
