@@ -12,6 +12,7 @@ import (
 	"golang.org/x/sys/windows"
 
 	"EngineTools/internal/i18n"
+	"EngineTools/internal/library"
 	"EngineTools/internal/manifest"
 	"EngineTools/internal/process"
 	"EngineTools/internal/registry"
@@ -307,6 +308,103 @@ func (a *App) GetAvailableLanguages() []map[string]string {
 		}
 	}
 	return result
+}
+
+// LibraryInfo is the JSON-serialisable version of library.DBInfo.
+type LibraryInfo struct {
+	Path        string `json:"path"`
+	Drive       string `json:"drive"`
+	UUID        string `json:"uuid"`
+	TotalTracks int    `json:"totalTracks"`
+	MissingRGB  int    `json:"missingRGB"`
+}
+
+// ScanLibraries scans all drives for Engine Library databases and returns status.
+func (a *App) ScanLibraries() []LibraryInfo {
+	dbs := library.ScanAll()
+	result := make([]LibraryInfo, len(dbs))
+	for i, d := range dbs {
+		result[i] = LibraryInfo{
+			Path:        d.Path,
+			Drive:       d.Drive,
+			UUID:        d.UUID,
+			TotalTracks: d.TotalTracks,
+			MissingRGB:  d.MissingRGB,
+		}
+	}
+	return result
+}
+
+// RestoreOverviewFiles restores missing .rgb overview files for the given DB path.
+func (a *App) RestoreOverviewFiles(dbPath string) string {
+	msgs := i18n.Get(a.lang)
+	a.setProgress(0)
+	a.log(fmt.Sprintf("%s: %s", msgs.RestoringOverview, dbPath))
+
+	res, err := library.Restore(dbPath, func(p float64) {
+		a.setProgress(p)
+	})
+	if err != nil {
+		a.log(fmt.Sprintf("%s: %v", msgs.RestoreError, err))
+		return "error: " + err.Error()
+	}
+
+	a.log(fmt.Sprintf("%s: %s %d, %s %d",
+		msgs.RestoreComplete,
+		msgs.RestoreWritten, res.Written,
+		msgs.RestoreSkipped, res.Skipped,
+	))
+	a.setProgress(1.0)
+
+	wailsRuntime.EventsEmit(a.ctx, "statusUpdate", a.GetStatus())
+	return "ok"
+}
+
+// RestoreAllLibraries scans all drives and restores missing .rgb files for every Engine Library found.
+func (a *App) RestoreAllLibraries() string {
+	msgs := i18n.Get(a.lang)
+	a.setProgress(0)
+	a.log(msgs.RestoringOverview + "...")
+
+	dbs := library.ScanAll()
+	if len(dbs) == 0 {
+		a.log(msgs.InstallPathNotFound)
+		return "none"
+	}
+
+	totalWritten := 0
+	totalSkipped := 0
+	totalErrors := 0
+
+	for idx, d := range dbs {
+		base := float64(idx) / float64(len(dbs))
+		a.log(fmt.Sprintf("%s: %s (%d missing)", msgs.RestoringOverview, d.Drive, d.MissingRGB))
+		res, err := library.Restore(d.Path, func(p float64) {
+			a.setProgress(base + p/float64(len(dbs)))
+		})
+		if err != nil {
+			a.log(fmt.Sprintf("%s %s: %v", msgs.RestoreError, d.Drive, err))
+			totalErrors++
+			continue
+		}
+		totalWritten += res.Written
+		totalSkipped += res.Skipped
+		totalErrors += res.Errors
+	}
+
+	a.log(fmt.Sprintf("%s: %s %d, %s %d",
+		msgs.RestoreComplete,
+		msgs.RestoreWritten, totalWritten,
+		msgs.RestoreSkipped, totalSkipped,
+	))
+	a.setProgress(1.0)
+
+	wailsRuntime.EventsEmit(a.ctx, "libraryRestored", nil)
+
+	if totalErrors > 0 {
+		return fmt.Sprintf("partial: %d errors", totalErrors)
+	}
+	return "ok"
 }
 
 func checkIsAdmin() bool {

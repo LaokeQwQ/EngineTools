@@ -394,3 +394,101 @@ html, body {
 ::-webkit-scrollbar-thumb:hover {
     background: var(--text-dim);
 }
+
+/* Library section */
+.library-section {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.library-section-title {
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--text-dim);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    padding: 0 2px;
+}
+
+.library-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 10px 14px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+}
+
+.library-card-info {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 0;
+}
+
+.library-drive {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text);
+}
+
+.library-stats {
+    font-size: 12px;
+    color: var(--text-dim);
+}
+
+.library-stats.has-missing {
+    color: var(--warning);
+}
+
+.btn-restore-all {
+    background: transparent;
+    color: var(--warning);
+    border: 1px solid var(--warning-border);
+    font-size: 13px;
+    padding: 10px 16px;
+}
+
+.btn-restore-all:hover:not(:disabled) {
+    background: var(--warning-bg);
+    border-color: var(--warning);
+}
+
+.btn-restore-all:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+}
+
+.btn-restore {
+    background: transparent;
+    color: var(--accent);
+    border: 1px solid var(--accent);
+    border-radius: var(--radius-sm);
+    padding: 5px 12px;
+    font-size: 12px;
+    font-weight: 500;
+    font-family: var(--font-sans);
+    cursor: pointer;
+    transition: all 0.15s;
+    white-space: nowrap;
+    flex-shrink: 0;
+}
+
+.btn-restore:hover:not(:disabled) {
+    background: var(--accent);
+    color: #fff;
+}
+
+.btn-restore:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+}
+
+.library-ok {
+    font-size: 12px;
+    color: var(--success);
+    flex-shrink: 0;
+}
