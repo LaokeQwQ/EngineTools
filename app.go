@@ -9,6 +9,7 @@ import (
 	"time"
 
 	wailsRuntime "github.com/wailsapp/wails/v2/pkg/runtime"
+	"golang.org/x/sys/windows"
 
 	"EngineTools/internal/i18n"
 	"EngineTools/internal/manifest"
@@ -25,6 +26,7 @@ type App struct {
 	WindowsVersion      string
 	UTF8Enabled         bool
 	ManifestConfigured  bool
+	IsAdmin             bool
 	Progress            float64
 }
 
@@ -35,6 +37,7 @@ type StatusInfo struct {
 	UTF8Enabled        bool           `json:"utf8Enabled"`
 	ACPValue           string         `json:"acpValue"`
 	ManifestConfigured bool           `json:"manifestConfigured"`
+	IsAdmin            bool           `json:"isAdmin"`
 	ProcessRunning     bool           `json:"processRunning"`
 	RunningProcesses   []ProcessItem  `json:"runningProcesses"`
 }
@@ -46,8 +49,9 @@ type ProcessItem struct {
 
 func NewApp() *App {
 	return &App{
-		lang: i18n.DetectLang(),
-		Logs: []string{},
+		lang:    i18n.DetectLang(),
+		Logs:    []string{},
+		IsAdmin: checkIsAdmin(),
 	}
 }
 
@@ -158,6 +162,7 @@ func (a *App) GetStatus() StatusInfo {
 		UTF8Enabled:        a.UTF8Enabled,
 		ACPValue:           acpValue,
 		ManifestConfigured: a.ManifestConfigured,
+		IsAdmin:            a.IsAdmin,
 		ProcessRunning:     len(running) > 0,
 		RunningProcesses:   procs,
 	}
@@ -278,6 +283,10 @@ func (a *App) OpenRegionSettings() string {
 	return ""
 }
 
+func (a *App) OpenRepository() {
+	wailsRuntime.BrowserOpenURL(a.ctx, "https://github.com/LaokeQwQ/EngineTools")
+}
+
 func (a *App) SetLanguage(lang string) string {
 	a.lang = i18n.Lang(lang)
 	go a.detectStatus()
@@ -298,4 +307,27 @@ func (a *App) GetAvailableLanguages() []map[string]string {
 		}
 	}
 	return result
+}
+
+func checkIsAdmin() bool {
+	var sid *windows.SID
+	err := windows.AllocateAndInitializeSid(
+		&windows.SECURITY_NT_AUTHORITY,
+		2,
+		windows.SECURITY_BUILTIN_DOMAIN_RID,
+		windows.DOMAIN_ALIAS_RID_ADMINS,
+		0, 0, 0, 0, 0, 0,
+		&sid,
+	)
+	if err != nil {
+		return false
+	}
+	defer windows.FreeSid(sid)
+
+	token := windows.GetCurrentProcessToken()
+	member, err := token.IsMember(sid)
+	if err != nil {
+		return false
+	}
+	return member
 }

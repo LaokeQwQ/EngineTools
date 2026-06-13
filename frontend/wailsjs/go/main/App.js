@@ -26,6 +26,10 @@ export function OpenRegionSettings() {
   return window['go']['main']['App']['OpenRegionSettings']();
 }
 
+export function OpenRepository() {
+  return window['go']['main']['App']['OpenRepository']();
+}
+
 export function Refresh() {
   return window['go']['main']['App']['Refresh']();
 }
