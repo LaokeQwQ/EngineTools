@@ -105,7 +105,6 @@ func KillProcess(pid uint32) error {
 
 func RefreshSystemSettings() error {
 	user32 := syscall.NewLazyDLL("user32.dll")
-	sendMessage := user32.NewProc("SendMessageW")
 	sendMessageTimeout := user32.NewProc("SendMessageTimeoutW")
 
 	HWND_BROADCAST := uintptr(0xFFFF)
@@ -121,11 +120,14 @@ func RefreshSystemSettings() error {
 		0,
 	)
 
-	sendMessage.Call(
+	sendMessageTimeout.Call(
 		HWND_BROADCAST,
 		WM_SETTINGCHANGE,
 		0,
 		uintptr(unsafe.Pointer(syscall.StringToUTF16Ptr("intl"))),
+		0x0002,
+		5000,
+		0,
 	)
 
 	return nil
