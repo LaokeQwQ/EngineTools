@@ -60,6 +60,9 @@ type Messages struct {
 	Version                 string `json:"version"`
 	MarqueeFree             string `json:"marqueeFree"`
 	MarqueeStar             string `json:"marqueeStar"`
+	AdminStatusLabel        string `json:"adminStatusLabel"`
+	AdminYes                string `json:"adminYes"`
+	AdminNo                 string `json:"adminNo"`
 }
 
 var translations = map[Lang]Messages{
@@ -108,6 +111,9 @@ var translations = map[Lang]Messages{
 		Version:               "版本",
 		MarqueeFree:           "该程序免费分发，若您为收费获取请及时申诉",
 		MarqueeStar:           "若您喜欢，请给项目点个 Star",
+		AdminStatusLabel:     "管理员权限",
+		AdminYes:            "已获取",
+		AdminNo:             "未获取",
 	},
 	JA: {
 		AppTitle:              "Engine Tools",
@@ -154,6 +160,9 @@ var translations = map[Lang]Messages{
 		Version:              "バージョン",
 		MarqueeFree:           "このツールは無料で配布されています。有料で入手された場合は返金をご申請ください",
 		MarqueeStar:           "気に入ったら、プロジェクトに Star をお願いします",
+		AdminStatusLabel:     "管理者権限",
+		AdminYes:            "取得済み",
+		AdminNo:             "未取得",
 	},
 	KO: {
 		AppTitle:              "Engine Tools",
@@ -200,6 +209,9 @@ var translations = map[Lang]Messages{
 		Version:              "버전",
 		MarqueeFree:           "이 프로그램은 무료로 배포됩니다. 유료로 얻으셨다면 환불을 신청하세요",
 		MarqueeStar:           "마음에 드시면 프로젝트에 Star를 부탁드립니다",
+		AdminStatusLabel:     "관리자 권한",
+		AdminYes:            "활성",
+		AdminNo:             "미활성",
 	},
 	EN: {
 		AppTitle:              "Engine Tools",
@@ -246,6 +258,9 @@ var translations = map[Lang]Messages{
 		Version:              "Version",
 		MarqueeFree:           "This program is distributed free of charge. If you paid for it, please request a refund",
 		MarqueeStar:           "If you like this project, please give it a Star on GitHub",
+		AdminStatusLabel:     "Admin Privileges",
+		AdminYes:            "Granted",
+		AdminNo:             "Not Granted",
 	},
 }
 
@@ -253,17 +268,18 @@ func DetectLang() Lang {
 	kernel32 := syscall.NewLazyDLL("kernel32.dll")
 	getUserDefaultUILanguage := kernel32.NewProc("GetUserDefaultUILanguage")
 
-	langID, _, _ := getUserDefaultUILanguage.Call()
+	if getUserDefaultUILanguage.Find() == nil {
+		langID, _, _ := getUserDefaultUILanguage.Call()
+		primaryLang := uint16(langID) & 0xFF
 
-	primaryLang := uint16(langID) & 0xFF
-
-	switch primaryLang {
-	case 0x04:
-		return ZH
-	case 0x11:
-		return JA
-	case 0x12:
-		return KO
+		switch primaryLang {
+		case 0x04:
+			return ZH
+		case 0x11:
+			return JA
+		case 0x12:
+			return KO
+		}
 	}
 
 	lang := strings.ToLower(os.Getenv("LANG"))
