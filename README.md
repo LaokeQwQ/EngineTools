@@ -1,4 +1,6 @@
-# Engine DJ Unicode Fix Tool
+# Engine Tools
+
+**[中文](README_zh.md)** | English | **[日本語](README_ja.md)** | **[한국어](README_ko.md)**
 
 Fix CJK (Chinese/Japanese/Korean) and other special character display issues in Engine DJ by applying per-application UTF-8 manifest configuration.
 
@@ -14,13 +16,15 @@ This approach uses per-application UTF-8 configuration, which is safer than enab
 ## Features
 
 - Auto-detects Engine DJ installation path from registry
-- Checks system UTF-8 code page status (ACP=65001)
+- Displays Windows version and Engine DJ version
+- Shows admin privilege status, UTF-8 support status, and manifest configuration status
 - Detects running Engine DJ processes and offers to terminate them
 - Writes `Engine DJ.exe.manifest` with UTF-8 activeCodePage setting
 - Sets `PreferExternalManifest=1` in Windows registry
 - Refreshes system settings after applying changes
 - Real-time operation log with progress indicator
-- Multi-language UI (Chinese / Japanese / Korean / English)
+- Multi-language UI: Chinese / Japanese / Korean / English
+- Auto UAC elevation on launch
 
 ## Requirements
 
@@ -29,13 +33,16 @@ This approach uses per-application UTF-8 configuration, which is safer than enab
 
 ## Download
 
-See the [Releases](https://github.com/LaokeQwQ/EngineTools/releases) page.
+- [GitHub Releases](https://github.com/LaokeQwQ/EngineTools/releases)
+- [Forgejo Releases](https://git.laoker.cc/Laoke/EngineTools/releases)
 
 ## Usage
 
-1. Run `EngineTools.exe` (requires admin privileges)
+1. Run `EngineTools.exe` (will request admin privileges)
 2. The tool automatically detects:
-   - Engine DJ installation path
+   - Engine DJ installation path and version
+   - Windows version
+   - Whether admin privileges are granted
    - Whether system UTF-8 support is enabled
    - Whether the external manifest is already configured
 3. Click **Fix CJK Character Reading Issues** to apply the fix
@@ -77,7 +84,7 @@ Sets `HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\SideBySide\Pr
 
 ### 3. System Refresh
 
-Sends `WM_SETTINGCHANGE` broadcast to refresh system settings without requiring a full reboot (though a reboot may still be needed in some cases).
+Sends `WM_SETTINGCHANGE` broadcast to refresh system settings without requiring a full reboot.
 
 ## Development
 
@@ -93,8 +100,6 @@ Sends `WM_SETTINGCHANGE` broadcast to refresh system settings without requiring 
 ```bash
 wails build
 ```
-
-The output binary will be in `build/bin/EngineTools.exe`.
 
 ### Development Mode
 
