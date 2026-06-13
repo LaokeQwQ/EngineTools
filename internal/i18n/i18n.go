@@ -251,7 +251,7 @@ var translations = map[Lang]Messages{
 
 func DetectLang() Lang {
 	kernel32 := syscall.NewLazyDLL("kernel32.dll")
-	getUserDefaultUILanguage := kernel32.NewProc("GetUserDefaultSystemUILanguage")
+	getUserDefaultUILanguage := kernel32.NewProc("GetUserDefaultUILanguage")
 
 	langID, _, _ := getUserDefaultUILanguage.Call()
 
