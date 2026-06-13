@@ -45,6 +45,9 @@ export namespace i18n {
 	    version: string;
 	    marqueeFree: string;
 	    marqueeStar: string;
+	    adminStatusLabel: string;
+	    adminYes: string;
+	    adminNo: string;
 	
 	    static createFrom(source: any = {}) {
 	        return new Messages(source);
@@ -96,6 +99,9 @@ export namespace i18n {
 	        this.version = source["version"];
 	        this.marqueeFree = source["marqueeFree"];
 	        this.marqueeStar = source["marqueeStar"];
+	        this.adminStatusLabel = source["adminStatusLabel"];
+	        this.adminYes = source["adminYes"];
+	        this.adminNo = source["adminNo"];
 	    }
 	}
 
@@ -124,6 +130,7 @@ export namespace main {
 	    utf8Enabled: boolean;
 	    acpValue: string;
 	    manifestConfigured: boolean;
+	    isAdmin: boolean;
 	    processRunning: boolean;
 	    runningProcesses: ProcessItem[];
 	
@@ -139,6 +146,7 @@ export namespace main {
 	        this.utf8Enabled = source["utf8Enabled"];
 	        this.acpValue = source["acpValue"];
 	        this.manifestConfigured = source["manifestConfigured"];
+	        this.isAdmin = source["isAdmin"];
 	        this.processRunning = source["processRunning"];
 	        this.runningProcesses = this.convertValues(source["runningProcesses"], ProcessItem);
 	    }
