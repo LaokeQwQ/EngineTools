@@ -15,6 +15,8 @@ export function HandleUTF8AlreadyEnabled():Promise<string>;
 
 export function OpenRegionSettings():Promise<string>;
 
+export function OpenRepository():Promise<void>;
+
 export function Refresh():Promise<main.StatusInfo>;
 
 export function SetLanguage(arg1:string):Promise<string>;

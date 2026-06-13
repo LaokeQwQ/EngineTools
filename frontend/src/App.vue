@@ -1,10 +1,9 @@
 <script setup>
 import { ref, onMounted, computed } from 'vue'
-import { GetStatus, FixCJKIssues, HandleUTF8AlreadyEnabled, OpenRegionSettings, SetLanguage, GetMessages, GetAvailableLanguages, Refresh } from '../wailsjs/go/main/App.js'
+import { GetStatus, FixCJKIssues, HandleUTF8AlreadyEnabled, OpenRegionSettings, SetLanguage, GetMessages, GetAvailableLanguages, OpenRepository } from '../wailsjs/go/main/App.js'
 import { EventsOn } from '../wailsjs/runtime/runtime.js'
 
-const APP_VERSION = '1.1.0'
-const GITHUB_URL = 'https://github.com/LaokeQwQ/EngineTools'
+const APP_VERSION = '1.2.0'
 
 const installPath = ref('')
 const engineVersion = ref('')
@@ -12,6 +11,7 @@ const windowsVersion = ref('')
 const utf8Enabled = ref(false)
 const acpValue = ref('')
 const manifestConfigured = ref(false)
+const isAdmin = ref(false)
 const processRunning = ref(false)
 const runningProcesses = ref([])
 const loading = ref(true)
@@ -42,6 +42,11 @@ const utf8StatusText = computed(() => {
 const manifestStatusText = computed(() => {
     if (!msgs.value) return ''
     return manifestConfigured.value ? msgs.value.manifestExists : msgs.value.manifestNotExists
+})
+
+const adminStatusText = computed(() => {
+    if (!msgs.value) return ''
+    return isAdmin.value ? msgs.value.adminYes : msgs.value.adminNo
 })
 
 const logs = ref([])
@@ -82,6 +87,7 @@ async function detectStatus() {
         utf8Enabled.value = status.utf8Enabled || false
         acpValue.value = status.acpValue || ''
         manifestConfigured.value = status.manifestConfigured || false
+        isAdmin.value = status.isAdmin || false
         processRunning.value = status.processRunning || false
         runningProcesses.value = status.runningProcesses || []
     } catch (e) {
@@ -119,6 +125,10 @@ async function handleFix() {
 
 async function handleOpenRegionSettings() {
     await OpenRegionSettings()
+}
+
+async function openGitHub() {
+    await OpenRepository()
 }
 
 async function changeLanguage(lang) {
@@ -160,10 +170,10 @@ onMounted(async () => {
             <span class="marquee-text" :key="currentMarquee">{{ marqueeTexts[currentMarquee] }}</span>
         </div>
         <div class="header-right">
-            <a class="github-link no-drag" @click.prevent="() => { require('electron') ? null : window.open(GITHUB_URL, '_blank') }" :href="GITHUB_URL">
+            <span class="github-link no-drag" @click="openGitHub">
                 <svg class="github-icon" viewBox="0 0 16 16" fill="currentColor" width="16" height="16"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>
-            </a>
-            <span class="author-handle no-drag" @click="window.open(GITHUB_URL, '_blank')">@LaokeQwQ</span>
+            </span>
+            <span class="author-handle no-drag" @click="openGitHub">@LaokeQwQ</span>
             <select class="lang-select no-drag" :value="currentLang" @change="changeLanguage($event.target.value)">
                 <option v-for="lang in languages" :key="lang.code" :value="lang.code">{{ lang.native }}</option>
             </select>
@@ -183,6 +193,13 @@ onMounted(async () => {
             <div class="info-row">
                 <span class="info-label">{{ msgs.engineVersionLabel || 'Version' }}</span>
                 <span class="info-value" :class="{ muted: !engineVersion }">{{ versionDisplay }}</span>
+            </div>
+        </div>
+
+        <div class="status-card" :class="isAdmin ? 'status-success' : 'status-error'">
+            <div class="status-text">
+                <div class="status-title">{{ msgs.adminStatusLabel || 'Admin Privileges' }}</div>
+                <div class="status-detail">{{ adminStatusText }}</div>
             </div>
         </div>
 
