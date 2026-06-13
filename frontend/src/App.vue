@@ -1,9 +1,9 @@
 <script setup>
 import { ref, onMounted, computed } from 'vue'
-import { GetStatus, FixCJKIssues, HandleUTF8AlreadyEnabled, OpenRegionSettings, SetLanguage, GetMessages, GetAvailableLanguages, OpenRepository } from '../wailsjs/go/main/App.js'
+import { GetStatus, FixCJKIssues, HandleUTF8AlreadyEnabled, OpenRegionSettings, SetLanguage, GetMessages, GetAvailableLanguages, OpenRepository, ScanLibraries, RestoreOverviewFiles, RestoreAllLibraries } from '../wailsjs/go/main/App.js'
 import { EventsOn } from '../wailsjs/runtime/runtime.js'
 
-const APP_VERSION = '1.2.0'
+const APP_VERSION = '1.3.0'
 
 const installPath = ref('')
 const engineVersion = ref('')
@@ -23,6 +23,11 @@ const languages = ref([])
 const currentLang = ref('zh')
 const marqueeTexts = ref([])
 const currentMarquee = ref(0)
+
+const libraries = ref([])
+const scanningLibraries = ref(false)
+const restoringLib = ref('')
+const restoringAll = ref(false)
 
 const pathDisplay = computed(() => {
     return installPath.value || msgs.value?.installPathNotFound || '—'
@@ -138,6 +143,52 @@ async function changeLanguage(lang) {
     await detectStatus()
 }
 
+async function scanLibraries() {
+    scanningLibraries.value = true
+    try {
+        libraries.value = await ScanLibraries()
+    } catch (e) {
+        addLog('Error: ' + e)
+    }
+    scanningLibraries.value = false
+}
+
+async function handleRestore(dbPath, missingCount, totalCount) {
+    restoringLib.value = dbPath
+    showProgress.value = true
+    progress.value = 0
+
+    try {
+        const res = await RestoreOverviewFiles(dbPath)
+        if (res === 'ok') {
+            await scanLibraries()
+        }
+    } catch (e) {
+        addLog('Error: ' + e)
+    }
+
+    restoringLib.value = ''
+    setTimeout(() => { showProgress.value = false }, 1000)
+}
+
+async function handleRestoreAll() {
+    restoringAll.value = true
+    showProgress.value = true
+    progress.value = 0
+
+    try {
+        const res = await RestoreAllLibraries()
+        if (res.startsWith('ok')) {
+            await scanLibraries()
+        }
+    } catch (e) {
+        addLog('Error: ' + e)
+    }
+
+    restoringAll.value = false
+    setTimeout(() => { showProgress.value = false }, 1000)
+}
+
 let marqueeInterval = null
 
 onMounted(async () => {
@@ -156,6 +207,7 @@ onMounted(async () => {
     })
 
     await detectStatus()
+    await scanLibraries()
 
     marqueeInterval = setInterval(() => {
         currentMarquee.value = (currentMarquee.value + 1) % marqueeTexts.value.length
@@ -234,6 +286,45 @@ onMounted(async () => {
             >
                 {{ msgs.openRegionSettings || 'Open Region Settings' }}
             </button>
+
+            <button
+                class="btn btn-restore-all no-drag"
+                :disabled="restoringAll || scanningLibraries"
+                @click="handleRestoreAll"
+            >
+                <span v-if="restoringAll" class="loading-spinner"></span>
+                {{ restoringAll ? (msgs.progressFixing || 'Restoring...') : (msgs.restoreAllButton || 'Restore Waveform Preview Files (All Drives)') }}
+            </button>
+        </div>
+
+        <!-- Library overview restore section -->
+        <div v-if="libraries.length > 0" class="library-section">
+            <div class="section-label">{{ msgs.libraryStatusLabel || 'Waveform Preview Files' }}</div>
+            <div
+                v-for="lib in libraries"
+                :key="lib.path"
+                class="library-item"
+                :class="lib.missingRGB > 0 ? 'lib-warning' : 'lib-ok'"
+            >
+                <div class="lib-info">
+                    <span class="lib-drive">{{ lib.drive }}</span>
+                    <span class="lib-stat">
+                        {{ lib.totalTracks - lib.missingRGB }} / {{ lib.totalTracks }}
+                    </span>
+                </div>
+                <button
+                    v-if="lib.missingRGB > 0"
+                    class="btn btn-restore no-drag"
+                    :disabled="restoringLib === lib.path"
+                    @click="handleRestore(lib.path, lib.missingRGB, lib.totalTracks)"
+                >
+                    <span v-if="restoringLib === lib.path" class="loading-spinner"></span>
+                    {{ restoringLib === lib.path
+                        ? (msgs.progressFixing || 'Restoring...')
+                        : (msgs.restoreButton || 'Restore Missing Waveform Files') }}
+                </button>
+                <span v-else class="lib-all-ok">✓</span>
+            </div>
         </div>
     </div>
 
