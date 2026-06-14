@@ -107,3 +107,24 @@ func KillProcesses(pids []uint32) (killed int, errors []string) {
 	}
 	return
 }
+
+// FindRemovableDriveWithLibrary scans for removable drives (USB/SD) that contain
+// an Engine Library folder. Returns the first match, or empty string if none found.
+func FindRemovableDriveWithLibrary() string {
+	for c := 'A'; c <= 'Z'; c++ {
+		drive := string(c) + ":"
+		driveRoot := drive + "\\"
+
+		// Check if it's a removable drive (USB, SD card, etc.)
+		driveType := windows.GetDriveType(syscall.StringToUTF16Ptr(driveRoot))
+		if driveType != windows.DRIVE_REMOVABLE {
+			continue
+		}
+
+		// Check if it has Engine Library
+		if DriveHasEngineLibrary(driveRoot) {
+			return drive
+		}
+	}
+	return ""
+}

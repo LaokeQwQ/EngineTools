@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"strconv"
+	"strings"
 	"time"
 )
 
@@ -21,23 +23,45 @@ type Release struct {
 	HTMLURL string `json:"html_url"`
 }
 
-// CheckUpdate checks for updates from Forgejo first, falls back to GitHub if Forgejo fails.
 func CheckUpdate(currentVersion string) (*Release, bool, error) {
-	// Try Forgejo first
 	release, err := fetchRelease(forgejoAPI)
 	if err == nil {
-		hasUpdate := release.TagName != currentVersion && release.TagName != "v"+currentVersion
+		hasUpdate := isNewer(release.TagName, currentVersion)
 		return release, hasUpdate, nil
 	}
 
-	// Fallback to GitHub
 	release, err = fetchRelease(githubAPI)
 	if err != nil {
 		return nil, false, fmt.Errorf("both Forgejo and GitHub failed: %w", err)
 	}
 
-	hasUpdate := release.TagName != currentVersion && release.TagName != "v"+currentVersion
+	hasUpdate := isNewer(release.TagName, currentVersion)
 	return release, hasUpdate, nil
+}
+
+func isNewer(remote, local string) bool {
+	rv := parseVersion(remote)
+	lv := parseVersion(local)
+	for i := 0; i < 3; i++ {
+		if rv[i] > lv[i] {
+			return true
+		}
+		if rv[i] < lv[i] {
+			return false
+		}
+	}
+	return false
+}
+
+func parseVersion(v string) [3]int {
+	v = strings.TrimPrefix(v, "v")
+	parts := strings.SplitN(v, ".", 3)
+	var result [3]int
+	for i := 0; i < len(parts) && i < 3; i++ {
+		n, _ := strconv.Atoi(parts[i])
+		result[i] = n
+	}
+	return result
 }
 
 func fetchRelease(apiURL string) (*Release, error) {

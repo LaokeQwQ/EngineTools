@@ -102,6 +102,9 @@ type Messages struct {
 	DBOptimizeButton        string `json:"dbOptimizeButton"`
 	DBOptimizing            string `json:"dbOptimizing"`
 	DBOptimizeComplete      string `json:"dbOptimizeComplete"`
+	DBRepairButton          string `json:"dbRepairButton"`
+	DBRepairing             string `json:"dbRepairing"`
+	DBRepairComplete        string `json:"dbRepairComplete"`
 	DBNoteLabel             string `json:"dbNoteLabel"`
 	DBNoneFound             string `json:"dbNoneFound"`
 	DBNoBackups             string `json:"dbNoBackups"`
@@ -116,6 +119,49 @@ type Messages struct {
 	MSICleanError           string `json:"msiCleanError"`
 	MSIConfirmTitle         string `json:"msiConfirmTitle"`
 	MSIConfirmMessage       string `json:"msiConfirmMessage"`
+	ID3EditorTitle          string `json:"id3EditorTitle"`
+	ID3SelectFile           string `json:"id3SelectFile"`
+	ID3PickFileButton       string `json:"id3PickFileButton"`
+	ID3SaveButton           string `json:"id3SaveButton"`
+	ID3ClearAllButton       string `json:"id3ClearAllButton"`
+	USBUnlockTitle          string `json:"usbUnlockTitle"`
+	USBUnlockDescription    string `json:"usbUnlockDescription"`
+	USBUnlockButton         string `json:"usbUnlockButton"`
+	USBScanButton           string `json:"usbScanButton"`
+	USBNoDevice             string `json:"usbNoDevice"`
+	MIDI2Title              string `json:"midi2Title"`
+	MIDI2Description        string `json:"midi2Description"`
+	MIDI2Enabled            string `json:"midi2Enabled"`
+	MIDI2Disabled           string `json:"midi2Disabled"`
+	MIDI2Unavailable        string `json:"midi2Unavailable"`
+	MIDI2DisableButton      string `json:"midi2DisableButton"`
+	MIDI2EnableButton       string `json:"midi2EnableButton"`
+	MIDI2Disabling          string `json:"midi2Disabling"`
+	MIDI2Enabling           string `json:"midi2Enabling"`
+	StemsEngineLabel        string `json:"stemsEngineLabel"`
+	LogAnalysisTitle        string `json:"logAnalysisTitle"`
+	LogAnalysisDescription  string `json:"logAnalysisDescription"`
+	LogAnalyzeButton        string `json:"logAnalyzeButton"`
+	LogAnalyzing            string `json:"logAnalyzing"`
+	LogOpenDir              string `json:"logOpenDir"`
+	LogTotalFiles           string `json:"logTotalFiles"`
+	LogTotalLines           string `json:"logTotalLines"`
+	LogInfoCount            string `json:"logInfoCount"`
+	LogWarningCount         string `json:"logWarningCount"`
+	LogErrorCount           string `json:"logErrorCount"`
+	LogTopWarnings          string `json:"logTopWarnings"`
+	LogTopErrors            string `json:"logTopErrors"`
+	LogNoFiles              string `json:"logNoFiles"`
+	CacheCleanTitle         string `json:"cacheCleanTitle"`
+	CacheCleanDescription   string `json:"cacheCleanDescription"`
+	CacheCleanButton        string `json:"cacheCleanButton"`
+	CacheCleaning           string `json:"cacheCleaning"`
+	CacheCleanComplete      string `json:"cacheCleanComplete"`
+	CacheLatestFile         string `json:"cacheLatestFile"`
+	UpdateBadge             string `json:"updateBadge"`
+	UpdateChecking          string `json:"updateChecking"`
+	UpdateTooltip           string `json:"updateTooltip"`
+	OperationSuccess        string `json:"operationSuccess"`
 }
 
 var translations = map[Lang]Messages{
@@ -175,7 +221,7 @@ var translations = map[Lang]Messages{
 		AdminStatusLabel:     "管理员权限",
 		AdminYes:            "已获取",
 		AdminNo:             "未获取",
-		StemsStatusLabel:    "STEM 处理器",
+		StemsStatusLabel:    "STEM 分离引擎",
 		StemsDetected:       "已检测到",
 		StemsNotFound:       "未检测到",
 		RestoreConfirmTitle:     "确认还原",
@@ -205,12 +251,15 @@ var translations = map[Lang]Messages{
 		DBOptimizeButton:        "优化数据库",
 		DBOptimizing:            "正在优化...",
 		DBOptimizeComplete:      "优化完成",
+		DBRepairButton:          "修复数据库",
+		DBRepairing:             "正在修复...",
+		DBRepairComplete:        "修复完成",
 		DBNoteLabel:             "备注",
 		DBNoneFound:             "未找到",
 		DBNoBackups:             "暂无备份",
 		MSICleanupButton:        "MSI 残留清理",
 		MSICleanupTitle:         "MSI 残留清理",
-		MSICleanupDescription:   "扫描并清理系统中无用的 MSI 安装残留",
+		MSICleanupDescription:   "用于 Engine DJ 安装/卸载/更新时遇到残留文件导致的问题",
 		MSIScanning:             "正在扫描...",
 		MSIFoundOrphans:         "发现 %d 个残留",
 		MSINoOrphans:            "未发现 MSI 残留",
@@ -219,6 +268,47 @@ var translations = map[Lang]Messages{
 		MSICleanError:           "清理失败",
 		MSIConfirmTitle:         "确认清理",
 		MSIConfirmMessage:       "确定要清理选中的 MSI 残留吗？此操作不可恢复。",
+		ID3EditorTitle:          "ID3 标签编辑器",
+		ID3SelectFile:           "选择音频文件",
+		ID3PickFileButton:       "选择文件",
+		ID3SaveButton:           "保存",
+		ID3ClearAllButton:       "清除全部",
+		USBUnlockTitle:          "U盘解锁",
+		USBUnlockDescription:    "用于 Engine DJ 安装/卸载/更新时遇到文件占用问题",
+		USBUnlockButton:         "解锁",
+		USBScanButton:           "扫描占用进程",
+		USBNoDevice:             "未检测到带有 Engine Library 的 U盘",
+		MIDI2Title:              "MIDI 2.0 控制",
+		MIDI2Description:        "禁用 Windows 11 的 MIDI 2.0 功能，同时保留 MIDI 1.0 服务",
+		MIDI2Enabled:            "MIDI 2.0 当前已启用",
+		MIDI2Disabled:           "MIDI 2.0 当前已禁用",
+		MIDI2Unavailable:        "此系统未找到 MIDI 2.0 服务",
+		MIDI2DisableButton:      "禁用 MIDI 2.0",
+		MIDI2EnableButton:       "启用 MIDI 2.0",
+		MIDI2Disabling:          "正在禁用...",
+		MIDI2Enabling:           "正在启用...",
+		StemsEngineLabel:        "STEM 分离引擎",
+		LogAnalysisTitle:        "日志分析",
+		LogAnalyzeButton:       "分析日志",
+		LogAnalyzing:            "正在分析...",
+		LogOpenDir:              "打开日志目录",
+		LogTotalFiles:           "日志文件数",
+		LogTotalLines:           "总行数",
+		LogInfoCount:            "信息",
+		LogWarningCount:         "警告",
+		LogErrorCount:           "错误",
+		LogTopWarnings:          "高频警告",
+		LogTopErrors:            "高频错误",
+		LogNoFiles:              "未找到日志文件",
+		CacheCleanTitle:         "缓存清理",
+		CacheCleanDescription:   "清除 Engine DJ 界面缓存，修复更新后的显示异常",
+		CacheCleanButton:        "清除缓存",
+		CacheCleaning:           "正在清除...",
+		CacheCleanComplete:      "缓存已清除",
+		UpdateBadge:             "有更新",
+		UpdateChecking:          "检查中...",
+		UpdateTooltip:           "有新版本可用",
+		OperationSuccess:        "操作完成",
 	},
 	JA: {
 		AppTitle:              "Engine Tools",
@@ -276,7 +366,7 @@ var translations = map[Lang]Messages{
 		AdminStatusLabel:     "管理者権限",
 		AdminYes:            "取得済み",
 		AdminNo:             "未取得",
-		StemsStatusLabel:    "STEM プロセッサー",
+		StemsStatusLabel:    "STEM 分離エンジン",
 		StemsDetected:       "検出されました",
 		StemsNotFound:       "検出されません",
 		RestoreConfirmTitle:     "復元の確認",
@@ -306,6 +396,9 @@ var translations = map[Lang]Messages{
 		DBOptimizeButton:        "最適化",
 		DBOptimizing:            "最適化中...",
 		DBOptimizeComplete:      "最適化完了",
+		DBRepairButton:          "修復",
+		DBRepairing:             "修復中...",
+		DBRepairComplete:        "修復完了",
 		DBNoteLabel:             "メモ",
 		DBNoneFound:             "見つかりません",
 		DBNoBackups:             "バックアップなし",
@@ -320,6 +413,47 @@ var translations = map[Lang]Messages{
 		MSICleanError:           "クリーンアップ失敗",
 		MSIConfirmTitle:         "クリーンアップの確認",
 		MSIConfirmMessage:       "選択した MSI 残留を削除しますか？この操作は元に戻せません。",
+		ID3EditorTitle:          "ID3 タグエディタ",
+		ID3SelectFile:           "オーディオファイルを選択",
+		ID3PickFileButton:       "ファイルを選択",
+		ID3SaveButton:           "保存",
+		ID3ClearAllButton:       "すべてクリア",
+		USBUnlockTitle:          "USB ロック解除",
+		USBUnlockDescription:    "Engine DJ のインストール/アンインストール/更新時のファイルロックの問題に使用",
+		USBUnlockButton:         "ロック解除",
+		USBScanButton:           "ブロックプロセスをスキャン",
+		USBNoDevice:             "Engine Library を含む USB デバイスが検出されません",
+		MIDI2Title:              "MIDI 2.0 制御",
+		MIDI2Description:        "Windows 11 の MIDI 2.0 機能を無効にし、MIDI 1.0 サービスを保持",
+		MIDI2Enabled:            "MIDI 2.0 は現在有効です",
+		MIDI2Disabled:           "MIDI 2.0 は現在無効です",
+		MIDI2Unavailable:        "このシステムに MIDI 2.0 サービスが見つかりません",
+		MIDI2DisableButton:      "MIDI 2.0 を無効にする",
+		MIDI2EnableButton:       "MIDI 2.0 を有効にする",
+		MIDI2Disabling:          "無効化中...",
+		MIDI2Enabling:           "有効化中...",
+		StemsEngineLabel:        "STEM 分離エンジン",
+		LogAnalysisTitle:        "ログ分析",
+		LogAnalyzeButton:       "ログを分析",
+		LogAnalyzing:            "分析中...",
+		LogOpenDir:              "ログフォルダを開く",
+		LogTotalFiles:           "ログファイル数",
+		LogTotalLines:           "総行数",
+		LogInfoCount:            "情報",
+		LogWarningCount:         "警告",
+		LogErrorCount:           "エラー",
+		LogTopWarnings:          "頻出警告",
+		LogTopErrors:            "頻出エラー",
+		LogNoFiles:              "ログファイルが見つかりません",
+		CacheCleanTitle:         "キャッシュクリア",
+		CacheCleanDescription:   "Engine DJ の UI キャッシュを削除して表示の問題を修正",
+		CacheCleanButton:        "キャッシュを削除",
+		CacheCleaning:           "削除中...",
+		CacheCleanComplete:      "キャッシュを削除しました",
+		UpdateBadge:             "更新あり",
+		UpdateChecking:          "確認中...",
+		UpdateTooltip:           "新しいバージョンが利用可能です",
+		OperationSuccess:        "操作完了",
 	},
 	KO: {
 		AppTitle:              "Engine Tools",
@@ -377,7 +511,7 @@ var translations = map[Lang]Messages{
 		AdminStatusLabel:     "관리자 권한",
 		AdminYes:            "활성",
 		AdminNo:             "미활성",
-		StemsStatusLabel:    "STEM 프로세서",
+		StemsStatusLabel:    "STEM 분리 엔진",
 		StemsDetected:       "감지됨",
 		StemsNotFound:       "감지되지 않음",
 		RestoreConfirmTitle:     "복원 확인",
@@ -407,6 +541,9 @@ var translations = map[Lang]Messages{
 		DBOptimizeButton:        "최적화",
 		DBOptimizing:            "최적화 중...",
 		DBOptimizeComplete:      "최적화 완료",
+		DBRepairButton:          "복구",
+		DBRepairing:             "복구 중...",
+		DBRepairComplete:        "복구 완료",
 		DBNoteLabel:             "메모",
 		DBNoneFound:             "찾을 수 없음",
 		DBNoBackups:             "백업 없음",
@@ -421,6 +558,47 @@ var translations = map[Lang]Messages{
 		MSICleanError:           "정리 실패",
 		MSIConfirmTitle:         "정리 확인",
 		MSIConfirmMessage:       "선택한 MSI 잔여물을 삭제하시겠습니까? 이 작업은 되돌릴 수 없습니다.",
+		ID3EditorTitle:          "ID3 태그 편집기",
+		ID3SelectFile:           "오디오 파일 선택",
+		ID3PickFileButton:       "파일 선택",
+		ID3SaveButton:           "저장",
+		ID3ClearAllButton:       "모두 지우기",
+		USBUnlockTitle:          "USB 잠금 해제",
+		USBUnlockDescription:    "Engine DJ 설치/제거/업데이트 시 파일 잠금 문제에 사용",
+		USBUnlockButton:         "잠금 해제",
+		USBScanButton:           "차단 프로세스 스캔",
+		USBNoDevice:             "Engine Library가 포함된 USB 장치가 감지되지 않음",
+		MIDI2Title:              "MIDI 2.0 제어",
+		MIDI2Description:        "Windows 11의 MIDI 2.0 기능을 비활성화하고 MIDI 1.0 서비스를 유지",
+		MIDI2Enabled:            "MIDI 2.0이 현재 활성화되어 있습니다",
+		MIDI2Disabled:           "MIDI 2.0이 현재 비활성화되어 있습니다",
+		MIDI2Unavailable:        "이 시스템에서 MIDI 2.0 서비스를 찾을 수 없습니다",
+		MIDI2DisableButton:      "MIDI 2.0 비활성화",
+		MIDI2EnableButton:       "MIDI 2.0 활성화",
+		MIDI2Disabling:          "비활성화 중...",
+		MIDI2Enabling:           "활성화 중...",
+		StemsEngineLabel:        "STEM 분리 엔진",
+		LogAnalysisTitle:        "로그 분석",
+		LogAnalyzeButton:       "로그 분석",
+		LogAnalyzing:            "분석 중...",
+		LogOpenDir:              "로그 폴더 열기",
+		LogTotalFiles:           "로그 파일 수",
+		LogTotalLines:           "총 줄 수",
+		LogInfoCount:            "정보",
+		LogWarningCount:         "경고",
+		LogErrorCount:           "오류",
+		LogTopWarnings:          "빈번한 경고",
+		LogTopErrors:            "빈번한 오류",
+		LogNoFiles:              "로그 파일을 찾을 수 없습니다",
+		CacheCleanTitle:         "캐시 정리",
+		CacheCleanDescription:   "Engine DJ UI 캐시를 삭제하여 화면 표시 문제를 해결",
+		CacheCleanButton:        "캐시 삭제",
+		CacheCleaning:           "삭제 중...",
+		CacheCleanComplete:      "캐시가 삭제되었습니다",
+		UpdateBadge:             "업데이트",
+		UpdateChecking:          "확인 중...",
+		UpdateTooltip:           "새 버전을 사용할 수 있습니다",
+		OperationSuccess:        "작업 완료",
 	},
 	EN: {
 		AppTitle:              "Engine Tools",
@@ -478,7 +656,7 @@ var translations = map[Lang]Messages{
 		AdminStatusLabel:     "Admin Privileges",
 		AdminYes:            "Granted",
 		AdminNo:             "Not Granted",
-		StemsStatusLabel:    "STEM Processor",
+		StemsStatusLabel:    "STEM Separation Engine",
 		StemsDetected:       "Detected",
 		StemsNotFound:       "Not Detected",
 		RestoreConfirmTitle:     "Confirm Restore",
@@ -508,6 +686,9 @@ var translations = map[Lang]Messages{
 		DBOptimizeButton:        "Optimize",
 		DBOptimizing:            "Optimizing...",
 		DBOptimizeComplete:      "Optimize Complete",
+		DBRepairButton:          "Repair",
+		DBRepairing:             "Repairing...",
+		DBRepairComplete:        "Repair Complete",
 		DBNoteLabel:             "Note",
 		DBNoneFound:             "Not Found",
 		DBNoBackups:             "No Backups",
@@ -522,6 +703,47 @@ var translations = map[Lang]Messages{
 		MSICleanError:           "Cleanup Failed",
 		MSIConfirmTitle:         "Confirm Cleanup",
 		MSIConfirmMessage:       "Delete selected MSI residuals? This operation cannot be undone.",
+		ID3EditorTitle:          "ID3 Tag Editor",
+		ID3SelectFile:           "Select Audio File",
+		ID3PickFileButton:       "Select File",
+		ID3SaveButton:           "Save",
+		ID3ClearAllButton:       "Clear All",
+		USBUnlockTitle:          "USB Unlock",
+		USBUnlockDescription:    "For Engine DJ install/uninstall/update file lock issues",
+		USBUnlockButton:         "Unlock",
+		USBScanButton:           "Scan blocking processes",
+		USBNoDevice:             "No USB with Engine Library detected",
+		MIDI2Title:              "MIDI 2.0 Control",
+		MIDI2Description:        "Disable Windows 11 MIDI 2.0 features while preserving MIDI 1.0 service",
+		MIDI2Enabled:            "MIDI 2.0 is currently enabled",
+		MIDI2Disabled:           "MIDI 2.0 is currently disabled",
+		MIDI2Unavailable:        "MIDI 2.0 services not found on this system",
+		MIDI2DisableButton:      "Disable MIDI 2.0",
+		MIDI2EnableButton:       "Enable MIDI 2.0",
+		MIDI2Disabling:          "Disabling...",
+		MIDI2Enabling:           "Enabling...",
+		StemsEngineLabel:        "STEM Separation Engine",
+		LogAnalysisTitle:        "Log Analysis",
+		LogAnalyzeButton:       "Analyze Logs",
+		LogAnalyzing:            "Analyzing...",
+		LogOpenDir:              "Open Logs Folder",
+		LogTotalFiles:           "Log Files",
+		LogTotalLines:           "Total Lines",
+		LogInfoCount:            "Info",
+		LogWarningCount:         "Warnings",
+		LogErrorCount:           "Errors",
+		LogTopWarnings:          "Top Warnings",
+		LogTopErrors:            "Top Errors",
+		LogNoFiles:              "No log files found",
+		CacheCleanTitle:         "Cache Cleanup",
+		CacheCleanDescription:   "Clear Engine DJ UI cache to fix display glitches after updates",
+		CacheCleanButton:        "Clear Cache",
+		CacheCleaning:           "Clearing...",
+		CacheCleanComplete:      "Cache cleared",
+		UpdateBadge:             "Update",
+		UpdateChecking:          "Checking...",
+		UpdateTooltip:           "New version available",
+		OperationSuccess:        "Operation complete",
 	},
 }
 

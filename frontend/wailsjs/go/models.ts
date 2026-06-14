@@ -18,6 +18,54 @@ export namespace database {
 	        this.note = source["note"];
 	    }
 	}
+	export class PlaylistInfo {
+	    id: number;
+	    title: string;
+	    parentId: number;
+	    count: number;
+	
+	    static createFrom(source: any = {}) {
+	        return new PlaylistInfo(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.id = source["id"];
+	        this.title = source["title"];
+	        this.parentId = source["parentId"];
+	        this.count = source["count"];
+	    }
+	}
+	export class TrackInfo {
+	    id: number;
+	    title: string;
+	    artist: string;
+	    album: string;
+	    genre: string;
+	    bpm: number;
+	    length: number;
+	    filename: string;
+	    key: number;
+	    rating: number;
+	
+	    static createFrom(source: any = {}) {
+	        return new TrackInfo(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.id = source["id"];
+	        this.title = source["title"];
+	        this.artist = source["artist"];
+	        this.album = source["album"];
+	        this.genre = source["genre"];
+	        this.bpm = source["bpm"];
+	        this.length = source["length"];
+	        this.filename = source["filename"];
+	        this.key = source["key"];
+	        this.rating = source["rating"];
+	    }
+	}
 
 }
 
@@ -110,6 +158,9 @@ export namespace i18n {
 	    dbOptimizeButton: string;
 	    dbOptimizing: string;
 	    dbOptimizeComplete: string;
+	    dbRepairButton: string;
+	    dbRepairing: string;
+	    dbRepairComplete: string;
 	    dbNoteLabel: string;
 	    dbNoneFound: string;
 	    dbNoBackups: string;
@@ -124,6 +175,49 @@ export namespace i18n {
 	    msiCleanError: string;
 	    msiConfirmTitle: string;
 	    msiConfirmMessage: string;
+	    id3EditorTitle: string;
+	    id3SelectFile: string;
+	    id3PickFileButton: string;
+	    id3SaveButton: string;
+	    id3ClearAllButton: string;
+	    usbUnlockTitle: string;
+	    usbUnlockDescription: string;
+	    usbUnlockButton: string;
+	    usbScanButton: string;
+	    usbNoDevice: string;
+	    midi2Title: string;
+	    midi2Description: string;
+	    midi2Enabled: string;
+	    midi2Disabled: string;
+	    midi2Unavailable: string;
+	    midi2DisableButton: string;
+	    midi2EnableButton: string;
+	    midi2Disabling: string;
+	    midi2Enabling: string;
+	    stemsEngineLabel: string;
+	    logAnalysisTitle: string;
+	    logAnalysisDescription: string;
+	    logAnalyzeButton: string;
+	    logAnalyzing: string;
+	    logOpenDir: string;
+	    logTotalFiles: string;
+	    logTotalLines: string;
+	    logInfoCount: string;
+	    logWarningCount: string;
+	    logErrorCount: string;
+	    logTopWarnings: string;
+	    logTopErrors: string;
+	    logNoFiles: string;
+	    cacheCleanTitle: string;
+	    cacheCleanDescription: string;
+	    cacheCleanButton: string;
+	    cacheCleaning: string;
+	    cacheCleanComplete: string;
+	    cacheLatestFile: string;
+	    updateBadge: string;
+	    updateChecking: string;
+	    updateTooltip: string;
+	    operationSuccess: string;
 	
 	    static createFrom(source: any = {}) {
 	        return new Messages(source);
@@ -217,6 +311,9 @@ export namespace i18n {
 	        this.dbOptimizeButton = source["dbOptimizeButton"];
 	        this.dbOptimizing = source["dbOptimizing"];
 	        this.dbOptimizeComplete = source["dbOptimizeComplete"];
+	        this.dbRepairButton = source["dbRepairButton"];
+	        this.dbRepairing = source["dbRepairing"];
+	        this.dbRepairComplete = source["dbRepairComplete"];
 	        this.dbNoteLabel = source["dbNoteLabel"];
 	        this.dbNoneFound = source["dbNoneFound"];
 	        this.dbNoBackups = source["dbNoBackups"];
@@ -231,6 +328,49 @@ export namespace i18n {
 	        this.msiCleanError = source["msiCleanError"];
 	        this.msiConfirmTitle = source["msiConfirmTitle"];
 	        this.msiConfirmMessage = source["msiConfirmMessage"];
+	        this.id3EditorTitle = source["id3EditorTitle"];
+	        this.id3SelectFile = source["id3SelectFile"];
+	        this.id3PickFileButton = source["id3PickFileButton"];
+	        this.id3SaveButton = source["id3SaveButton"];
+	        this.id3ClearAllButton = source["id3ClearAllButton"];
+	        this.usbUnlockTitle = source["usbUnlockTitle"];
+	        this.usbUnlockDescription = source["usbUnlockDescription"];
+	        this.usbUnlockButton = source["usbUnlockButton"];
+	        this.usbScanButton = source["usbScanButton"];
+	        this.usbNoDevice = source["usbNoDevice"];
+	        this.midi2Title = source["midi2Title"];
+	        this.midi2Description = source["midi2Description"];
+	        this.midi2Enabled = source["midi2Enabled"];
+	        this.midi2Disabled = source["midi2Disabled"];
+	        this.midi2Unavailable = source["midi2Unavailable"];
+	        this.midi2DisableButton = source["midi2DisableButton"];
+	        this.midi2EnableButton = source["midi2EnableButton"];
+	        this.midi2Disabling = source["midi2Disabling"];
+	        this.midi2Enabling = source["midi2Enabling"];
+	        this.stemsEngineLabel = source["stemsEngineLabel"];
+	        this.logAnalysisTitle = source["logAnalysisTitle"];
+	        this.logAnalysisDescription = source["logAnalysisDescription"];
+	        this.logAnalyzeButton = source["logAnalyzeButton"];
+	        this.logAnalyzing = source["logAnalyzing"];
+	        this.logOpenDir = source["logOpenDir"];
+	        this.logTotalFiles = source["logTotalFiles"];
+	        this.logTotalLines = source["logTotalLines"];
+	        this.logInfoCount = source["logInfoCount"];
+	        this.logWarningCount = source["logWarningCount"];
+	        this.logErrorCount = source["logErrorCount"];
+	        this.logTopWarnings = source["logTopWarnings"];
+	        this.logTopErrors = source["logTopErrors"];
+	        this.logNoFiles = source["logNoFiles"];
+	        this.cacheCleanTitle = source["cacheCleanTitle"];
+	        this.cacheCleanDescription = source["cacheCleanDescription"];
+	        this.cacheCleanButton = source["cacheCleanButton"];
+	        this.cacheCleaning = source["cacheCleaning"];
+	        this.cacheCleanComplete = source["cacheCleanComplete"];
+	        this.cacheLatestFile = source["cacheLatestFile"];
+	        this.updateBadge = source["updateBadge"];
+	        this.updateChecking = source["updateChecking"];
+	        this.updateTooltip = source["updateTooltip"];
+	        this.operationSuccess = source["operationSuccess"];
 	    }
 	}
 
@@ -265,8 +405,126 @@ export namespace id3 {
 
 }
 
+export namespace logs {
+	
+	export class LogEntry {
+	    level: string;
+	    // Go type: time
+	    timestamp: any;
+	    thread: string;
+	    category: string;
+	    message: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new LogEntry(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.level = source["level"];
+	        this.timestamp = this.convertValues(source["timestamp"], null);
+	        this.thread = source["thread"];
+	        this.category = source["category"];
+	        this.message = source["message"];
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	export class MessageCount {
+	    message: string;
+	    count: number;
+	
+	    static createFrom(source: any = {}) {
+	        return new MessageCount(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.message = source["message"];
+	        this.count = source["count"];
+	    }
+	}
+	export class LogStats {
+	    totalFiles: number;
+	    totalLines: number;
+	    infoCount: number;
+	    warningCount: number;
+	    errorCount: number;
+	    latestLog: string;
+	    topWarnings: MessageCount[];
+	    topErrors: MessageCount[];
+	    recentEntries: LogEntry[];
+	
+	    static createFrom(source: any = {}) {
+	        return new LogStats(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.totalFiles = source["totalFiles"];
+	        this.totalLines = source["totalLines"];
+	        this.infoCount = source["infoCount"];
+	        this.warningCount = source["warningCount"];
+	        this.errorCount = source["errorCount"];
+	        this.latestLog = source["latestLog"];
+	        this.topWarnings = this.convertValues(source["topWarnings"], MessageCount);
+	        this.topErrors = this.convertValues(source["topErrors"], MessageCount);
+	        this.recentEntries = this.convertValues(source["recentEntries"], LogEntry);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+
+}
+
 export namespace main {
 	
+	export class DriveInfo {
+	    letter: string;
+	    trackCount: number;
+	
+	    static createFrom(source: any = {}) {
+	        return new DriveInfo(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.letter = source["letter"];
+	        this.trackCount = source["trackCount"];
+	    }
+	}
 	export class ProcessItem {
 	    name: string;
 	    pid: number;

@@ -14,12 +14,15 @@ import {
     ListBackups,
     RestoreDatabase,
     OptimizeDatabase,
+    RepairDatabase,
     ScanMSIOrphans,
     CleanMSIOrphans,
     OpenInstallDir,
     OpenStemsDir,
     OpenDBDir,
     ListDrives,
+    ListPlaylists,
+    GetPlaylistTracks,
     SelectDrive,
     ID3PickFile,
     ID3ReadTag,
@@ -28,6 +31,10 @@ import {
     ID3SetCover,
     ID3ClearCover,
     ID3ClearAll,
+    ID3AntiPiracyV1,
+    ID3AntiPiracyV2,
+    ID3AntiPiracyRestore,
+    ID3PickDir,
     USBUnlockAvailable,
     USBUnlockScan,
     USBUnlockKill,
@@ -35,6 +42,9 @@ import {
     MIDI2Disable,
     MIDI2Enable,
     CheckForUpdates,
+    AnalyzeLogs,
+    OpenLogsDir,
+    CleanCache,
 } from '../wailsjs/go/main/App.js'
 import { EventsOn } from '../wailsjs/runtime/runtime.js'
 
@@ -101,6 +111,37 @@ const midi2Busy = ref(false)
 const updateAvailable = ref(false)
 const updateInfo = ref(null)
 const checkingUpdate = ref(false)
+
+// Log analysis state
+const logStats = ref(null)
+const logBusy = ref(false)
+
+// Cache cleanup state
+const cacheBusy = ref(false)
+
+// Anti-piracy easter egg state
+const apDir = ref('')
+const apBusy = ref(false)
+const apShowMenu = ref(false)
+const apClickCount = ref(0)
+
+// Playlist viewer state
+const playlists = ref([])
+const selectedPlaylist = ref(null)
+const playlistTracks = ref([])
+const playlistLoading = ref(false)
+
+// Toast notification
+const toastMsg = ref('')
+const toastVisible = ref(false)
+let toastTimer = null
+
+function showToast(msg) {
+    toastMsg.value = msg
+    toastVisible.value = true
+    if (toastTimer) clearTimeout(toastTimer)
+    toastTimer = setTimeout(() => { toastVisible.value = false }, 3000)
+}
 
 const id3FileName = computed(() => {
     if (!id3File.value) return ''
@@ -214,7 +255,7 @@ async function handleFix() {
     setTimeout(() => {
         showProgress.value = false
     }, 1000)
-
+    showToast(msgs.value.fixComplete || 'Fix complete')
     await detectStatus()
 }
 
@@ -233,7 +274,7 @@ async function handleRestore() {
     setTimeout(() => {
         showProgress.value = false
     }, 1000)
-
+    showToast(msgs.value.restoreComplete || 'Restore complete')
     await detectStatus()
 }
 
@@ -270,6 +311,7 @@ async function handleBackup() {
         await BackupDatabase(backupNote.value || '')
         backupNote.value = ''
         await refreshBackups()
+        showToast(msgs.value.dbBackupComplete || 'Backup complete')
     } catch (e) {
         addLog('Error: ' + e)
     }
@@ -281,6 +323,7 @@ async function handleRestoreDB() {
     dbBusy.value = true
     try {
         await RestoreDatabase(selectedBackup.value)
+        showToast(msgs.value.dbRestoreComplete || 'Restore complete')
     } catch (e) {
         addLog('Error: ' + e)
     }
@@ -291,10 +334,138 @@ async function handleOptimize() {
     dbBusy.value = true
     try {
         await OptimizeDatabase()
+        showToast(msgs.value.dbOptimizeComplete || 'Optimization complete')
     } catch (e) {
         addLog('Error: ' + e)
     }
     dbBusy.value = false
+}
+
+async function handleRepair() {
+    dbBusy.value = true
+    try {
+        await RepairDatabase()
+        showToast(msgs.value.dbRepairComplete || 'Repair complete')
+    } catch (e) {
+        addLog('Error: ' + e)
+    }
+    dbBusy.value = false
+    await detectStatus()
+}
+
+async function handleAnalyzeLogs() {
+    logsBusy.value = true
+    try {
+        logStats.value = await AnalyzeLogs()
+    } catch (e) {
+        addLog('Error: ' + e)
+        logStats.value = null
+    }
+    logsBusy.value = false
+}
+
+async function handleOpenLogsDir() {
+    try {
+        await OpenLogsDir()
+    } catch (e) {
+        addLog('Error: ' + e)
+    }
+}
+
+async function handleClearCache() {
+    cacheBusy.value = true
+    try {
+        await CleanCache()
+        showToast(msgs.value.cacheCleanComplete || 'Cache cleared')
+    } catch (e) {
+        addLog('Error: ' + e)
+    }
+    cacheBusy.value = false
+}
+
+function handleID3TitleClick() {
+    apClickCount.value++
+    if (apClickCount.value >= 5) {
+        apShowMenu.value = !apShowMenu.value
+        apClickCount.value = 0
+    }
+    setTimeout(() => { apClickCount.value = 0 }, 2000)
+}
+
+async function handlePickApDir() {
+    try {
+        const dir = await ID3PickDir()
+        if (dir) apDir.value = dir
+    } catch (e) {
+        addLog('Error: ' + e)
+    }
+}
+
+async function handleAntiPiracyV1() {
+    if (!apDir.value) return
+    if (!confirm('防偷歌模式 1.0：将清除目录下所有音频文件的ID3信息，确定继续？')) return
+    if (!confirm('再次确认：此操作会清除所有标签信息（已自动备份），是否继续？')) return
+    apBusy.value = true
+    try {
+        await ID3AntiPiracyV1(apDir.value)
+    } catch (e) {
+        addLog('Error: ' + e)
+    }
+    apBusy.value = false
+}
+
+async function handleAntiPiracyV2() {
+    if (!apDir.value) return
+    if (!confirm('防偷歌模式 2.0：将随机打乱目录下所有音频文件的ID3信息，确定继续？')) return
+    if (!confirm('再次确认：此操作会随机交换所有标签信息（已自动备份），是否继续？')) return
+    apBusy.value = true
+    try {
+        await ID3AntiPiracyV2(apDir.value)
+    } catch (e) {
+        addLog('Error: ' + e)
+    }
+    apBusy.value = false
+}
+
+async function handleAntiPiracyRestore() {
+    if (!apDir.value) return
+    apBusy.value = true
+    try {
+        await ID3AntiPiracyRestore(apDir.value)
+    } catch (e) {
+        addLog('Error: ' + e)
+    }
+    apBusy.value = false
+}
+
+async function loadPlaylists() {
+    playlistLoading.value = true
+    try {
+        playlists.value = await ListPlaylists()
+    } catch (e) {
+        addLog('Error: ' + e)
+        playlists.value = []
+    }
+    playlistLoading.value = false
+}
+
+async function handleSelectPlaylist(pl) {
+    selectedPlaylist.value = pl
+    playlistLoading.value = true
+    try {
+        playlistTracks.value = await GetPlaylistTracks(pl.id)
+    } catch (e) {
+        addLog('Error: ' + e)
+        playlistTracks.value = []
+    }
+    playlistLoading.value = false
+}
+
+function formatTime(seconds) {
+    if (!seconds) return '--:--'
+    const m = Math.floor(seconds / 60)
+    const s = Math.floor(seconds % 60)
+    return m + ':' + (s < 10 ? '0' : '') + s
 }
 
 async function loadDrives() {
@@ -306,11 +477,11 @@ async function loadDrives() {
     }
 }
 
-async function handleClickDrive(drive) {
-    selectedDrive.value = drive
+async function handleClickDrive(driveInfo) {
+    selectedDrive.value = driveInfo.letter
     dbBusy.value = true
     try {
-        await SelectDrive(drive)
+        await SelectDrive(driveInfo.letter)
     } catch (e) {
         addLog('Error: ' + e)
     }
@@ -507,6 +678,7 @@ async function switchTab(tab) {
     if (tab === 'database') {
         if (drives.value.length === 0) await loadDrives()
         if (backups.value.length === 0) await refreshBackups()
+        if (playlists.value.length === 0) await loadPlaylists()
     }
     if (tab === 'tools') {
         await checkUSBDrive()
@@ -581,25 +753,31 @@ onMounted(async () => {
 </script>
 
 <template>
+    <!-- Toast notification -->
+    <div class="toast" :class="{ visible: toastVisible }">{{ toastMsg }}</div>
+
     <div class="header wails-drag">
         <div class="header-left">
             <span class="app-title">{{ msgs.appTitle || 'Engine Tools' }}</span>
             <span class="marquee-text" :key="currentMarquee">{{ marqueeTexts[currentMarquee] }}</span>
         </div>
         <div class="header-right">
-            <span v-if="updateAvailable" class="update-badge no-drag" @click="openUpdatePage" title="New version available!">
-                🎉 Update
+            <span v-if="updateAvailable" class="update-badge no-drag" @click="openUpdatePage" :title="msgs.updateTooltip || 'New version available'">
+                {{ msgs.updateBadge || 'Update' }}
             </span>
             <span v-else-if="checkingUpdate" class="update-badge no-drag checking">
-                ⏳
+                {{ msgs.updateChecking || 'Checking...' }}
             </span>
             <span class="github-link no-drag" @click="openGitHub">
                 <svg class="github-icon" viewBox="0 0 16 16" fill="currentColor" width="16" height="16"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>
             </span>
             <span class="author-handle no-drag" @click="openGitHub">@LaokeQwQ</span>
-            <span class="update-check-btn no-drag" @click="checkForUpdates" title="Check for updates">
-                🔄
-            </span>
+            <button class="update-check-btn no-drag" @click="checkForUpdates" title="Check for updates">
+                <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <polyline points="23 4 23 10 17 10"></polyline>
+                    <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path>
+                </svg>
+            </button>
             <select class="lang-select no-drag" :value="currentLang" @change="changeLanguage($event.target.value)">
                 <option v-for="lang in languages" :key="lang.code" :value="lang.code">{{ lang.native }}</option>
             </select>
@@ -716,13 +894,14 @@ onMounted(async () => {
             <div class="drive-grid no-drag">
                 <button
                     v-for="d in drives"
-                    :key="d"
+                    :key="d.letter"
                     class="drive-chip"
-                    :class="{ active: selectedDrive === d }"
+                    :class="{ active: selectedDrive === d.letter }"
                     :disabled="dbBusy"
                     @click="handleClickDrive(d)"
                 >
-                    {{ d }}
+                    <span class="drive-letter">{{ d.letter }}</span>
+                    <span class="drive-count">{{ d.trackCount }} tracks</span>
                 </button>
             </div>
         </div>
@@ -789,22 +968,60 @@ onMounted(async () => {
                     {{ dbBusy ? (msgs.dbOptimizing || 'Optimizing...') : (msgs.dbOptimizeButton || 'Optimize') }}
                 </button>
             </div>
+
+            <div class="library-section">
+                <div class="library-section-title">{{ msgs.dbRepairButton || 'Repair Database' }}</div>
+                <button class="btn btn-secondary no-drag" @click="handleRepair" :disabled="dbBusy">
+                    <span v-if="dbBusy" class="loading-spinner"></span>
+                    {{ dbBusy ? (msgs.dbRepairing || 'Repairing...') : (msgs.dbRepairButton || 'Repair Database') }}
+                </button>
+            </div>
+
+            <!-- Playlist Viewer -->
+            <div class="library-section" style="margin-top: 12px;">
+                <div class="library-section-title">Playlist</div>
+                <div v-if="playlists.length === 0 && !playlistLoading" class="library-stats">No playlists found</div>
+                <div v-if="playlistLoading && !selectedPlaylist" class="library-stats">Loading...</div>
+                <div v-if="playlists.length > 0" class="playlist-chips">
+                    <span
+                        v-for="pl in playlists"
+                        :key="pl.id"
+                        class="playlist-chip no-drag"
+                        :class="{ active: selectedPlaylist && selectedPlaylist.id === pl.id }"
+                        @click="handleSelectPlaylist(pl)"
+                    >
+                        {{ pl.title }} <span class="playlist-chip-count">{{ pl.count }}</span>
+                    </span>
+                </div>
+            </div>
+
+            <div v-if="selectedPlaylist && playlistTracks.length > 0" class="library-section" style="margin-top: 4px;">
+                <div class="playlist-track-list">
+                    <div v-for="(t, i) in playlistTracks" :key="t.id" class="playlist-track-row">
+                        <span class="playlist-track-num">{{ i + 1 }}</span>
+                        <div class="playlist-track-info">
+                            <div class="playlist-track-title">{{ t.title || t.filename }}</div>
+                            <div class="playlist-track-artist">{{ t.artist }}</div>
+                        </div>
+                        <span class="playlist-track-bpm" v-if="t.bpm">{{ Math.round(t.bpm) }}</span>
+                        <span class="playlist-track-time">{{ formatTime(t.length) }}</span>
+                    </div>
+                </div>
+            </div>
         </template>
     </div>
 
     <!-- TOOLS TAB -->
     <div class="content" v-show="activeTab === 'tools'">
-        <div class="info-card">
-            <div class="info-row">
-                <span class="info-label">{{ msgs.msiCleanupTitle || 'MSI Cleanup' }}</span>
+        <!-- MSI Cleanup -->
+        <div class="library-section">
+            <div class="library-section-title">{{ msgs.msiCleanupTitle || 'MSI Cleanup' }}</div>
+            <div class="library-stats">
+                {{ msgs.msiCleanupDescription || 'For Engine DJ install/uninstall/update residual file issues' }}
             </div>
-            <div class="library-stats">{{ msgs.msiCleanupDescription || 'Scan and remove orphaned MSI installation residuals' }}</div>
-        </div>
-
-        <div class="actions">
             <button class="btn btn-primary no-drag" @click="handleScanMSI" :disabled="msiBusy">
                 <span v-if="msiBusy" class="loading-spinner"></span>
-                {{ msiBusy ? (msgs.msiScanning || 'Scanning...') : (msgs.msiCleanupButton || 'MSI Cleanup') }}
+                {{ msiBusy ? (msgs.msiScanning || 'Scanning...') : (msgs.msiCleanupButton || 'Scan MSI Residuals') }}
             </button>
         </div>
 
@@ -814,8 +1031,8 @@ onMounted(async () => {
             </div>
         </div>
 
-        <div v-if="msiOrphans.length > 0" class="library-section">
-            <div class="library-section-title">{{ msgs.msiCleanupTitle || 'MSI Cleanup' }}</div>
+        <div v-if="msiOrphans.length > 0" class="library-section" style="margin-top: 12px;">
+            <div class="library-section-title">{{ msgs.msiFoundOrphans ? msgs.msiFoundOrphans.replace('%d', msiOrphans.length) : `Found ${msiOrphans.length} orphans` }}</div>
             <label
                 v-for="o in msiOrphans"
                 :key="o.productCode"
@@ -840,9 +1057,9 @@ onMounted(async () => {
 
         <!-- ID3 Editor -->
         <div class="library-section" style="margin-top: 12px;">
-            <div class="library-section-title">ID3 Tag Editor</div>
+            <div class="library-section-title" @click="handleID3TitleClick" style="cursor: default; user-select: none;">{{ msgs.id3EditorTitle || 'ID3 Tag Editor' }}</div>
             <button class="btn btn-secondary no-drag" @click="handleID3Pick" :disabled="id3Busy">
-                {{ id3File ? id3FileName : 'Select Audio File' }}
+                {{ id3File ? id3FileName : (msgs.id3PickFileButton || 'Select Audio File') }}
             </button>
         </div>
 
@@ -866,17 +1083,43 @@ onMounted(async () => {
                     <input class="text-input no-drag" v-model="id3Genre" placeholder="Genre" :disabled="id3Busy" style="flex:1" />
                 </div>
                 <div class="drive-select-row">
-                    <button class="btn btn-primary no-drag" style="flex:1" @click="handleID3Save" :disabled="id3Busy">Save</button>
-                    <button class="btn btn-restore-all no-drag" style="flex:1" @click="handleID3ClearAll" :disabled="id3Busy">Clear All</button>
+                    <button class="btn btn-primary no-drag" style="flex:1" @click="handleID3Save" :disabled="id3Busy">{{ msgs.id3SaveButton || 'Save' }}</button>
+                    <button class="btn btn-restore-all no-drag" style="flex:1" @click="handleID3ClearAll" :disabled="id3Busy">{{ msgs.id3ClearAllButton || 'Clear All' }}</button>
                 </div>
+            </div>
+        </template>
+
+        <!-- Anti-piracy Easter Egg (hidden, activated by clicking ID3 title 5 times) -->
+        <template v-if="apShowMenu">
+            <div class="library-section" style="margin-top: 12px; border: 1px dashed var(--warning); border-radius: var(--radius-sm); padding: 12px;">
+                <div class="library-section-title" style="color: var(--warning);">防偷歌模式</div>
+                <div class="library-stats">对指定目录下的所有音频文件批量操作ID3标签，操作前自动备份</div>
+                <button class="btn btn-secondary no-drag" @click="handlePickApDir" :disabled="apBusy">
+                    {{ apDir || '选择音乐目录' }}
+                </button>
+                <template v-if="apDir">
+                    <div class="drive-select-row" style="margin-top: 8px;">
+                        <button class="btn btn-restore-all no-drag" style="flex:1" @click="handleAntiPiracyV1" :disabled="apBusy">
+                            <span v-if="apBusy" class="loading-spinner"></span>
+                            v1 清除全部标签
+                        </button>
+                        <button class="btn btn-restore-all no-drag" style="flex:1" @click="handleAntiPiracyV2" :disabled="apBusy">
+                            <span v-if="apBusy" class="loading-spinner"></span>
+                            v2 随机打乱标签
+                        </button>
+                    </div>
+                    <button class="btn btn-secondary no-drag" style="margin-top: 6px;" @click="handleAntiPiracyRestore" :disabled="apBusy">
+                        恢复备份
+                    </button>
+                </template>
             </div>
         </template>
 
         <!-- USB Unlock -->
         <div class="library-section" style="margin-top: 12px;">
-            <div class="library-section-title">USB Unlock</div>
+            <div class="library-section-title">{{ msgs.usbUnlockTitle || 'USB Unlock' }}</div>
             <div class="library-stats">
-                Release file locks on your USB drive (excluding Engine DJ / Offline Analyzer / stems-processor)
+                {{ msgs.usbUnlockDescription || 'For Engine DJ install/uninstall/update file lock issues' }}
             </div>
             <button
                 class="btn btn-primary no-drag"
@@ -884,7 +1127,7 @@ onMounted(async () => {
                 :disabled="usbBusy || !usbDrive"
             >
                 <span v-if="usbBusy" class="loading-spinner"></span>
-                {{ usbDrive ? ('Unlock ' + usbDrive) : 'No USB with Engine Library detected' }}
+                {{ usbDrive ? ((msgs.usbUnlockButton || 'Unlock') + ' ' + usbDrive) : (msgs.usbNoDevice || 'No USB with Engine Library detected') }}
             </button>
             <button
                 v-if="usbDrive"
@@ -892,7 +1135,7 @@ onMounted(async () => {
                 @click="handleUSBScan"
                 :disabled="usbBusy"
             >
-                Scan blocking processes
+                {{ msgs.usbScanButton || 'Scan blocking processes' }}
             </button>
             <div v-if="usbBlockers.length > 0" class="info-card" style="margin-top: 6px;">
                 <div v-for="p in usbBlockers" :key="p.pid" class="info-row">
@@ -904,23 +1147,23 @@ onMounted(async () => {
 
         <!-- MIDI 2.0 Toggle -->
         <div class="library-section" style="margin-top: 12px;">
-            <div class="library-section-title">MIDI 2.0 Control</div>
+            <div class="library-section-title">{{ msgs.midi2Title || 'MIDI 2.0 Control' }}</div>
             <div class="library-stats">
-                Disable Windows 11 MIDI 2.0 features while preserving MIDI 1.0 service
+                {{ msgs.midi2Description || 'Disable Windows 11 MIDI 2.0 features while preserving MIDI 1.0 service' }}
             </div>
             <div v-if="midi2Status === 'enabled'" class="status-card status-warning" style="margin-bottom: 8px;">
                 <div class="status-text">
-                    <div class="status-detail">MIDI 2.0 is currently enabled</div>
+                    <div class="status-detail">{{ msgs.midi2Enabled || 'MIDI 2.0 is currently enabled' }}</div>
                 </div>
             </div>
             <div v-if="midi2Status === 'disabled'" class="status-card status-success" style="margin-bottom: 8px;">
                 <div class="status-text">
-                    <div class="status-detail">MIDI 2.0 is currently disabled</div>
+                    <div class="status-detail">{{ msgs.midi2Disabled || 'MIDI 2.0 is currently disabled' }}</div>
                 </div>
             </div>
             <div v-if="midi2Status === 'unavailable'" class="status-card status-error" style="margin-bottom: 8px;">
                 <div class="status-text">
-                    <div class="status-detail">MIDI 2.0 services not found on this system</div>
+                    <div class="status-detail">{{ msgs.midi2Unavailable || 'MIDI 2.0 services not found on this system' }}</div>
                 </div>
             </div>
             <div class="drive-select-row">
@@ -932,7 +1175,7 @@ onMounted(async () => {
                     :disabled="midi2Busy"
                 >
                     <span v-if="midi2Busy" class="loading-spinner"></span>
-                    {{ midi2Busy ? 'Disabling...' : 'Disable MIDI 2.0' }}
+                    {{ midi2Busy ? (msgs.midi2Disabling || 'Disabling...') : (msgs.midi2DisableButton || 'Disable MIDI 2.0') }}
                 </button>
                 <button
                     v-if="midi2Status === 'disabled'"
@@ -942,7 +1185,7 @@ onMounted(async () => {
                     :disabled="midi2Busy"
                 >
                     <span v-if="midi2Busy" class="loading-spinner"></span>
-                    {{ midi2Busy ? 'Enabling...' : 'Enable MIDI 2.0' }}
+                    {{ midi2Busy ? (msgs.midi2Enabling || 'Enabling...') : (msgs.midi2EnableButton || 'Enable MIDI 2.0') }}
                 </button>
                 <button
                     v-if="midi2Status === 'unavailable'"
@@ -953,6 +1196,80 @@ onMounted(async () => {
                     Not Available
                 </button>
             </div>
+        </div>
+
+        <!-- Log Analysis -->
+        <div class="library-section" style="margin-top: 12px;">
+            <div class="library-section-title">{{ msgs.logAnalysisTitle || 'Log Analysis' }}</div>
+            <div class="library-stats">
+                {{ msgs.logAnalysisDescription || 'Analyze Engine DJ log files for errors and warnings' }}
+            </div>
+            <div class="drive-select-row">
+                <button class="btn btn-primary no-drag" style="flex:1" @click="handleAnalyzeLogs" :disabled="logsBusy">
+                    <span v-if="logsBusy" class="loading-spinner"></span>
+                    {{ logsBusy ? (msgs.logAnalyzing || 'Analyzing...') : (msgs.logAnalyzeButton || 'Analyze Logs') }}
+                </button>
+                <button class="btn btn-secondary no-drag" style="flex:1" @click="handleOpenLogsDir">
+                    {{ msgs.logOpenDir || 'Open Log Folder' }}
+                </button>
+            </div>
+        </div>
+
+        <template v-if="logStats">
+            <div class="info-card">
+                <div class="info-row">
+                    <span class="info-label">{{ msgs.logTotalFiles || 'Log Files' }}</span>
+                    <span class="info-value">{{ logStats.totalFiles }}</span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">{{ msgs.logTotalLines || 'Total Lines' }}</span>
+                    <span class="info-value">{{ logStats.totalLines }}</span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">{{ msgs.logLatestFile || 'Latest Log' }}</span>
+                    <span class="info-value">{{ logStats.latestLog }}</span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">Info</span>
+                    <span class="info-value" style="color: var(--text-secondary)">{{ logStats.infoCount }}</span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">Warnings</span>
+                    <span class="info-value" style="color: var(--warning)">{{ logStats.warningCount }}</span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">Errors</span>
+                    <span class="info-value" style="color: var(--error)">{{ logStats.errorCount }}</span>
+                </div>
+            </div>
+
+            <div v-if="logStats.topErrors && logStats.topErrors.length > 0" class="library-section" style="margin-top: 8px;">
+                <div class="library-section-title" style="color: var(--error)">{{ msgs.logTopErrors || 'Top Errors' }}</div>
+                <div v-for="(e, i) in logStats.topErrors" :key="'err'+i" class="log-stat-item">
+                    <span class="log-stat-count">×{{ e.count }}</span>
+                    <span class="log-stat-msg">{{ e.message }}</span>
+                </div>
+            </div>
+
+            <div v-if="logStats.topWarnings && logStats.topWarnings.length > 0" class="library-section" style="margin-top: 8px;">
+                <div class="library-section-title" style="color: var(--warning)">{{ msgs.logTopWarnings || 'Top Warnings' }}</div>
+                <div v-for="(w, i) in logStats.topWarnings" :key="'warn'+i" class="log-stat-item">
+                    <span class="log-stat-count">×{{ w.count }}</span>
+                    <span class="log-stat-msg">{{ w.message }}</span>
+                </div>
+            </div>
+        </template>
+
+        <!-- Cache Cleanup -->
+        <div class="library-section" style="margin-top: 12px;">
+            <div class="library-section-title">{{ msgs.cacheCleanTitle || 'Cache Cleanup' }}</div>
+            <div class="library-stats">
+                {{ msgs.cacheCleanDescription || 'Clear Engine DJ UI cache to fix display glitches' }}
+            </div>
+            <button class="btn btn-primary no-drag" @click="handleClearCache" :disabled="cacheBusy">
+                <span v-if="cacheBusy" class="loading-spinner"></span>
+                {{ cacheBusy ? (msgs.cacheClearing || 'Clearing...') : (msgs.cacheCleanButton || 'Clear Cache') }}
+            </button>
         </div>
     </div>
 
