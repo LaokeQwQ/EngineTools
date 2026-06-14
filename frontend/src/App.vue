@@ -31,6 +31,9 @@ import {
     USBUnlockAvailable,
     USBUnlockScan,
     USBUnlockKill,
+    MIDI2Status,
+    MIDI2Disable,
+    MIDI2Enable,
 } from '../wailsjs/go/main/App.js'
 import { EventsOn } from '../wailsjs/runtime/runtime.js'
 
@@ -88,6 +91,10 @@ const id3Busy = ref(false)
 const usbDrive = ref('')
 const usbBlockers = ref([])
 const usbBusy = ref(false)
+
+// MIDI 2.0 state
+const midi2Status = ref('') // 'enabled' | 'disabled' | 'unavailable'
+const midi2Busy = ref(false)
 
 const id3FileName = computed(() => {
     if (!id3File.value) return ''
@@ -455,6 +462,40 @@ async function handleUSBUnlock() {
     usbBusy.value = false
 }
 
+// ---- MIDI 2.0 ----
+
+async function checkMIDI2Status() {
+    try {
+        midi2Status.value = await MIDI2Status()
+    } catch (e) {
+        midi2Status.value = 'unavailable'
+    }
+}
+
+async function handleMIDI2Disable() {
+    midi2Busy.value = true
+    try {
+        const res = await MIDI2Disable()
+        addLog(res)
+        await checkMIDI2Status()
+    } catch (e) {
+        addLog('Error: ' + e)
+    }
+    midi2Busy.value = false
+}
+
+async function handleMIDI2Enable() {
+    midi2Busy.value = true
+    try {
+        const res = await MIDI2Enable()
+        addLog(res)
+        await checkMIDI2Status()
+    } catch (e) {
+        addLog('Error: ' + e)
+    }
+    midi2Busy.value = false
+}
+
 async function switchTab(tab) {
     activeTab.value = tab
     if (tab === 'database') {
@@ -463,6 +504,7 @@ async function switchTab(tab) {
     }
     if (tab === 'tools') {
         await checkUSBDrive()
+        await checkMIDI2Status()
     }
 }
 
@@ -812,6 +854,59 @@ onMounted(async () => {
                     <span class="info-label">{{ p.name }}</span>
                     <span class="info-value">PID {{ p.pid }}</span>
                 </div>
+            </div>
+        </div>
+
+        <!-- MIDI 2.0 Toggle -->
+        <div class="library-section" style="margin-top: 12px;">
+            <div class="library-section-title">MIDI 2.0 Control</div>
+            <div class="library-stats">
+                Disable Windows 11 MIDI 2.0 features while preserving MIDI 1.0 service
+            </div>
+            <div v-if="midi2Status === 'enabled'" class="status-card status-warning" style="margin-bottom: 8px;">
+                <div class="status-text">
+                    <div class="status-detail">MIDI 2.0 is currently enabled</div>
+                </div>
+            </div>
+            <div v-if="midi2Status === 'disabled'" class="status-card status-success" style="margin-bottom: 8px;">
+                <div class="status-text">
+                    <div class="status-detail">MIDI 2.0 is currently disabled</div>
+                </div>
+            </div>
+            <div v-if="midi2Status === 'unavailable'" class="status-card status-error" style="margin-bottom: 8px;">
+                <div class="status-text">
+                    <div class="status-detail">MIDI 2.0 services not found on this system</div>
+                </div>
+            </div>
+            <div class="drive-select-row">
+                <button
+                    v-if="midi2Status === 'enabled'"
+                    class="btn btn-primary no-drag"
+                    style="flex:1"
+                    @click="handleMIDI2Disable"
+                    :disabled="midi2Busy"
+                >
+                    <span v-if="midi2Busy" class="loading-spinner"></span>
+                    {{ midi2Busy ? 'Disabling...' : 'Disable MIDI 2.0' }}
+                </button>
+                <button
+                    v-if="midi2Status === 'disabled'"
+                    class="btn btn-secondary no-drag"
+                    style="flex:1"
+                    @click="handleMIDI2Enable"
+                    :disabled="midi2Busy"
+                >
+                    <span v-if="midi2Busy" class="loading-spinner"></span>
+                    {{ midi2Busy ? 'Enabling...' : 'Enable MIDI 2.0' }}
+                </button>
+                <button
+                    v-if="midi2Status === 'unavailable'"
+                    class="btn btn-secondary no-drag"
+                    style="flex:1"
+                    disabled
+                >
+                    Not Available
+                </button>
             </div>
         </div>
     </div>
