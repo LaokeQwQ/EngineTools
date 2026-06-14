@@ -28,6 +28,9 @@ import {
     ID3SetCover,
     ID3ClearCover,
     ID3ClearAll,
+    USBUnlockAvailable,
+    USBUnlockScan,
+    USBUnlockKill,
 } from '../wailsjs/go/main/App.js'
 import { EventsOn } from '../wailsjs/runtime/runtime.js'
 
@@ -80,6 +83,11 @@ const id3Year = ref('')
 const id3Genre = ref('')
 const id3Cover = ref('')
 const id3Busy = ref(false)
+
+// USB Unlock state
+const usbDrive = ref('')
+const usbBlockers = ref([])
+const usbBusy = ref(false)
 
 const id3FileName = computed(() => {
     if (!id3File.value) return ''
@@ -412,11 +420,49 @@ async function handleID3ClearAll() {
     id3Busy.value = false
 }
 
+// ---- USB Unlock ----
+
+async function checkUSBDrive() {
+    try {
+        usbDrive.value = await USBUnlockAvailable()
+    } catch (e) {
+        usbDrive.value = ''
+    }
+}
+
+async function handleUSBScan() {
+    if (!usbDrive.value) return
+    usbBusy.value = true
+    try {
+        usbBlockers.value = await USBUnlockScan(usbDrive.value)
+    } catch (e) {
+        addLog('Error: ' + e)
+        usbBlockers.value = []
+    }
+    usbBusy.value = false
+}
+
+async function handleUSBUnlock() {
+    if (!usbDrive.value) return
+    usbBusy.value = true
+    try {
+        await USBUnlockKill(usbDrive.value)
+        usbBlockers.value = []
+        await checkUSBDrive()
+    } catch (e) {
+        addLog('Error: ' + e)
+    }
+    usbBusy.value = false
+}
+
 async function switchTab(tab) {
     activeTab.value = tab
     if (tab === 'database') {
         if (drives.value.length === 0) await loadDrives()
         if (backups.value.length === 0) await refreshBackups()
+    }
+    if (tab === 'tools') {
+        await checkUSBDrive()
     }
 }
 
@@ -738,6 +784,36 @@ onMounted(async () => {
                 </div>
             </div>
         </template>
+
+        <!-- USB Unlock -->
+        <div class="library-section" style="margin-top: 12px;">
+            <div class="library-section-title">USB Unlock</div>
+            <div class="library-stats">
+                Release file locks on your USB drive (excluding Engine DJ / Offline Analyzer / stems-processor)
+            </div>
+            <button
+                class="btn btn-primary no-drag"
+                @click="handleUSBUnlock"
+                :disabled="usbBusy || !usbDrive"
+            >
+                <span v-if="usbBusy" class="loading-spinner"></span>
+                {{ usbDrive ? ('Unlock ' + usbDrive) : 'No USB with Engine Library detected' }}
+            </button>
+            <button
+                v-if="usbDrive"
+                class="btn btn-secondary no-drag"
+                @click="handleUSBScan"
+                :disabled="usbBusy"
+            >
+                Scan blocking processes
+            </button>
+            <div v-if="usbBlockers.length > 0" class="info-card" style="margin-top: 6px;">
+                <div v-for="p in usbBlockers" :key="p.pid" class="info-row">
+                    <span class="info-label">{{ p.name }}</span>
+                    <span class="info-value">PID {{ p.pid }}</span>
+                </div>
+            </div>
+        </div>
     </div>
 
     <div class="progress-wrapper">
