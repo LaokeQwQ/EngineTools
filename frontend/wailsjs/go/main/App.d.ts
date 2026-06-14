@@ -39,6 +39,12 @@ export function ListBackups():Promise<Array<database.BackupInfo>>;
 
 export function ListDrives():Promise<Array<string>>;
 
+export function MIDI2Disable():Promise<string>;
+
+export function MIDI2Enable():Promise<string>;
+
+export function MIDI2Status():Promise<string>;
+
 export function OpenDBDir():Promise<string>;
 
 export function OpenInstallDir():Promise<string>;

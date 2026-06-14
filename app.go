@@ -15,6 +15,7 @@ import (
 	"EngineTools/internal/i18n"
 	"EngineTools/internal/id3"
 	"EngineTools/internal/manifest"
+	"EngineTools/internal/midi"
 	"EngineTools/internal/msi"
 	"EngineTools/internal/process"
 	"EngineTools/internal/registry"
@@ -810,6 +811,44 @@ func (a *App) USBUnlockKill(drive string) string {
 	for _, e := range errs {
 		a.log(fmt.Sprintf("  %s", e))
 	}
+	return "ok"
+}
+
+// ---- MIDI 2.0 Toggle ----
+
+// MIDI2Status returns "disabled" if MIDI 2.0 is currently disabled, "enabled" otherwise,
+// or "unavailable" if MIDI 2.0 services don't exist on this system.
+func (a *App) MIDI2Status() string {
+	disabled, err := midi.IsMIDI2Disabled()
+	if err != nil {
+		return "unavailable"
+	}
+	if disabled {
+		return "disabled"
+	}
+	return "enabled"
+}
+
+// MIDI2Disable sets all MIDI 2.0 service registry entries to disabled (Start=4).
+// Does NOT touch the classic MIDI 1.0 service.
+func (a *App) MIDI2Disable() string {
+	count, err := midi.DisableMIDI2()
+	if err != nil {
+		a.log(fmt.Sprintf("MIDI 2.0 disable error: %v", err))
+		return err.Error()
+	}
+	a.log(fmt.Sprintf("MIDI 2.0 disabled (%d services)", count))
+	return "ok"
+}
+
+// MIDI2Enable restores all MIDI 2.0 service registry entries to demand-start (Start=3).
+func (a *App) MIDI2Enable() string {
+	count, err := midi.EnableMIDI2()
+	if err != nil {
+		a.log(fmt.Sprintf("MIDI 2.0 enable error: %v", err))
+		return err.Error()
+	}
+	a.log(fmt.Sprintf("MIDI 2.0 re-enabled (%d services)", count))
 	return "ok"
 }
 
