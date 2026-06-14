@@ -21,6 +21,13 @@ import {
     OpenDBDir,
     ListDrives,
     SelectDrive,
+    ID3PickFile,
+    ID3ReadTag,
+    ID3WriteTag,
+    ID3GetCover,
+    ID3SetCover,
+    ID3ClearCover,
+    ID3ClearAll,
 } from '../wailsjs/go/main/App.js'
 import { EventsOn } from '../wailsjs/runtime/runtime.js'
 
@@ -63,6 +70,21 @@ const msiOrphans = ref([])
 const msiSelected = ref([])
 const msiScanned = ref(false)
 const msiBusy = ref(false)
+
+// ID3 Editor state
+const id3File = ref('')
+const id3Title = ref('')
+const id3Artist = ref('')
+const id3Album = ref('')
+const id3Year = ref('')
+const id3Genre = ref('')
+const id3Cover = ref('')
+const id3Busy = ref(false)
+
+const id3FileName = computed(() => {
+    if (!id3File.value) return ''
+    return id3File.value.split(/[/\\]/).pop()
+})
 
 const pathDisplay = computed(() => {
     return installPath.value || msgs.value?.installPathNotFound || '—'
@@ -309,6 +331,85 @@ async function handleCleanMSI() {
         addLog('Error: ' + e)
     }
     msiBusy.value = false
+}
+
+// ---- ID3 Editor ----
+
+async function handleID3Pick() {
+    const path = await ID3PickFile()
+    if (!path) return
+    id3File.value = path
+    await loadID3(path)
+}
+
+async function loadID3(path) {
+    id3Busy.value = true
+    try {
+        const info = await ID3ReadTag(path)
+        id3Title.value = info.title || ''
+        id3Artist.value = info.artist || ''
+        id3Album.value = info.album || ''
+        id3Year.value = info.year || ''
+        id3Genre.value = info.genre || ''
+        id3Cover.value = await ID3GetCover(path) || ''
+    } catch (e) {
+        addLog('Error: ' + e)
+    }
+    id3Busy.value = false
+}
+
+async function handleID3Save() {
+    if (!id3File.value) return
+    id3Busy.value = true
+    try {
+        await ID3WriteTag(id3File.value, id3Title.value, id3Artist.value, id3Album.value, id3Year.value, id3Genre.value)
+    } catch (e) {
+        addLog('Error: ' + e)
+    }
+    id3Busy.value = false
+}
+
+async function handleID3SetCover() {
+    if (!id3File.value) return
+    id3Busy.value = true
+    try {
+        const res = await ID3SetCover(id3File.value)
+        if (res === 'ok') {
+            id3Cover.value = await ID3GetCover(id3File.value) || ''
+        }
+    } catch (e) {
+        addLog('Error: ' + e)
+    }
+    id3Busy.value = false
+}
+
+async function handleID3ClearCover() {
+    if (!id3File.value) return
+    id3Busy.value = true
+    try {
+        await ID3ClearCover(id3File.value)
+        id3Cover.value = ''
+    } catch (e) {
+        addLog('Error: ' + e)
+    }
+    id3Busy.value = false
+}
+
+async function handleID3ClearAll() {
+    if (!id3File.value) return
+    id3Busy.value = true
+    try {
+        await ID3ClearAll(id3File.value)
+        id3Title.value = ''
+        id3Artist.value = ''
+        id3Album.value = ''
+        id3Year.value = ''
+        id3Genre.value = ''
+        id3Cover.value = ''
+    } catch (e) {
+        addLog('Error: ' + e)
+    }
+    id3Busy.value = false
 }
 
 async function switchTab(tab) {
@@ -603,6 +704,40 @@ onMounted(async () => {
                 {{ msiBusy ? (msgs.msiCleaning || 'Cleaning...') : (msgs.msiCleanupButton || 'MSI Cleanup') }}
             </button>
         </div>
+
+        <!-- ID3 Editor -->
+        <div class="library-section" style="margin-top: 12px;">
+            <div class="library-section-title">ID3 Tag Editor</div>
+            <button class="btn btn-secondary no-drag" @click="handleID3Pick" :disabled="id3Busy">
+                {{ id3File ? id3FileName : 'Select Audio File' }}
+            </button>
+        </div>
+
+        <template v-if="id3File">
+            <div class="info-card">
+                <div class="id3-cover-row">
+                    <img v-if="id3Cover" :src="id3Cover" class="id3-cover-img" />
+                    <div v-else class="id3-cover-placeholder">No Cover</div>
+                    <div class="id3-cover-actions">
+                        <button class="btn btn-secondary no-drag id3-cover-btn" @click="handleID3SetCover" :disabled="id3Busy">Change</button>
+                        <button class="btn btn-secondary no-drag id3-cover-btn" @click="handleID3ClearCover" :disabled="id3Busy || !id3Cover">Remove</button>
+                    </div>
+                </div>
+            </div>
+            <div class="library-section">
+                <input class="text-input no-drag" v-model="id3Title" placeholder="Title" :disabled="id3Busy" />
+                <input class="text-input no-drag" v-model="id3Artist" placeholder="Artist" :disabled="id3Busy" />
+                <input class="text-input no-drag" v-model="id3Album" placeholder="Album" :disabled="id3Busy" />
+                <div class="drive-select-row">
+                    <input class="text-input no-drag" v-model="id3Year" placeholder="Year" :disabled="id3Busy" style="flex:1" />
+                    <input class="text-input no-drag" v-model="id3Genre" placeholder="Genre" :disabled="id3Busy" style="flex:1" />
+                </div>
+                <div class="drive-select-row">
+                    <button class="btn btn-primary no-drag" style="flex:1" @click="handleID3Save" :disabled="id3Busy">Save</button>
+                    <button class="btn btn-restore-all no-drag" style="flex:1" @click="handleID3ClearAll" :disabled="id3Busy">Clear All</button>
+                </div>
+            </div>
+        </template>
     </div>
 
     <div class="progress-wrapper">

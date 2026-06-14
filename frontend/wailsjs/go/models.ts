@@ -236,6 +236,35 @@ export namespace i18n {
 
 }
 
+export namespace id3 {
+	
+	export class TagInfo {
+	    filePath: string;
+	    title: string;
+	    artist: string;
+	    album: string;
+	    year: string;
+	    genre: string;
+	    hasCover: boolean;
+	
+	    static createFrom(source: any = {}) {
+	        return new TagInfo(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.filePath = source["filePath"];
+	        this.title = source["title"];
+	        this.artist = source["artist"];
+	        this.album = source["album"];
+	        this.year = source["year"];
+	        this.genre = source["genre"];
+	        this.hasCover = source["hasCover"];
+	    }
+	}
+
+}
+
 export namespace main {
 	
 	export class ProcessItem {

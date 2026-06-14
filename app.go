@@ -13,6 +13,7 @@ import (
 
 	"EngineTools/internal/database"
 	"EngineTools/internal/i18n"
+	"EngineTools/internal/id3"
 	"EngineTools/internal/manifest"
 	"EngineTools/internal/msi"
 	"EngineTools/internal/process"
@@ -666,6 +667,91 @@ func (a *App) SetLanguage(lang string) string {
 	a.lang = i18n.Lang(lang)
 	go a.detectStatus()
 	return ""
+}
+
+// ---- ID3 Editor ----
+
+// ID3PickFile opens a native file dialog for the user to select an audio file.
+func (a *App) ID3PickFile() string {
+	path, err := wailsRuntime.OpenFileDialog(a.ctx, wailsRuntime.OpenDialogOptions{
+		Title: "Select Audio File",
+		Filters: []wailsRuntime.FileFilter{
+			{DisplayName: "Audio Files", Pattern: "*.mp3;*.flac;*.wav;*.aiff;*.aif"},
+		},
+	})
+	if err != nil || path == "" {
+		return ""
+	}
+	return path
+}
+
+// ID3ReadTag reads ID3 tags from the given file.
+func (a *App) ID3ReadTag(filePath string) id3.TagInfo {
+	info, err := id3.ReadTag(filePath)
+	if err != nil {
+		a.log(fmt.Sprintf("ID3 read error: %v", err))
+		return id3.TagInfo{}
+	}
+	return info
+}
+
+// ID3WriteTag writes the given metadata to the file.
+func (a *App) ID3WriteTag(filePath, title, artist, album, year, genre string) string {
+	if err := id3.WriteTag(filePath, title, artist, album, year, genre); err != nil {
+		a.log(fmt.Sprintf("ID3 write error: %v", err))
+		return err.Error()
+	}
+	a.log(fmt.Sprintf("ID3 tags saved: %s", filepath.Base(filePath)))
+	return "ok"
+}
+
+// ID3GetCover returns the cover art as a base64 data URI.
+func (a *App) ID3GetCover(filePath string) string {
+	data, err := id3.GetCoverBase64(filePath)
+	if err != nil {
+		a.log(fmt.Sprintf("ID3 cover read error: %v", err))
+		return ""
+	}
+	return data
+}
+
+// ID3SetCover opens a file dialog for the user to pick an image, then embeds it.
+func (a *App) ID3SetCover(filePath string) string {
+	imgPath, err := wailsRuntime.OpenFileDialog(a.ctx, wailsRuntime.OpenDialogOptions{
+		Title: "Select Cover Image",
+		Filters: []wailsRuntime.FileFilter{
+			{DisplayName: "Images", Pattern: "*.jpg;*.jpeg;*.png;*.gif;*.bmp;*.webp"},
+		},
+	})
+	if err != nil || imgPath == "" {
+		return ""
+	}
+	if err := id3.SetCover(filePath, imgPath); err != nil {
+		a.log(fmt.Sprintf("ID3 set cover error: %v", err))
+		return err.Error()
+	}
+	a.log(fmt.Sprintf("Cover set: %s", filepath.Base(filePath)))
+	return "ok"
+}
+
+// ID3ClearCover removes the cover art.
+func (a *App) ID3ClearCover(filePath string) string {
+	if err := id3.ClearCover(filePath); err != nil {
+		a.log(fmt.Sprintf("ID3 clear cover error: %v", err))
+		return err.Error()
+	}
+	a.log(fmt.Sprintf("Cover cleared: %s", filepath.Base(filePath)))
+	return "ok"
+}
+
+// ID3ClearAll removes all ID3 tags from the file.
+func (a *App) ID3ClearAll(filePath string) string {
+	if err := id3.ClearAllTags(filePath); err != nil {
+		a.log(fmt.Sprintf("ID3 clear all error: %v", err))
+		return err.Error()
+	}
+	a.log(fmt.Sprintf("All tags cleared: %s", filepath.Base(filePath)))
+	return "ok"
 }
 
 func (a *App) GetMessages() i18n.Messages {

@@ -30,6 +30,34 @@ export function HandleUTF8AlreadyEnabled() {
   return window['go']['main']['App']['HandleUTF8AlreadyEnabled']();
 }
 
+export function ID3ClearAll(arg1) {
+  return window['go']['main']['App']['ID3ClearAll'](arg1);
+}
+
+export function ID3ClearCover(arg1) {
+  return window['go']['main']['App']['ID3ClearCover'](arg1);
+}
+
+export function ID3GetCover(arg1) {
+  return window['go']['main']['App']['ID3GetCover'](arg1);
+}
+
+export function ID3PickFile() {
+  return window['go']['main']['App']['ID3PickFile']();
+}
+
+export function ID3ReadTag(arg1) {
+  return window['go']['main']['App']['ID3ReadTag'](arg1);
+}
+
+export function ID3SetCover(arg1) {
+  return window['go']['main']['App']['ID3SetCover'](arg1);
+}
+
+export function ID3WriteTag(arg1, arg2, arg3, arg4, arg5, arg6) {
+  return window['go']['main']['App']['ID3WriteTag'](arg1, arg2, arg3, arg4, arg5, arg6);
+}
+
 export function ListBackups() {
   return window['go']['main']['App']['ListBackups']();
 }
