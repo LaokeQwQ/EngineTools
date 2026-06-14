@@ -67,6 +67,31 @@ func WriteManifest(installDir string) (int, error) {
 	return written, nil
 }
 
+// DeleteManifests removes all .manifest files from installDir. Returns the
+// number of files deleted.
+func DeleteManifests(installDir string) (int, error) {
+	exes, err := ListExes(installDir)
+	if err != nil {
+		return 0, err
+	}
+	if len(exes) == 0 {
+		return 0, nil
+	}
+
+	deleted := 0
+	for _, exe := range exes {
+		manifestPath := filepath.Join(installDir, exe+".manifest")
+		if err := os.Remove(manifestPath); err != nil {
+			if os.IsNotExist(err) {
+				continue
+			}
+			return deleted, fmt.Errorf("failed to delete manifest for %s: %w", exe, err)
+		}
+		deleted++
+	}
+	return deleted, nil
+}
+
 // ManifestExists reports whether every .exe in installDir has a non-empty
 // .manifest file alongside it.
 func ManifestExists(installDir string) bool {

@@ -1,9 +1,30 @@
 <script setup>
 import { ref, onMounted, computed } from 'vue'
-import { GetStatus, FixCJKIssues, HandleUTF8AlreadyEnabled, OpenRegionSettings, SetLanguage, GetMessages, GetAvailableLanguages, OpenRepository } from '../wailsjs/go/main/App.js'
+import {
+    GetStatus,
+    FixCJKIssues,
+    RestoreCJKFix,
+    HandleUTF8AlreadyEnabled,
+    OpenRegionSettings,
+    SetLanguage,
+    GetMessages,
+    GetAvailableLanguages,
+    OpenRepository,
+    BackupDatabase,
+    ListBackups,
+    RestoreDatabase,
+    OptimizeDatabase,
+    ScanMSIOrphans,
+    CleanMSIOrphans,
+    OpenInstallDir,
+    OpenStemsDir,
+    OpenDBDir,
+    ListDrives,
+    SelectDrive,
+} from '../wailsjs/go/main/App.js'
 import { EventsOn } from '../wailsjs/runtime/runtime.js'
 
-const APP_VERSION = '1.4.0'
+const APP_VERSION = '1.5.0'
 
 const installPath = ref('')
 const engineVersion = ref('')
@@ -13,6 +34,8 @@ const acpValue = ref('')
 const manifestConfigured = ref(false)
 const isAdmin = ref(false)
 const stemsDetected = ref(false)
+const dbDetected = ref(false)
+const dbPath = ref('')
 const processRunning = ref(false)
 const runningProcesses = ref([])
 const loading = ref(true)
@@ -24,6 +47,22 @@ const languages = ref([])
 const currentLang = ref('zh')
 const marqueeTexts = ref([])
 const currentMarquee = ref(0)
+
+const activeTab = ref('status')
+
+// Database state
+const backups = ref([])
+const backupNote = ref('')
+const selectedBackup = ref('')
+const dbBusy = ref(false)
+const drives = ref([])
+const selectedDrive = ref('')
+
+// MSI tools state
+const msiOrphans = ref([])
+const msiSelected = ref([])
+const msiScanned = ref(false)
+const msiBusy = ref(false)
 
 const pathDisplay = computed(() => {
     return installPath.value || msgs.value?.installPathNotFound || '—'
@@ -53,6 +92,10 @@ const adminStatusText = computed(() => {
 const stemsStatusText = computed(() => {
     if (!msgs.value) return ''
     return stemsDetected.value ? msgs.value.stemsDetected : msgs.value.stemsNotFound
+})
+
+const dbPathDisplay = computed(() => {
+    return dbPath.value || msgs.value?.dbLibraryNotFound || '—'
 })
 
 const logs = ref([])
@@ -95,6 +138,8 @@ async function detectStatus() {
         manifestConfigured.value = status.manifestConfigured || false
         isAdmin.value = status.isAdmin || false
         stemsDetected.value = status.stemsDetected || false
+        dbDetected.value = status.dbDetected || false
+        dbPath.value = status.dbPath || ''
         processRunning.value = status.processRunning || false
         runningProcesses.value = status.runningProcesses || []
     } catch (e) {
@@ -130,8 +175,148 @@ async function handleFix() {
     await detectStatus()
 }
 
+async function handleRestore() {
+    fixing.value = true
+    showProgress.value = true
+    progress.value = 0
+
+    try {
+        await RestoreCJKFix()
+    } catch (e) {
+        addLog('Error: ' + e)
+    }
+
+    fixing.value = false
+    setTimeout(() => {
+        showProgress.value = false
+    }, 1000)
+
+    await detectStatus()
+}
+
 async function handleOpenRegionSettings() {
     await OpenRegionSettings()
+}
+
+async function openInstallDir() {
+    await OpenInstallDir()
+}
+
+async function openStemsDir() {
+    await OpenStemsDir()
+}
+
+async function openDBDir() {
+    await OpenDBDir()
+}
+
+// ---- Database tab ----
+
+async function refreshBackups() {
+    try {
+        backups.value = await ListBackups()
+    } catch (e) {
+        addLog('Error: ' + e)
+        backups.value = []
+    }
+}
+
+async function handleBackup() {
+    dbBusy.value = true
+    try {
+        await BackupDatabase(backupNote.value || '')
+        backupNote.value = ''
+        await refreshBackups()
+    } catch (e) {
+        addLog('Error: ' + e)
+    }
+    dbBusy.value = false
+}
+
+async function handleRestoreDB() {
+    if (!selectedBackup.value) return
+    dbBusy.value = true
+    try {
+        await RestoreDatabase(selectedBackup.value)
+    } catch (e) {
+        addLog('Error: ' + e)
+    }
+    dbBusy.value = false
+}
+
+async function handleOptimize() {
+    dbBusy.value = true
+    try {
+        await OptimizeDatabase()
+    } catch (e) {
+        addLog('Error: ' + e)
+    }
+    dbBusy.value = false
+}
+
+async function loadDrives() {
+    try {
+        drives.value = await ListDrives()
+    } catch (e) {
+        addLog('Error: ' + e)
+        drives.value = []
+    }
+}
+
+async function handleSelectDrive() {
+    if (!selectedDrive.value) return
+    dbBusy.value = true
+    try {
+        await SelectDrive(selectedDrive.value)
+    } catch (e) {
+        addLog('Error: ' + e)
+    }
+    dbBusy.value = false
+    await detectStatus()
+}
+
+// ---- Tools tab (MSI cleanup) ----
+
+async function handleScanMSI() {
+    msiBusy.value = true
+    msiSelected.value = []
+    try {
+        msiOrphans.value = await ScanMSIOrphans()
+        msiScanned.value = true
+    } catch (e) {
+        addLog('Error: ' + e)
+        msiOrphans.value = []
+    }
+    msiBusy.value = false
+}
+
+function toggleMSI(code) {
+    const idx = msiSelected.value.indexOf(code)
+    if (idx === -1) {
+        msiSelected.value.push(code)
+    } else {
+        msiSelected.value.splice(idx, 1)
+    }
+}
+
+async function handleCleanMSI() {
+    if (msiSelected.value.length === 0) return
+    msiBusy.value = true
+    try {
+        await CleanMSIOrphans(msiSelected.value)
+        await handleScanMSI()
+    } catch (e) {
+        addLog('Error: ' + e)
+    }
+    msiBusy.value = false
+}
+
+async function switchTab(tab) {
+    activeTab.value = tab
+    if (tab === 'database') {
+        if (drives.value.length === 0) await loadDrives()
+        if (backups.value.length === 0) await refreshBackups()
+    }
 }
 
 async function openGitHub() {
@@ -187,7 +372,20 @@ onMounted(async () => {
         </div>
     </div>
 
-    <div class="content">
+    <div class="tabs no-drag">
+        <button class="tab" :class="{ active: activeTab === 'status' }" @click="switchTab('status')">
+            {{ msgs.tabStatus || 'Status' }}
+        </button>
+        <button class="tab" :class="{ active: activeTab === 'database' }" @click="switchTab('database')">
+            {{ msgs.tabDatabase || 'Database' }}
+        </button>
+        <button class="tab" :class="{ active: activeTab === 'tools' }" @click="switchTab('tools')">
+            {{ msgs.tabTools || 'Tools' }}
+        </button>
+    </div>
+
+    <!-- STATUS TAB -->
+    <div class="content" v-show="activeTab === 'status'">
         <div class="info-card">
             <div class="info-row" v-if="windowsVersion">
                 <span class="info-label">{{ msgs.windowsVersionLabel || 'Windows' }}</span>
@@ -195,7 +393,17 @@ onMounted(async () => {
             </div>
             <div class="info-row">
                 <span class="info-label">{{ msgs.installPathLabel || 'Path' }}</span>
-                <span class="info-value" :class="{ muted: !installPath }">{{ pathDisplay }}</span>
+                <span class="info-value-group">
+                    <span class="info-value" :class="{ muted: !installPath }">{{ pathDisplay }}</span>
+                    <span
+                        v-if="installPath"
+                        class="folder-btn no-drag"
+                        :title="msgs.installPathLabel || 'Path'"
+                        @click="openInstallDir"
+                    >
+                        <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
+                    </span>
+                </span>
             </div>
             <div class="info-row">
                 <span class="info-label">{{ msgs.engineVersionLabel || 'Version' }}</span>
@@ -224,11 +432,18 @@ onMounted(async () => {
             </div>
         </div>
 
-        <div v-if="stemsDetected" class="status-card status-success">
+        <div v-if="stemsDetected" class="status-card status-success status-card-row">
             <div class="status-text">
                 <div class="status-title">{{ msgs.stemsStatusLabel || 'STEM Processor' }}</div>
                 <div class="status-detail">{{ stemsStatusText }}</div>
             </div>
+            <span
+                class="folder-btn no-drag"
+                :title="msgs.stemsStatusLabel || 'STEM Processor'"
+                @click="openStemsDir"
+            >
+                <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
+            </span>
         </div>
 
         <div class="actions">
@@ -242,11 +457,153 @@ onMounted(async () => {
             </button>
 
             <button
+                v-if="manifestConfigured"
+                class="btn btn-restore-all no-drag"
+                @click="handleRestore"
+                :disabled="fixing || !installPath"
+            >
+                {{ msgs.restoreButton || 'Restore Fix' }}
+            </button>
+
+            <button
                 v-if="utf8Enabled"
                 class="btn btn-secondary no-drag"
                 @click="handleOpenRegionSettings"
             >
                 {{ msgs.openRegionSettings || 'Open Region Settings' }}
+            </button>
+        </div>
+    </div>
+
+    <!-- DATABASE TAB -->
+    <div class="content" v-show="activeTab === 'database'">
+        <div class="info-card">
+            <div class="info-row">
+                <span class="info-label">{{ msgs.dbLibraryPathLabel || 'Database Path' }}</span>
+                <span class="info-value-group">
+                    <span class="info-value" :class="{ muted: !dbDetected }">{{ dbPathDisplay }}</span>
+                    <span
+                        v-if="dbDetected"
+                        class="folder-btn no-drag"
+                        :title="msgs.dbLibraryPathLabel || 'Database Path'"
+                        @click="openDBDir"
+                    >
+                        <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
+                    </span>
+                </span>
+            </div>
+        </div>
+
+        <div class="library-section">
+            <div class="library-section-title">{{ msgs.dbSelectDriveLabel || 'Select Drive' }}</div>
+            <div class="drive-select-row">
+                <select class="text-input no-drag" v-model="selectedDrive" :disabled="dbBusy || drives.length === 0">
+                    <option value="" disabled>{{ msgs.dbSelectDrivePlaceholder || 'Select a drive' }}</option>
+                    <option v-for="d in drives" :key="d" :value="d">{{ d }}</option>
+                </select>
+                <button
+                    class="btn btn-secondary no-drag drive-confirm-btn"
+                    @click="handleSelectDrive"
+                    :disabled="dbBusy || !selectedDrive"
+                >
+                    {{ msgs.dbSelectDriveConfirm || 'Confirm' }}
+                </button>
+            </div>
+        </div>
+
+        <template v-if="dbDetected">
+            <div class="library-section">
+                <div class="library-section-title">{{ msgs.dbBackupButton || 'Backup' }}</div>
+                <input
+                    class="text-input no-drag"
+                    type="text"
+                    v-model="backupNote"
+                    :placeholder="msgs.dbBackupNotePlaceholder || 'Optional: enter a note'"
+                    :disabled="dbBusy"
+                />
+                <button class="btn btn-primary no-drag" @click="handleBackup" :disabled="dbBusy">
+                    <span v-if="dbBusy" class="loading-spinner"></span>
+                    {{ dbBusy ? (msgs.dbBackingUp || 'Backing up...') : (msgs.dbBackupButton || 'Backup') }}
+                </button>
+            </div>
+
+            <div class="library-section">
+                <div class="library-section-title">{{ msgs.dbRestoreButton || 'Restore' }}</div>
+                <select class="text-input no-drag" v-model="selectedBackup" :disabled="dbBusy || backups.length === 0">
+                    <option value="" disabled>{{ msgs.dbRestoreSelectDate || 'Select date to restore' }}</option>
+                    <option v-for="b in backups" :key="b.filename" :value="b.filename">
+                        {{ b.date }}{{ b.note ? ' — ' + b.note : '' }}
+                    </option>
+                </select>
+                <div v-if="backups.length === 0" class="library-stats">{{ msgs.dbNoBackups || 'No Backups' }}</div>
+                <button
+                    class="btn btn-restore-all no-drag"
+                    @click="handleRestoreDB"
+                    :disabled="dbBusy || !selectedBackup"
+                >
+                    {{ dbBusy ? (msgs.dbRestoring || 'Restoring...') : (msgs.dbRestoreButton || 'Restore') }}
+                </button>
+            </div>
+
+            <div class="library-section">
+                <div class="library-section-title">{{ msgs.dbOptimizeButton || 'Optimize' }}</div>
+                <button class="btn btn-secondary no-drag" @click="handleOptimize" :disabled="dbBusy">
+                    <span v-if="dbBusy" class="loading-spinner"></span>
+                    {{ dbBusy ? (msgs.dbOptimizing || 'Optimizing...') : (msgs.dbOptimizeButton || 'Optimize') }}
+                </button>
+            </div>
+        </template>
+
+        <div v-else class="status-card status-error">
+            <div class="status-text">
+                <div class="status-detail">{{ msgs.dbLibraryNotFound || 'Engine Library not found' }}</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- TOOLS TAB -->
+    <div class="content" v-show="activeTab === 'tools'">
+        <div class="info-card">
+            <div class="info-row">
+                <span class="info-label">{{ msgs.msiCleanupTitle || 'MSI Cleanup' }}</span>
+            </div>
+            <div class="library-stats">{{ msgs.msiCleanupDescription || 'Scan and remove orphaned MSI installation residuals' }}</div>
+        </div>
+
+        <div class="actions">
+            <button class="btn btn-primary no-drag" @click="handleScanMSI" :disabled="msiBusy">
+                <span v-if="msiBusy" class="loading-spinner"></span>
+                {{ msiBusy ? (msgs.msiScanning || 'Scanning...') : (msgs.msiCleanupButton || 'MSI Cleanup') }}
+            </button>
+        </div>
+
+        <div v-if="msiScanned && msiOrphans.length === 0" class="status-card status-success">
+            <div class="status-text">
+                <div class="status-detail">{{ msgs.msiNoOrphans || 'No MSI orphans found' }}</div>
+            </div>
+        </div>
+
+        <div v-if="msiOrphans.length > 0" class="library-section">
+            <div class="library-section-title">{{ msgs.msiCleanupTitle || 'MSI Cleanup' }}</div>
+            <label
+                v-for="o in msiOrphans"
+                :key="o.productCode"
+                class="msi-item no-drag"
+            >
+                <input
+                    type="checkbox"
+                    :checked="msiSelected.includes(o.productCode)"
+                    @change="toggleMSI(o.productCode)"
+                    :disabled="msiBusy"
+                />
+                <span class="msi-name">{{ o.displayName || o.productCode }}</span>
+            </label>
+            <button
+                class="btn btn-restore-all no-drag"
+                @click="handleCleanMSI"
+                :disabled="msiBusy || msiSelected.length === 0"
+            >
+                {{ msiBusy ? (msgs.msiCleaning || 'Cleaning...') : (msgs.msiCleanupButton || 'MSI Cleanup') }}
             </button>
         </div>
     </div>
