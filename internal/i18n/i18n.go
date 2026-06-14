@@ -28,6 +28,7 @@ type Messages struct {
 	ManifestExists          string `json:"manifestExists"`
 	ManifestNotExists       string `json:"manifestNotExists"`
 	FixButton               string `json:"fixButton"`
+	RestoreButton           string `json:"restoreButton"`
 	OpenRegionSettings      string `json:"openRegionSettings"`
 	UTF8AlreadyEnabled      string `json:"utf8AlreadyEnabled"`
 	UTF8AlreadyEnabledTip   string `json:"utf8AlreadyEnabledTip"`
@@ -43,16 +44,23 @@ type Messages struct {
 	WritingRegistry         string `json:"writingRegistry"`
 	RegistryWritten         string `json:"registryWritten"`
 	RegistryWriteError      string `json:"registryWriteError"`
-	RefreshingSystem         string `json:"refreshingSystem"`
-	SystemRefreshed          string `json:"systemRefreshed"`
+	DeletingManifests       string `json:"deletingManifests"`
+	ManifestsDeleted        string `json:"manifestsDeleted"`
+	DeletingRegistry        string `json:"deletingRegistry"`
+	RegistryDeleted         string `json:"registryDeleted"`
+	RefreshingSystem        string `json:"refreshingSystem"`
+	SystemRefreshed         string `json:"systemRefreshed"`
 	FixComplete             string `json:"fixComplete"`
 	FixCompleteTip          string `json:"fixCompleteTip"`
+	RestoreComplete         string `json:"restoreComplete"`
+	RestoreCompleteTip      string `json:"restoreCompleteTip"`
 	FixFailed               string `json:"fixFailed"`
 	LogPrefix               string `json:"logPrefix"`
-	Checking               string `json:"checking"`
+	Checking                string `json:"checking"`
 	StatusChecking          string `json:"statusChecking"`
 	ProgressDetecting       string `json:"progressDetecting"`
 	ProgressFixing          string `json:"progressFixing"`
+	ProgressRestoring       string `json:"progressRestoring"`
 	ProgressDone            string `json:"progressDone"`
 	Language                string `json:"language"`
 	ACPCodePage             string `json:"acpCodePage"`
@@ -66,6 +74,48 @@ type Messages struct {
 	StemsStatusLabel        string `json:"stemsStatusLabel"`
 	StemsDetected           string `json:"stemsDetected"`
 	StemsNotFound           string `json:"stemsNotFound"`
+	RestoreConfirmTitle     string `json:"restoreConfirmTitle"`
+	RestoreConfirmMessage   string `json:"restoreConfirmMessage"`
+	BackupReminderTitle     string `json:"backupReminderTitle"`
+	BackupReminderMessage   string `json:"backupReminderMessage"`
+	TabStatus               string `json:"tabStatus"`
+	TabDatabase             string `json:"tabDatabase"`
+	TabTools                string `json:"tabTools"`
+	DBLibraryPathLabel      string `json:"dbLibraryPathLabel"`
+	DBLibraryNotFound       string `json:"dbLibraryNotFound"`
+	DBBackupButton          string `json:"dbBackupButton"`
+	DBBackupNoteLabel       string `json:"dbBackupNoteLabel"`
+	DBBackupNotePlaceholder string `json:"dbBackupNotePlaceholder"`
+	DBBackingUp             string `json:"dbBackingUp"`
+	DBBackupComplete        string `json:"dbBackupComplete"`
+	DBBackupError           string `json:"dbBackupError"`
+	DBSelectDriveLabel       string `json:"dbSelectDriveLabel"`
+	DBSelectDrivePlaceholder string `json:"dbSelectDrivePlaceholder"`
+	DBSelectDriveConfirm     string `json:"dbSelectDriveConfirm"`
+	DBDriveNotFound          string `json:"dbDriveNotFound"`
+	DBRestoreButton         string `json:"dbRestoreButton"`
+	DBRestoreSelectDate     string `json:"dbRestoreSelectDate"`
+	DBRestoreConfirmTitle   string `json:"dbRestoreConfirmTitle"`
+	DBRestoreConfirmMessage string `json:"dbRestoreConfirmMessage"`
+	DBRestoring             string `json:"dbRestoring"`
+	DBRestoreComplete       string `json:"dbRestoreComplete"`
+	DBOptimizeButton        string `json:"dbOptimizeButton"`
+	DBOptimizing            string `json:"dbOptimizing"`
+	DBOptimizeComplete      string `json:"dbOptimizeComplete"`
+	DBNoteLabel             string `json:"dbNoteLabel"`
+	DBNoneFound             string `json:"dbNoneFound"`
+	DBNoBackups             string `json:"dbNoBackups"`
+	MSICleanupButton        string `json:"msiCleanupButton"`
+	MSICleanupTitle         string `json:"msiCleanupTitle"`
+	MSICleanupDescription   string `json:"msiCleanupDescription"`
+	MSIScanning             string `json:"msiScanning"`
+	MSIFoundOrphans         string `json:"msiFoundOrphans"`
+	MSINoOrphans            string `json:"msiNoOrphans"`
+	MSICleaning             string `json:"msiCleaning"`
+	MSICleanComplete        string `json:"msiCleanComplete"`
+	MSICleanError           string `json:"msiCleanError"`
+	MSIConfirmTitle         string `json:"msiConfirmTitle"`
+	MSIConfirmMessage       string `json:"msiConfirmMessage"`
 }
 
 var translations = map[Lang]Messages{
@@ -82,6 +132,7 @@ var translations = map[Lang]Messages{
 		ManifestExists:        "已配置",
 		ManifestNotExists:     "未配置",
 		FixButton:             "修复中日韩等特殊字符读取问题",
+		RestoreButton:         "还原修复",
 		OpenRegionSettings:    "前往区域设置",
 		UTF8AlreadyEnabled:   "系统已开启 UTF-8 支持",
 		UTF8AlreadyEnabledTip: "检测到系统已开启 UTF-8 支持，建议先前往 控制面板 → 区域 → 管理 → 更改系统区域设置，关闭「使用 Unicode UTF-8 提供全球语言支持」，然后使用本工具按应用级别开启。",
@@ -97,16 +148,23 @@ var translations = map[Lang]Messages{
 		WritingRegistry:       "正在写入注册表...",
 		RegistryWritten:       "注册表写入成功",
 		RegistryWriteError:    "注册表写入失败",
+		DeletingManifests:       "正在删除 manifest 文件...",
+		ManifestsDeleted:        "Manifest 文件已删除",
+		DeletingRegistry:        "正在删除注册表项...",
+		RegistryDeleted:         "注册表项已删除",
 		RefreshingSystem:      "正在刷新系统设置...",
 		SystemRefreshed:       "系统设置已刷新",
 		FixComplete:          "修复完成",
 		FixCompleteTip:        "修复已完成！如果仍遇到字符显示问题，请重启电脑后重试。",
+		RestoreComplete:         "还原完成",
+		RestoreCompleteTip:      "修复已还原！如需重新修复，请再次点击修复按钮。",
 		FixFailed:            "修复失败",
 		LogPrefix:            "[%s] %s",
 		Checking:             "正在检测",
 		StatusChecking:       "正在检测系统状态...",
 		ProgressDetecting:    "检测中...",
 		ProgressFixing:       "修复中...",
+		ProgressRestoring:       "还原中...",
 		ProgressDone:         "完成",
 		Language:             "语言",
 		ACPCodePage:          "ACP 代码页",
@@ -120,6 +178,47 @@ var translations = map[Lang]Messages{
 		StemsStatusLabel:    "STEM 处理器",
 		StemsDetected:       "已检测到",
 		StemsNotFound:       "未检测到",
+		RestoreConfirmTitle:     "确认还原",
+		RestoreConfirmMessage:   "确定要还原修复吗？所有修改将被撤销。",
+		BackupReminderTitle:     "备份提醒",
+		BackupReminderMessage:   "建议在操作前备份数据库，是否继续？",
+		TabStatus:               "状态",
+		TabDatabase:             "数据库",
+		TabTools:                "工具",
+		DBLibraryPathLabel:      "数据库路径",
+		DBLibraryNotFound:       "未找到 Engine Library",
+		DBBackupButton:          "备份数据库",
+		DBBackupNoteLabel:       "备份备注",
+		DBBackupNotePlaceholder: "可选：输入备注信息",
+		DBBackingUp:             "正在备份...",
+		DBBackupComplete:        "备份完成",
+		DBBackupError:           "备份失败",
+		DBRestoreButton:         "还原数据库",
+		DBRestoreSelectDate:     "选择要还原的日期",
+		DBSelectDriveLabel:       "选择盘符",
+		DBSelectDrivePlaceholder: "选择驱动器",
+		DBSelectDriveConfirm:     "确定",
+		DBRestoreConfirmTitle:   "确认还原数据库",
+		DBRestoreConfirmMessage: "确定要还原到选定日期的备份吗？当前数据将被替换。",
+		DBRestoring:             "正在还原...",
+		DBRestoreComplete:       "数据库还原完成",
+		DBOptimizeButton:        "优化数据库",
+		DBOptimizing:            "正在优化...",
+		DBOptimizeComplete:      "优化完成",
+		DBNoteLabel:             "备注",
+		DBNoneFound:             "未找到",
+		DBNoBackups:             "暂无备份",
+		MSICleanupButton:        "MSI 残留清理",
+		MSICleanupTitle:         "MSI 残留清理",
+		MSICleanupDescription:   "扫描并清理系统中无用的 MSI 安装残留",
+		MSIScanning:             "正在扫描...",
+		MSIFoundOrphans:         "发现 %d 个残留",
+		MSINoOrphans:            "未发现 MSI 残留",
+		MSICleaning:             "正在清理...",
+		MSICleanComplete:        "清理完成",
+		MSICleanError:           "清理失败",
+		MSIConfirmTitle:         "确认清理",
+		MSIConfirmMessage:       "确定要清理选中的 MSI 残留吗？此操作不可恢复。",
 	},
 	JA: {
 		AppTitle:              "Engine Tools",
@@ -134,6 +233,7 @@ var translations = map[Lang]Messages{
 		ManifestExists:        "設定済み",
 		ManifestNotExists:     "未設定",
 		FixButton:             "中日韓などの特殊文字の読み取り問題を修正",
+		RestoreButton:         "修正を元に戻す",
 		OpenRegionSettings:    "地域設定を開く",
 		UTF8AlreadyEnabled:   "システムの UTF-8 サポートは既に有効です",
 		UTF8AlreadyEnabledTip: "システムの UTF-8 サポートが既に有効になっています。先に コントロールパネル → 地域 → 管理 → システムロケールの変更 で「Unicode UTF-8 で世界的な言語サポートを提供する」を無効にしてから、このツールでアプリケーションレベルで有効にしてください。",
@@ -149,16 +249,23 @@ var translations = map[Lang]Messages{
 		WritingRegistry:       "レジストリを書き込み中...",
 		RegistryWritten:       "レジストリの書き込みに成功しました",
 		RegistryWriteError:    "レジストリの書き込みに失敗しました",
+		DeletingManifests:       "Manifest ファイルを削除中...",
+		ManifestsDeleted:        "Manifest ファイルを削除しました",
+		DeletingRegistry:        "レジストリエントリを削除中...",
+		RegistryDeleted:         "レジストリエントリを削除しました",
 		RefreshingSystem:      "システム設定を更新中...",
 		SystemRefreshed:       "システム設定を更新しました",
 		FixComplete:          "修正完了",
 		FixCompleteTip:        "修正が完了しました！文字の表示問題が続く場合は、コンピュータを再起動してください。",
+		RestoreComplete:         "復元完了",
+		RestoreCompleteTip:      "修正を元に戻しました。再度修正するには修正ボタンをクリックしてください。",
 		FixFailed:            "修正に失敗しました",
 		LogPrefix:            "[%s] %s",
 		Checking:             "確認中",
 		StatusChecking:       "システム状態を確認中...",
 		ProgressDetecting:    "確認中...",
 		ProgressFixing:       "修正中...",
+		ProgressRestoring:       "復元中...",
 		ProgressDone:         "完了",
 		Language:             "言語",
 		ACPCodePage:          "ACP コードページ",
@@ -172,6 +279,47 @@ var translations = map[Lang]Messages{
 		StemsStatusLabel:    "STEM プロセッサー",
 		StemsDetected:       "検出されました",
 		StemsNotFound:       "検出されません",
+		RestoreConfirmTitle:     "復元の確認",
+		RestoreConfirmMessage:   "修正を元に戻しますか？すべての変更が取り消されます。",
+		BackupReminderTitle:     "バックアップの注意",
+		BackupReminderMessage:   "操作前にデータベースのバックアップを推奨します。続行しますか？",
+		TabStatus:               "ステータス",
+		TabDatabase:             "データベース",
+		TabTools:                "ツール",
+		DBLibraryPathLabel:      "データベースパス",
+		DBLibraryNotFound:       "Engine Library が見つかりません",
+		DBBackupButton:          "バックアップ",
+		DBBackupNoteLabel:       "メモ",
+		DBBackupNotePlaceholder: "任意：メモを入力",
+		DBBackingUp:             "バックアップ中...",
+		DBBackupComplete:        "バックアップ完了",
+		DBBackupError:           "バックアップ失敗",
+		DBRestoreButton:         "復元",
+		DBRestoreSelectDate:     "復元する日付を選択",
+		DBSelectDriveLabel:       "ドライブを選択",
+		DBSelectDrivePlaceholder: "ドライブを選んでください",
+		DBSelectDriveConfirm:     "確認",
+		DBRestoreConfirmTitle:   "データベース復元の確認",
+		DBRestoreConfirmMessage: "選択した日付のバックアップに復元しますか？現在のデータは上書きされます。",
+		DBRestoring:             "復元中...",
+		DBRestoreComplete:       "データベース復元完了",
+		DBOptimizeButton:        "最適化",
+		DBOptimizing:            "最適化中...",
+		DBOptimizeComplete:      "最適化完了",
+		DBNoteLabel:             "メモ",
+		DBNoneFound:             "見つかりません",
+		DBNoBackups:             "バックアップなし",
+		MSICleanupButton:        "MSI クリーンアップ",
+		MSICleanupTitle:         "MSI クリーンアップ",
+		MSICleanupDescription:   "システム内の不要な MSI インストール残留をスキャンして削除します",
+		MSIScanning:             "スキャン中...",
+		MSIFoundOrphans:         "%d 件の残留を発見",
+		MSINoOrphans:            "MSI 残留は見つかりません",
+		MSICleaning:             "クリーンアップ中...",
+		MSICleanComplete:        "クリーンアップ完了",
+		MSICleanError:           "クリーンアップ失敗",
+		MSIConfirmTitle:         "クリーンアップの確認",
+		MSIConfirmMessage:       "選択した MSI 残留を削除しますか？この操作は元に戻せません。",
 	},
 	KO: {
 		AppTitle:              "Engine Tools",
@@ -186,6 +334,7 @@ var translations = map[Lang]Messages{
 		ManifestExists:        "구성됨",
 		ManifestNotExists:     "미구성",
 		FixButton:            "중일한 등 특수 문자 읽기 문제 수정",
+		RestoreButton:         "수정 되돌리기",
 		OpenRegionSettings:    "지역 설정 열기",
 		UTF8AlreadyEnabled:   "시스템 UTF-8 지원이 이미 활성화되어 있습니다",
 		UTF8AlreadyEnabledTip: "시스템 UTF-8 지원이 이미 활성화되어 있습니다. 먼저 제어판 → 지역 → 관리 → 시스템 로캘 변경에서 '유니코드 UTF-8으로 전 세계 언어 지원 제공'을 비활성화한 다음 이 도구로 애플리케이션 수준에서 활성화하세요.",
@@ -201,16 +350,23 @@ var translations = map[Lang]Messages{
 		WritingRegistry:       "레지스트리 쓰는 중...",
 		RegistryWritten:       "레지스트리 쓰기 성공",
 		RegistryWriteError:    "레지스트리 쓰기 실패",
+		DeletingManifests:       "Manifest 파일 삭제 중...",
+		ManifestsDeleted:        "Manifest 파일이 삭제되었습니다",
+		DeletingRegistry:        "레지스트리 항목 삭제 중...",
+		RegistryDeleted:         "레지스트리 항목이 삭제되었습니다",
 		RefreshingSystem:      "시스템 설정 새로고침 중...",
 		SystemRefreshed:        "시스템 설정이 새로고침되었습니다",
 		FixComplete:          "수정 완료",
 		FixCompleteTip:        "수정이 완료되었습니다! 문자 표시 문제가 계속되면 컴퓨터를 재시작하세요.",
+		RestoreComplete:         "복원 완료",
+		RestoreCompleteTip:      "수정이 되돌려졌습니다. 다시 수정하려면 수정 버튼을 클릭하세요.",
 		FixFailed:            "수정 실패",
 		LogPrefix:            "[%s] %s",
 		Checking:             "확인 중",
 		StatusChecking:       "시스템 상태 확인 중...",
 		ProgressDetecting:    "확인 중...",
 		ProgressFixing:       "수정 중...",
+		ProgressRestoring:       "복원 중...",
 		ProgressDone:         "완료",
 		Language:             "언어",
 		ACPCodePage:          "ACP 코드 페이지",
@@ -224,6 +380,47 @@ var translations = map[Lang]Messages{
 		StemsStatusLabel:    "STEM 프로세서",
 		StemsDetected:       "감지됨",
 		StemsNotFound:       "감지되지 않음",
+		RestoreConfirmTitle:     "복원 확인",
+		RestoreConfirmMessage:   "수정 사항을 되돌리시겠습니까? 모든 변경 사항이 취소됩니다.",
+		BackupReminderTitle:     "백업 알림",
+		BackupReminderMessage:   "작업 전에 데이터베이스 백업을 권장합니다. 계속하시겠습니까?",
+		TabStatus:               "상태",
+		TabDatabase:             "데이터베이스",
+		TabTools:                "도구",
+		DBLibraryPathLabel:      "데이터베이스 경로",
+		DBLibraryNotFound:       "Engine Library를 찾을 수 없습니다",
+		DBBackupButton:          "백업",
+		DBBackupNoteLabel:       "메모",
+		DBBackupNotePlaceholder: "선택: 메모 입력",
+		DBBackingUp:             "백업 중...",
+		DBBackupComplete:        "백업 완료",
+		DBBackupError:           "백업 실패",
+		DBRestoreButton:         "복원",
+		DBRestoreSelectDate:     "복원할 날짜 선택",
+		DBSelectDriveLabel:       "드라이브 선택",
+		DBSelectDrivePlaceholder: "데이터베이스를 검색할 드라이브 선택",
+		DBSelectDriveConfirm:     "확인",
+		DBRestoreConfirmTitle:   "데이터베이스 복원 확인",
+		DBRestoreConfirmMessage: "선택한 날짜의 백업으로 복원하시겠습니까? 현재 데이터가 대체됩니다.",
+		DBRestoring:             "복원 중...",
+		DBRestoreComplete:       "데이터베이스 복원 완료",
+		DBOptimizeButton:        "최적화",
+		DBOptimizing:            "최적화 중...",
+		DBOptimizeComplete:      "최적화 완료",
+		DBNoteLabel:             "메모",
+		DBNoneFound:             "찾을 수 없음",
+		DBNoBackups:             "백업 없음",
+		MSICleanupButton:        "MSI 정리",
+		MSICleanupTitle:         "MSI 정리",
+		MSICleanupDescription:   "시스템에서 불필요한 MSI 설치 잔여물을 검사하여 삭제합니다",
+		MSIScanning:             "검사 중...",
+		MSIFoundOrphans:         "%d개의 잔여물 발견",
+		MSINoOrphans:            "MSI 잔여물이 발견되지 않음",
+		MSICleaning:             "정리 중...",
+		MSICleanComplete:        "정리 완료",
+		MSICleanError:           "정리 실패",
+		MSIConfirmTitle:         "정리 확인",
+		MSIConfirmMessage:       "선택한 MSI 잔여물을 삭제하시겠습니까? 이 작업은 되돌릴 수 없습니다.",
 	},
 	EN: {
 		AppTitle:              "Engine Tools",
@@ -238,6 +435,7 @@ var translations = map[Lang]Messages{
 		ManifestExists:        "Configured",
 		ManifestNotExists:     "Not Configured",
 		FixButton:             "Fix CJK Character Reading Issues",
+		RestoreButton:         "Restore Fix",
 		OpenRegionSettings:    "Open Region Settings",
 		UTF8AlreadyEnabled:   "System UTF-8 support is already enabled",
 		UTF8AlreadyEnabledTip: "System UTF-8 support is already enabled. It is recommended to go to Control Panel → Region → Administrative → Change system locale and disable 'Beta: Use Unicode UTF-8 for worldwide language support', then use this tool to enable it at the application level.",
@@ -253,16 +451,23 @@ var translations = map[Lang]Messages{
 		WritingRegistry:       "Writing registry...",
 		RegistryWritten:       "Registry written successfully",
 		RegistryWriteError:    "Failed to write registry",
+		DeletingManifests:       "Deleting manifest files...",
+		ManifestsDeleted:        "Manifest files deleted",
+		DeletingRegistry:        "Deleting registry entries...",
+		RegistryDeleted:         "Registry entries deleted",
 		RefreshingSystem:      "Refreshing system settings...",
 		SystemRefreshed:        "System settings refreshed",
 		FixComplete:          "Fix Complete",
 		FixCompleteTip:        "Fix completed! If you still experience character display issues, please restart your computer.",
+		RestoreComplete:         "Restore Complete",
+		RestoreCompleteTip:      "Fix has been restored! Click the fix button again to re-apply.",
 		FixFailed:            "Fix Failed",
 		LogPrefix:            "[%s] %s",
 		Checking:             "Checking",
 		StatusChecking:       "Checking system status...",
 		ProgressDetecting:    "Detecting...",
 		ProgressFixing:       "Fixing...",
+		ProgressRestoring:       "Restoring...",
 		ProgressDone:         "Done",
 		Language:             "Language",
 		ACPCodePage:          "ACP Code Page",
@@ -276,6 +481,47 @@ var translations = map[Lang]Messages{
 		StemsStatusLabel:    "STEM Processor",
 		StemsDetected:       "Detected",
 		StemsNotFound:       "Not Detected",
+		RestoreConfirmTitle:     "Confirm Restore",
+		RestoreConfirmMessage:   "Are you sure you want to restore the fix? All changes will be reverted.",
+		BackupReminderTitle:     "Backup Reminder",
+		BackupReminderMessage:   "It is recommended to backup your database before proceeding. Continue?",
+		TabStatus:               "Status",
+		TabDatabase:             "Database",
+		TabTools:                "Tools",
+		DBLibraryPathLabel:      "Database Path",
+		DBLibraryNotFound:       "Engine Library not found",
+		DBBackupButton:          "Backup",
+		DBBackupNoteLabel:       "Note",
+		DBBackupNotePlaceholder: "Optional: enter a note",
+		DBBackingUp:             "Backing up...",
+		DBBackupComplete:        "Backup Complete",
+		DBBackupError:           "Backup Failed",
+		DBRestoreButton:         "Restore",
+		DBRestoreSelectDate:     "Select date to restore",
+		DBSelectDriveLabel:       "Select Drive",
+		DBSelectDrivePlaceholder: "Choose a drive to scan for the database",
+		DBSelectDriveConfirm:     "OK",
+		DBRestoreConfirmTitle:   "Confirm Database Restore",
+		DBRestoreConfirmMessage: "Restore to the selected backup date? Current data will be overwritten.",
+		DBRestoring:             "Restoring...",
+		DBRestoreComplete:       "Database Restore Complete",
+		DBOptimizeButton:        "Optimize",
+		DBOptimizing:            "Optimizing...",
+		DBOptimizeComplete:      "Optimize Complete",
+		DBNoteLabel:             "Note",
+		DBNoneFound:             "Not Found",
+		DBNoBackups:             "No Backups",
+		MSICleanupButton:        "MSI Cleanup",
+		MSICleanupTitle:         "MSI Cleanup",
+		MSICleanupDescription:   "Scan and remove orphaned MSI installation residuals",
+		MSIScanning:             "Scanning...",
+		MSIFoundOrphans:         "%d orphans found",
+		MSINoOrphans:            "No MSI orphans found",
+		MSICleaning:             "Cleaning...",
+		MSICleanComplete:        "Cleanup Complete",
+		MSICleanError:           "Cleanup Failed",
+		MSIConfirmTitle:         "Confirm Cleanup",
+		MSIConfirmMessage:       "Delete selected MSI residuals? This operation cannot be undone.",
 	},
 }
 

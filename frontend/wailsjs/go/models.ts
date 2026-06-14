@@ -1,3 +1,26 @@
+export namespace database {
+	
+	export class BackupInfo {
+	    filename: string;
+	    date: string;
+	    size: number;
+	    note: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new BackupInfo(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.filename = source["filename"];
+	        this.date = source["date"];
+	        this.size = source["size"];
+	        this.note = source["note"];
+	    }
+	}
+
+}
+
 export namespace i18n {
 	
 	export class Messages {
@@ -13,6 +36,7 @@ export namespace i18n {
 	    manifestExists: string;
 	    manifestNotExists: string;
 	    fixButton: string;
+	    restoreButton: string;
 	    openRegionSettings: string;
 	    utf8AlreadyEnabled: string;
 	    utf8AlreadyEnabledTip: string;
@@ -28,16 +52,23 @@ export namespace i18n {
 	    writingRegistry: string;
 	    registryWritten: string;
 	    registryWriteError: string;
+	    deletingManifests: string;
+	    manifestsDeleted: string;
+	    deletingRegistry: string;
+	    registryDeleted: string;
 	    refreshingSystem: string;
 	    systemRefreshed: string;
 	    fixComplete: string;
 	    fixCompleteTip: string;
+	    restoreComplete: string;
+	    restoreCompleteTip: string;
 	    fixFailed: string;
 	    logPrefix: string;
 	    checking: string;
 	    statusChecking: string;
 	    progressDetecting: string;
 	    progressFixing: string;
+	    progressRestoring: string;
 	    progressDone: string;
 	    language: string;
 	    acpCodePage: string;
@@ -51,6 +82,48 @@ export namespace i18n {
 	    stemsStatusLabel: string;
 	    stemsDetected: string;
 	    stemsNotFound: string;
+	    restoreConfirmTitle: string;
+	    restoreConfirmMessage: string;
+	    backupReminderTitle: string;
+	    backupReminderMessage: string;
+	    tabStatus: string;
+	    tabDatabase: string;
+	    tabTools: string;
+	    dbLibraryPathLabel: string;
+	    dbLibraryNotFound: string;
+	    dbBackupButton: string;
+	    dbBackupNoteLabel: string;
+	    dbBackupNotePlaceholder: string;
+	    dbBackingUp: string;
+	    dbBackupComplete: string;
+	    dbBackupError: string;
+	    dbSelectDriveLabel: string;
+	    dbSelectDrivePlaceholder: string;
+	    dbSelectDriveConfirm: string;
+	    dbDriveNotFound: string;
+	    dbRestoreButton: string;
+	    dbRestoreSelectDate: string;
+	    dbRestoreConfirmTitle: string;
+	    dbRestoreConfirmMessage: string;
+	    dbRestoring: string;
+	    dbRestoreComplete: string;
+	    dbOptimizeButton: string;
+	    dbOptimizing: string;
+	    dbOptimizeComplete: string;
+	    dbNoteLabel: string;
+	    dbNoneFound: string;
+	    dbNoBackups: string;
+	    msiCleanupButton: string;
+	    msiCleanupTitle: string;
+	    msiCleanupDescription: string;
+	    msiScanning: string;
+	    msiFoundOrphans: string;
+	    msiNoOrphans: string;
+	    msiCleaning: string;
+	    msiCleanComplete: string;
+	    msiCleanError: string;
+	    msiConfirmTitle: string;
+	    msiConfirmMessage: string;
 	
 	    static createFrom(source: any = {}) {
 	        return new Messages(source);
@@ -70,6 +143,7 @@ export namespace i18n {
 	        this.manifestExists = source["manifestExists"];
 	        this.manifestNotExists = source["manifestNotExists"];
 	        this.fixButton = source["fixButton"];
+	        this.restoreButton = source["restoreButton"];
 	        this.openRegionSettings = source["openRegionSettings"];
 	        this.utf8AlreadyEnabled = source["utf8AlreadyEnabled"];
 	        this.utf8AlreadyEnabledTip = source["utf8AlreadyEnabledTip"];
@@ -85,16 +159,23 @@ export namespace i18n {
 	        this.writingRegistry = source["writingRegistry"];
 	        this.registryWritten = source["registryWritten"];
 	        this.registryWriteError = source["registryWriteError"];
+	        this.deletingManifests = source["deletingManifests"];
+	        this.manifestsDeleted = source["manifestsDeleted"];
+	        this.deletingRegistry = source["deletingRegistry"];
+	        this.registryDeleted = source["registryDeleted"];
 	        this.refreshingSystem = source["refreshingSystem"];
 	        this.systemRefreshed = source["systemRefreshed"];
 	        this.fixComplete = source["fixComplete"];
 	        this.fixCompleteTip = source["fixCompleteTip"];
+	        this.restoreComplete = source["restoreComplete"];
+	        this.restoreCompleteTip = source["restoreCompleteTip"];
 	        this.fixFailed = source["fixFailed"];
 	        this.logPrefix = source["logPrefix"];
 	        this.checking = source["checking"];
 	        this.statusChecking = source["statusChecking"];
 	        this.progressDetecting = source["progressDetecting"];
 	        this.progressFixing = source["progressFixing"];
+	        this.progressRestoring = source["progressRestoring"];
 	        this.progressDone = source["progressDone"];
 	        this.language = source["language"];
 	        this.acpCodePage = source["acpCodePage"];
@@ -108,6 +189,48 @@ export namespace i18n {
 	        this.stemsStatusLabel = source["stemsStatusLabel"];
 	        this.stemsDetected = source["stemsDetected"];
 	        this.stemsNotFound = source["stemsNotFound"];
+	        this.restoreConfirmTitle = source["restoreConfirmTitle"];
+	        this.restoreConfirmMessage = source["restoreConfirmMessage"];
+	        this.backupReminderTitle = source["backupReminderTitle"];
+	        this.backupReminderMessage = source["backupReminderMessage"];
+	        this.tabStatus = source["tabStatus"];
+	        this.tabDatabase = source["tabDatabase"];
+	        this.tabTools = source["tabTools"];
+	        this.dbLibraryPathLabel = source["dbLibraryPathLabel"];
+	        this.dbLibraryNotFound = source["dbLibraryNotFound"];
+	        this.dbBackupButton = source["dbBackupButton"];
+	        this.dbBackupNoteLabel = source["dbBackupNoteLabel"];
+	        this.dbBackupNotePlaceholder = source["dbBackupNotePlaceholder"];
+	        this.dbBackingUp = source["dbBackingUp"];
+	        this.dbBackupComplete = source["dbBackupComplete"];
+	        this.dbBackupError = source["dbBackupError"];
+	        this.dbSelectDriveLabel = source["dbSelectDriveLabel"];
+	        this.dbSelectDrivePlaceholder = source["dbSelectDrivePlaceholder"];
+	        this.dbSelectDriveConfirm = source["dbSelectDriveConfirm"];
+	        this.dbDriveNotFound = source["dbDriveNotFound"];
+	        this.dbRestoreButton = source["dbRestoreButton"];
+	        this.dbRestoreSelectDate = source["dbRestoreSelectDate"];
+	        this.dbRestoreConfirmTitle = source["dbRestoreConfirmTitle"];
+	        this.dbRestoreConfirmMessage = source["dbRestoreConfirmMessage"];
+	        this.dbRestoring = source["dbRestoring"];
+	        this.dbRestoreComplete = source["dbRestoreComplete"];
+	        this.dbOptimizeButton = source["dbOptimizeButton"];
+	        this.dbOptimizing = source["dbOptimizing"];
+	        this.dbOptimizeComplete = source["dbOptimizeComplete"];
+	        this.dbNoteLabel = source["dbNoteLabel"];
+	        this.dbNoneFound = source["dbNoneFound"];
+	        this.dbNoBackups = source["dbNoBackups"];
+	        this.msiCleanupButton = source["msiCleanupButton"];
+	        this.msiCleanupTitle = source["msiCleanupTitle"];
+	        this.msiCleanupDescription = source["msiCleanupDescription"];
+	        this.msiScanning = source["msiScanning"];
+	        this.msiFoundOrphans = source["msiFoundOrphans"];
+	        this.msiNoOrphans = source["msiNoOrphans"];
+	        this.msiCleaning = source["msiCleaning"];
+	        this.msiCleanComplete = source["msiCleanComplete"];
+	        this.msiCleanError = source["msiCleanError"];
+	        this.msiConfirmTitle = source["msiConfirmTitle"];
+	        this.msiConfirmMessage = source["msiConfirmMessage"];
 	    }
 	}
 
@@ -138,6 +261,8 @@ export namespace main {
 	    manifestConfigured: boolean;
 	    isAdmin: boolean;
 	    stemsDetected: boolean;
+	    dbDetected: boolean;
+	    dbPath: string;
 	    processRunning: boolean;
 	    runningProcesses: ProcessItem[];
 	
@@ -155,6 +280,8 @@ export namespace main {
 	        this.manifestConfigured = source["manifestConfigured"];
 	        this.isAdmin = source["isAdmin"];
 	        this.stemsDetected = source["stemsDetected"];
+	        this.dbDetected = source["dbDetected"];
+	        this.dbPath = source["dbPath"];
 	        this.processRunning = source["processRunning"];
 	        this.runningProcesses = this.convertValues(source["runningProcesses"], ProcessItem);
 	    }
@@ -176,6 +303,25 @@ export namespace main {
 		    }
 		    return a;
 		}
+	}
+
+}
+
+export namespace msi {
+	
+	export class OrphanedMSI {
+	    productCode: string;
+	    displayName: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new OrphanedMSI(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.productCode = source["productCode"];
+	        this.displayName = source["displayName"];
+	    }
 	}
 
 }

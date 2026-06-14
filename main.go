@@ -82,10 +82,10 @@ func main() {
 
 	err := wails.Run(&options.App{
 		Title:            "Engine Tools",
-		Width:            520,
-		Height:           680,
-		MinWidth:         480,
-		MinHeight:        600,
+		Width:            640,
+		Height:           820,
+		MinWidth:         600,
+		MinHeight:        720,
 		AssetServer:      &assetserver.Options{
 			Assets: assets,
 		},
