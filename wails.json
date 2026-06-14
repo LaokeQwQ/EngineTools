@@ -13,7 +13,7 @@
   "info": {
     "companyName": "EngineTools",
     "productName": "Engine DJ Unicode Fix Tool",
-    "productVersion": "1.4.0",
+    "productVersion": "1.5.0",
     "copyright": "Copyright 2024 EngineTools. Licensed under Apache 2.0.",
     "comments": "Fix CJK character display issues in Engine DJ by applying per-application UTF-8 manifest."
   }

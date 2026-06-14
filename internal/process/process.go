@@ -212,3 +212,20 @@ func enumProcesses() ([]uint32, error) {
 func OpenControlPanel() error {
 	return exec.Command("cmd", "/c", "start", "control", "intl.cpl").Start()
 }
+
+// OpenDirectory opens the given directory in Windows Explorer. If path points
+// to a file, its containing folder is opened with the file selected.
+func OpenDirectory(path string) error {
+	if path == "" {
+		return fmt.Errorf("empty path")
+	}
+	info, err := os.Stat(path)
+	if err != nil {
+		return err
+	}
+	if info.IsDir() {
+		return exec.Command("explorer", path).Start()
+	}
+	// File: open its folder and select it.
+	return exec.Command("explorer", "/select,", path).Start()
+}
