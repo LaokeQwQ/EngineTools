@@ -63,21 +63,9 @@ type Messages struct {
 	AdminStatusLabel        string `json:"adminStatusLabel"`
 	AdminYes                string `json:"adminYes"`
 	AdminNo                 string `json:"adminNo"`
-
-	// Overview restore
-	LibraryStatusLabel string `json:"libraryStatusLabel"`
-	RestoringOverview  string `json:"restoringOverview"`
-	RestoreComplete    string `json:"restoreComplete"`
-	RestoreError       string `json:"restoreError"`
-	RestoreWritten     string `json:"restoreWritten"`
-	RestoreSkipped     string `json:"restoreSkipped"`
-	RestoreButton      string `json:"restoreButton"`
-	RestoreConfirmTitle string `json:"restoreConfirmTitle"`
-	RestoreConfirmMsg   string `json:"restoreConfirmMsg"`
-	RestoreDone        string `json:"restoreDone"`
-	RestoreDoneTip     string `json:"restoreDoneTip"`
-	RestoreNone        string `json:"restoreNone"`
-	RestoreAllButton   string `json:"restoreAllButton"`
+	StemsStatusLabel        string `json:"stemsStatusLabel"`
+	StemsDetected           string `json:"stemsDetected"`
+	StemsNotFound           string `json:"stemsNotFound"`
 }
 
 var translations = map[Lang]Messages{
@@ -129,20 +117,9 @@ var translations = map[Lang]Messages{
 		AdminStatusLabel:     "管理员权限",
 		AdminYes:            "已获取",
 		AdminNo:             "未获取",
-
-		LibraryStatusLabel:  "音乐库概览文件",
-		RestoringOverview:   "正在恢复概览文件",
-		RestoreComplete:     "恢复完成",
-		RestoreError:        "恢复失败",
-		RestoreWritten:      "已写入",
-		RestoreSkipped:      "已跳过",
-		RestoreButton:       "恢复缺失的波形概览文件",
-		RestoreConfirmTitle: "确认恢复",
-		RestoreConfirmMsg:   "检测到 %d 个音轨缺少波形概览文件（共 %d 个）。\n\n是否从数据库恢复？",
-		RestoreDone:         "恢复完成",
-		RestoreDoneTip:      "波形概览文件恢复完成，请重新打开 Engine DJ 确认。",
-		RestoreNone:         "所有音轨的概览文件均已存在，无需恢复。",
-		RestoreAllButton:    "修复数据库波形缺失",
+		StemsStatusLabel:    "STEM 处理器",
+		StemsDetected:       "已检测到",
+		StemsNotFound:       "未检测到",
 	},
 	JA: {
 		AppTitle:              "Engine Tools",
@@ -192,20 +169,9 @@ var translations = map[Lang]Messages{
 		AdminStatusLabel:     "管理者権限",
 		AdminYes:            "取得済み",
 		AdminNo:             "未取得",
-
-		LibraryStatusLabel:  "波形プレビューファイル",
-		RestoringOverview:   "プレビューファイルを復元中",
-		RestoreComplete:     "復元完了",
-		RestoreError:        "復元失敗",
-		RestoreWritten:      "書き込み済み",
-		RestoreSkipped:      "スキップ済み",
-		RestoreButton:       "欠落した波形プレビューファイルを復元",
-		RestoreConfirmTitle: "復元の確認",
-		RestoreConfirmMsg:   "%d 曲の波形プレビューファイルが欠落しています（全 %d 曲）。\n\nデータベースから復元しますか？",
-		RestoreDone:         "復元完了",
-		RestoreDoneTip:      "波形プレビューファイルの復元が完了しました。Engine DJ を再起動して確認してください。",
-		RestoreNone:         "すべてのトラックのプレビューファイルが存在します。復元は不要です。",
-		RestoreAllButton:    "データベース波形の欠損を修復",
+		StemsStatusLabel:    "STEM プロセッサー",
+		StemsDetected:       "検出されました",
+		StemsNotFound:       "検出されません",
 	},
 	KO: {
 		AppTitle:              "Engine Tools",
@@ -255,20 +221,9 @@ var translations = map[Lang]Messages{
 		AdminStatusLabel:     "관리자 권한",
 		AdminYes:            "활성",
 		AdminNo:             "미활성",
-
-		LibraryStatusLabel:  "파형 미리보기 파일",
-		RestoringOverview:   "미리보기 파일 복원 중",
-		RestoreComplete:     "복원 완료",
-		RestoreError:        "복원 실패",
-		RestoreWritten:      "작성됨",
-		RestoreSkipped:      "건너뜀",
-		RestoreButton:       "누락된 파형 미리보기 파일 복원",
-		RestoreConfirmTitle: "복원 확인",
-		RestoreConfirmMsg:   "%d개 트랙의 파형 미리보기 파일이 누락되었습니다（전체 %d개）.\n\n데이터베이스에서 복원하시겠습니까？",
-		RestoreDone:         "복원 완료",
-		RestoreDoneTip:      "파형 미리보기 파일 복원이 완료되었습니다. Engine DJ를 재시작하여 확인하세요.",
-		RestoreNone:         "모든 트랙의 미리보기 파일이 존재합니다. 복원이 필요하지 않습니다.",
-		RestoreAllButton:    "데이터베이스 파형 누락 수정",
+		StemsStatusLabel:    "STEM 프로세서",
+		StemsDetected:       "감지됨",
+		StemsNotFound:       "감지되지 않음",
 	},
 	EN: {
 		AppTitle:              "Engine Tools",
@@ -318,20 +273,9 @@ var translations = map[Lang]Messages{
 		AdminStatusLabel:     "Admin Privileges",
 		AdminYes:            "Granted",
 		AdminNo:             "Not Granted",
-
-		LibraryStatusLabel:  "Waveform Preview Files",
-		RestoringOverview:   "Restoring preview files",
-		RestoreComplete:     "Restore complete",
-		RestoreError:        "Restore failed",
-		RestoreWritten:      "written",
-		RestoreSkipped:      "skipped",
-		RestoreButton:       "Restore Missing Waveform Preview Files",
-		RestoreConfirmTitle: "Confirm Restore",
-		RestoreConfirmMsg:   "%d track(s) are missing waveform preview files (total: %d).\n\nRestore from database?",
-		RestoreDone:         "Restore Complete",
-		RestoreDoneTip:      "Waveform preview files restored. Restart Engine DJ to verify.",
-		RestoreNone:         "All track preview files are present. No restore needed.",
-		RestoreAllButton:    "Fix Missing Waveform Data",
+		StemsStatusLabel:    "STEM Processor",
+		StemsDetected:       "Detected",
+		StemsNotFound:       "Not Detected",
 	},
 }
 
