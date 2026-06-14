@@ -113,3 +113,15 @@ export function SelectDrive(arg1) {
 export function SetLanguage(arg1) {
   return window['go']['main']['App']['SetLanguage'](arg1);
 }
+
+export function USBUnlockAvailable() {
+  return window['go']['main']['App']['USBUnlockAvailable']();
+}
+
+export function USBUnlockKill(arg1) {
+  return window['go']['main']['App']['USBUnlockKill'](arg1);
+}
+
+export function USBUnlockScan(arg1) {
+  return window['go']['main']['App']['USBUnlockScan'](arg1);
+}

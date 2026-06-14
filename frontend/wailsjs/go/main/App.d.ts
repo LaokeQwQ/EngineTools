@@ -5,6 +5,7 @@ import {main} from '../models';
 import {id3} from '../models';
 import {database} from '../models';
 import {msi} from '../models';
+import {unlock} from '../models';
 
 export function BackupDatabase(arg1:string):Promise<string>;
 
@@ -61,3 +62,9 @@ export function ScanMSIOrphans():Promise<Array<msi.OrphanedMSI>>;
 export function SelectDrive(arg1:string):Promise<string>;
 
 export function SetLanguage(arg1:string):Promise<string>;
+
+export function USBUnlockAvailable():Promise<string>;
+
+export function USBUnlockKill(arg1:string):Promise<string>;
+
+export function USBUnlockScan(arg1:string):Promise<Array<unlock.HandleInfo>>;

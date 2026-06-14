@@ -18,6 +18,7 @@ import (
 	"EngineTools/internal/msi"
 	"EngineTools/internal/process"
 	"EngineTools/internal/registry"
+	"EngineTools/internal/unlock"
 )
 
 type App struct {
@@ -751,6 +752,64 @@ func (a *App) ID3ClearAll(filePath string) string {
 		return err.Error()
 	}
 	a.log(fmt.Sprintf("All tags cleared: %s", filepath.Base(filePath)))
+	return "ok"
+}
+
+// ---- USB Unlock ----
+
+// USBUnlockAvailable checks if any removable/external drive with "Engine Library" is present.
+// Returns the drive letter (e.g. "E:") if found, otherwise "".
+func (a *App) USBUnlockAvailable() string {
+	for _, d := range database.ListDrives() {
+		root := d + `\`
+		// Skip C: (system drive)
+		if strings.ToUpper(d) == "C:" {
+			continue
+		}
+		if unlock.DriveHasEngineLibrary(root) {
+			return d
+		}
+	}
+	return ""
+}
+
+// USBUnlockScan scans for processes blocking the given drive (excluding Engine DJ apps).
+func (a *App) USBUnlockScan(drive string) []unlock.HandleInfo {
+	procs, err := unlock.FindBlockingProcesses(drive)
+	if err != nil {
+		a.log(fmt.Sprintf("USB unlock scan error: %v", err))
+		return []unlock.HandleInfo{}
+	}
+	if len(procs) == 0 {
+		a.log("No blocking processes found")
+		return []unlock.HandleInfo{}
+	}
+	a.log(fmt.Sprintf("Found %d blocking process(es)", len(procs)))
+	return procs
+}
+
+// USBUnlockKill terminates blocking processes on the given drive.
+func (a *App) USBUnlockKill(drive string) string {
+	procs, err := unlock.FindBlockingProcesses(drive)
+	if err != nil {
+		a.log(fmt.Sprintf("USB unlock error: %v", err))
+		return err.Error()
+	}
+	if len(procs) == 0 {
+		a.log("No blocking processes to kill")
+		return "ok"
+	}
+
+	pids := make([]uint32, len(procs))
+	for i, p := range procs {
+		pids[i] = p.PID
+	}
+
+	killed, errs := unlock.KillProcesses(pids)
+	a.log(fmt.Sprintf("Killed %d process(es)", killed))
+	for _, e := range errs {
+		a.log(fmt.Sprintf("  %s", e))
+	}
 	return "ok"
 }
 
