@@ -12,7 +12,6 @@ import (
 	"golang.org/x/sys/windows"
 
 	"EngineTools/internal/i18n"
-	"EngineTools/internal/library"
 	"EngineTools/internal/manifest"
 	"EngineTools/internal/process"
 	"EngineTools/internal/registry"
@@ -28,6 +27,8 @@ type App struct {
 	UTF8Enabled         bool
 	ManifestConfigured  bool
 	IsAdmin             bool
+	StemsPath           string
+	StemsDetected       bool
 	Progress            float64
 }
 
@@ -39,6 +40,7 @@ type StatusInfo struct {
 	ACPValue           string         `json:"acpValue"`
 	ManifestConfigured bool           `json:"manifestConfigured"`
 	IsAdmin            bool           `json:"isAdmin"`
+	StemsDetected      bool           `json:"stemsDetected"`
 	ProcessRunning     bool           `json:"processRunning"`
 	RunningProcesses   []ProcessItem  `json:"runningProcesses"`
 }
@@ -59,6 +61,21 @@ func NewApp() *App {
 func (a *App) startup(ctx context.Context) {
 	a.ctx = ctx
 	go a.detectStatus()
+}
+
+// findStemsProcessorDir locates the EnginePrime bin directory that contains
+// stems-processor.exe. Returns the directory and true if found.
+func findStemsProcessorDir() (string, bool) {
+	localAppData := os.Getenv("LOCALAPPDATA")
+	if localAppData == "" {
+		return "", false
+	}
+	binDir := filepath.Join(localAppData, "AIR Music Technology", "EnginePrime", "bin")
+	exePath := filepath.Join(binDir, "stems-processor.exe")
+	if _, err := os.Stat(exePath); err != nil {
+		return "", false
+	}
+	return binDir, true
 }
 
 func (a *App) log(msg string) {
@@ -116,9 +133,19 @@ func (a *App) detectStatus() {
 	}
 	a.setProgress(0.65)
 
+	a.StemsPath, a.StemsDetected = findStemsProcessorDir()
+	if a.StemsDetected {
+		a.log(fmt.Sprintf("%s: %s", msgs.StemsStatusLabel, a.StemsPath))
+	} else {
+		a.log(fmt.Sprintf("%s: %s", msgs.StemsStatusLabel, msgs.StemsNotFound))
+	}
+
 	manifestOK, _ := registry.GetPreferExternalManifest()
 	if a.InstallPath != "" {
 		manifestOK = manifestOK && manifest.ManifestExists(a.InstallPath)
+	}
+	if a.StemsDetected {
+		manifestOK = manifestOK && manifest.ManifestExists(a.StemsPath)
 	}
 	a.ManifestConfigured = manifestOK
 
@@ -164,6 +191,7 @@ func (a *App) GetStatus() StatusInfo {
 		ACPValue:           acpValue,
 		ManifestConfigured: a.ManifestConfigured,
 		IsAdmin:            a.IsAdmin,
+		StemsDetected:      a.StemsDetected,
 		ProcessRunning:     len(running) > 0,
 		RunningProcesses:   procs,
 	}
@@ -222,18 +250,28 @@ func (a *App) FixCJKIssues() string {
 	}
 	a.setProgress(0.3)
 
-	exePath := filepath.Join(a.InstallPath, "Engine DJ.exe")
-	if _, err := os.Stat(exePath); os.IsNotExist(err) {
+	exes, err := manifest.ListExes(a.InstallPath)
+	if err != nil || len(exes) == 0 {
 		a.log(msgs.ExeNotFound)
 		return msgs.ExeNotFound
 	}
 
 	a.log(msgs.WritingManifest)
-	if err := manifest.WriteManifest(a.InstallPath); err != nil {
+	count, err := manifest.WriteManifest(a.InstallPath)
+	if err != nil {
 		a.log(fmt.Sprintf("%s: %v", msgs.ManifestWriteError, err))
 		return msgs.ManifestWriteError
 	}
-	a.log(msgs.ManifestWritten)
+	a.log(fmt.Sprintf("%s (%d)", msgs.ManifestWritten, count))
+
+	if a.StemsDetected && a.StemsPath != "" {
+		stemsCount, err := manifest.WriteManifest(a.StemsPath)
+		if err != nil {
+			a.log(fmt.Sprintf("%s: %v", msgs.ManifestWriteError, err))
+		} else {
+			a.log(fmt.Sprintf("%s: STEM (%d)", msgs.ManifestWritten, stemsCount))
+		}
+	}
 	a.setProgress(0.6)
 
 	a.log(msgs.WritingRegistry)
@@ -308,103 +346,6 @@ func (a *App) GetAvailableLanguages() []map[string]string {
 		}
 	}
 	return result
-}
-
-// LibraryInfo is the JSON-serialisable version of library.DBInfo.
-type LibraryInfo struct {
-	Path        string `json:"path"`
-	Drive       string `json:"drive"`
-	UUID        string `json:"uuid"`
-	TotalTracks int    `json:"totalTracks"`
-	MissingRGB  int    `json:"missingRGB"`
-}
-
-// ScanLibraries scans all drives for Engine Library databases and returns status.
-func (a *App) ScanLibraries() []LibraryInfo {
-	dbs := library.ScanAll()
-	result := make([]LibraryInfo, len(dbs))
-	for i, d := range dbs {
-		result[i] = LibraryInfo{
-			Path:        d.Path,
-			Drive:       d.Drive,
-			UUID:        d.UUID,
-			TotalTracks: d.TotalTracks,
-			MissingRGB:  d.MissingRGB,
-		}
-	}
-	return result
-}
-
-// RestoreOverviewFiles restores missing .rgb overview files for the given DB path.
-func (a *App) RestoreOverviewFiles(dbPath string) string {
-	msgs := i18n.Get(a.lang)
-	a.setProgress(0)
-	a.log(fmt.Sprintf("%s: %s", msgs.RestoringOverview, dbPath))
-
-	res, err := library.Restore(dbPath, func(p float64) {
-		a.setProgress(p)
-	})
-	if err != nil {
-		a.log(fmt.Sprintf("%s: %v", msgs.RestoreError, err))
-		return "error: " + err.Error()
-	}
-
-	a.log(fmt.Sprintf("%s: %s %d, %s %d",
-		msgs.RestoreComplete,
-		msgs.RestoreWritten, res.Written,
-		msgs.RestoreSkipped, res.Skipped,
-	))
-	a.setProgress(1.0)
-
-	wailsRuntime.EventsEmit(a.ctx, "statusUpdate", a.GetStatus())
-	return "ok"
-}
-
-// RestoreAllLibraries scans all drives and restores missing .rgb files for every Engine Library found.
-func (a *App) RestoreAllLibraries() string {
-	msgs := i18n.Get(a.lang)
-	a.setProgress(0)
-	a.log(msgs.RestoringOverview + "...")
-
-	dbs := library.ScanAll()
-	if len(dbs) == 0 {
-		a.log(msgs.InstallPathNotFound)
-		return "none"
-	}
-
-	totalWritten := 0
-	totalSkipped := 0
-	totalErrors := 0
-
-	for idx, d := range dbs {
-		base := float64(idx) / float64(len(dbs))
-		a.log(fmt.Sprintf("%s: %s (%d missing)", msgs.RestoringOverview, d.Drive, d.MissingRGB))
-		res, err := library.Restore(d.Path, func(p float64) {
-			a.setProgress(base + p/float64(len(dbs)))
-		})
-		if err != nil {
-			a.log(fmt.Sprintf("%s %s: %v", msgs.RestoreError, d.Drive, err))
-			totalErrors++
-			continue
-		}
-		totalWritten += res.Written
-		totalSkipped += res.Skipped
-		totalErrors += res.Errors
-	}
-
-	a.log(fmt.Sprintf("%s: %s %d, %s %d",
-		msgs.RestoreComplete,
-		msgs.RestoreWritten, totalWritten,
-		msgs.RestoreSkipped, totalSkipped,
-	))
-	a.setProgress(1.0)
-
-	wailsRuntime.EventsEmit(a.ctx, "libraryRestored", nil)
-
-	if totalErrors > 0 {
-		return fmt.Sprintf("partial: %d errors", totalErrors)
-	}
-	return "ok"
 }
 
 func checkIsAdmin() bool {

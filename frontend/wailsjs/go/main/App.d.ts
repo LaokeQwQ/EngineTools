@@ -19,10 +19,4 @@ export function OpenRepository():Promise<void>;
 
 export function Refresh():Promise<main.StatusInfo>;
 
-export function RestoreAllLibraries():Promise<string>;
-
-export function RestoreOverviewFiles(arg1:string):Promise<string>;
-
-export function ScanLibraries():Promise<Array<main.LibraryInfo>>;
-
 export function SetLanguage(arg1:string):Promise<string>;
