@@ -6,6 +6,10 @@ export function BackupDatabase(arg1) {
   return window['go']['main']['App']['BackupDatabase'](arg1);
 }
 
+export function CheckForUpdates(arg1) {
+  return window['go']['main']['App']['CheckForUpdates'](arg1);
+}
+
 export function CleanMSIOrphans(arg1) {
   return window['go']['main']['App']['CleanMSIOrphans'](arg1);
 }

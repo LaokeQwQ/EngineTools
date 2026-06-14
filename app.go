@@ -20,6 +20,7 @@ import (
 	"EngineTools/internal/process"
 	"EngineTools/internal/registry"
 	"EngineTools/internal/unlock"
+	"EngineTools/internal/update"
 )
 
 type App struct {
@@ -850,6 +851,25 @@ func (a *App) MIDI2Enable() string {
 	}
 	a.log(fmt.Sprintf("MIDI 2.0 re-enabled (%d services)", count))
 	return "ok"
+}
+
+// CheckForUpdates checks for new releases (Forgejo priority, GitHub fallback)
+func (a *App) CheckForUpdates(currentVersion string) map[string]interface{} {
+	release, hasUpdate, err := update.CheckUpdate(currentVersion)
+	if err != nil {
+		a.log(fmt.Sprintf("Update check failed: %v", err))
+		return map[string]interface{}{
+			"error": err.Error(),
+		}
+	}
+
+	return map[string]interface{}{
+		"hasUpdate": hasUpdate,
+		"version":   release.TagName,
+		"name":      release.Name,
+		"notes":     release.Body,
+		"url":       release.HTMLURL,
+	}
 }
 
 func (a *App) GetMessages() i18n.Messages {
