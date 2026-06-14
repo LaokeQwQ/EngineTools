@@ -263,11 +263,11 @@ async function loadDrives() {
     }
 }
 
-async function handleSelectDrive() {
-    if (!selectedDrive.value) return
+async function handleClickDrive(drive) {
+    selectedDrive.value = drive
     dbBusy.value = true
     try {
-        await SelectDrive(selectedDrive.value)
+        await SelectDrive(drive)
     } catch (e) {
         addLog('Error: ' + e)
     }
@@ -477,13 +477,28 @@ onMounted(async () => {
 
     <!-- DATABASE TAB -->
     <div class="content" v-show="activeTab === 'database'">
-        <div class="info-card">
+        <div class="library-section">
+            <div class="library-section-title">{{ msgs.dbSelectDriveLabel || 'Select Drive' }}</div>
+            <div class="drive-grid no-drag">
+                <button
+                    v-for="d in drives"
+                    :key="d"
+                    class="drive-chip"
+                    :class="{ active: selectedDrive === d }"
+                    :disabled="dbBusy"
+                    @click="handleClickDrive(d)"
+                >
+                    {{ d }}
+                </button>
+            </div>
+        </div>
+
+        <div class="info-card" v-if="dbDetected">
             <div class="info-row">
                 <span class="info-label">{{ msgs.dbLibraryPathLabel || 'Database Path' }}</span>
                 <span class="info-value-group">
-                    <span class="info-value" :class="{ muted: !dbDetected }">{{ dbPathDisplay }}</span>
+                    <span class="info-value">{{ dbPathDisplay }}</span>
                     <span
-                        v-if="dbDetected"
                         class="folder-btn no-drag"
                         :title="msgs.dbLibraryPathLabel || 'Database Path'"
                         @click="openDBDir"
@@ -493,21 +508,9 @@ onMounted(async () => {
                 </span>
             </div>
         </div>
-
-        <div class="library-section">
-            <div class="library-section-title">{{ msgs.dbSelectDriveLabel || 'Select Drive' }}</div>
-            <div class="drive-select-row">
-                <select class="text-input no-drag" v-model="selectedDrive" :disabled="dbBusy || drives.length === 0">
-                    <option value="" disabled>{{ msgs.dbSelectDrivePlaceholder || 'Select a drive' }}</option>
-                    <option v-for="d in drives" :key="d" :value="d">{{ d }}</option>
-                </select>
-                <button
-                    class="btn btn-secondary no-drag drive-confirm-btn"
-                    @click="handleSelectDrive"
-                    :disabled="dbBusy || !selectedDrive"
-                >
-                    {{ msgs.dbSelectDriveConfirm || 'Confirm' }}
-                </button>
+        <div v-else-if="selectedDrive && !dbDetected" class="status-card status-error">
+            <div class="status-text">
+                <div class="status-detail">{{ msgs.dbLibraryNotFound || 'Engine Library not found' }}</div>
             </div>
         </div>
 
@@ -553,12 +556,6 @@ onMounted(async () => {
                 </button>
             </div>
         </template>
-
-        <div v-else class="status-card status-error">
-            <div class="status-text">
-                <div class="status-detail">{{ msgs.dbLibraryNotFound || 'Engine Library not found' }}</div>
-            </div>
-        </div>
     </div>
 
     <!-- TOOLS TAB -->

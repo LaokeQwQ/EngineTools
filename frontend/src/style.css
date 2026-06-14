@@ -647,3 +647,44 @@ select.text-input {
     padding: 9px 16px;
     white-space: nowrap;
 }
+
+/* Drive chip grid */
+.drive-grid {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.drive-chip {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 48px;
+    padding: 8px 14px;
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--border);
+    background: var(--bg-card);
+    color: var(--text);
+    font-size: 13px;
+    font-weight: 500;
+    font-family: var(--font-sans);
+    cursor: pointer;
+    transition: background 0.15s, border-color 0.15s, color 0.15s;
+    outline: none;
+}
+
+.drive-chip:hover:not(:disabled) {
+    background: var(--bg-card-hover);
+    border-color: var(--text-dim);
+}
+
+.drive-chip.active {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: #fff;
+}
+
+.drive-chip:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+}
