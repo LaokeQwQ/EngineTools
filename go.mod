@@ -3,6 +3,7 @@ module EngineTools
 go 1.25.0
 
 require (
+	github.com/bogem/id3v2/v2 v2.1.4
 	github.com/mattn/go-sqlite3 v1.14.45
 	github.com/wailsapp/wails/v2 v2.12.0
 	golang.org/x/sys v0.42.0

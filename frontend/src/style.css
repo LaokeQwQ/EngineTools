@@ -688,3 +688,43 @@ select.text-input {
     opacity: 0.4;
     cursor: not-allowed;
 }
+
+/* ID3 Editor */
+.id3-cover-row {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+}
+
+.id3-cover-img {
+    width: 72px;
+    height: 72px;
+    border-radius: var(--radius-sm);
+    object-fit: cover;
+    border: 1px solid var(--border);
+    flex-shrink: 0;
+}
+
+.id3-cover-placeholder {
+    width: 72px;
+    height: 72px;
+    border-radius: var(--radius-sm);
+    border: 1px dashed var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 11px;
+    color: var(--text-muted);
+    flex-shrink: 0;
+}
+
+.id3-cover-actions {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.id3-cover-btn {
+    padding: 6px 12px;
+    font-size: 12px;
+}
