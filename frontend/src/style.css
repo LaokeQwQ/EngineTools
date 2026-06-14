@@ -131,31 +131,32 @@ html, body {
     cursor: pointer;
     transition: all 0.15s;
     font-weight: 500;
-    animation: pulse 2s infinite;
 }
 
 .update-badge:hover {
     background: var(--accent-hover);
-    transform: scale(1.05);
 }
 
 .update-badge.checking {
     background: var(--bg-card);
     color: var(--text-dim);
     cursor: default;
-    animation: none;
 }
 
 .update-check-btn {
     font-size: 14px;
     cursor: pointer;
     opacity: 0.6;
-    transition: all 0.15s;
+    transition: opacity 0.15s;
+    background: none;
+    border: none;
+    padding: 0;
+    display: inline-flex;
+    align-items: center;
 }
 
 .update-check-btn:hover {
     opacity: 1;
-    transform: rotate(180deg);
 }
 
 @keyframes pulse {
@@ -702,20 +703,30 @@ select.text-input {
 
 .drive-chip {
     display: inline-flex;
+    flex-direction: column;
     align-items: center;
     justify-content: center;
-    min-width: 48px;
-    padding: 8px 14px;
+    min-width: 72px;
+    padding: 10px 12px;
+    gap: 2px;
     border-radius: var(--radius-sm);
     border: 1px solid var(--border);
     background: var(--bg-card);
     color: var(--text);
-    font-size: 13px;
-    font-weight: 500;
     font-family: var(--font-sans);
     cursor: pointer;
     transition: background 0.15s, border-color 0.15s, color 0.15s;
     outline: none;
+}
+
+.drive-letter {
+    font-size: 14px;
+    font-weight: 600;
+}
+
+.drive-count {
+    font-size: 11px;
+    opacity: 0.7;
 }
 
 .drive-chip:hover:not(:disabled) {
@@ -727,6 +738,10 @@ select.text-input {
     background: var(--accent);
     border-color: var(--accent);
     color: #fff;
+}
+
+.drive-chip.active .drive-count {
+    opacity: 0.9;
 }
 
 .drive-chip:disabled {
@@ -772,4 +787,201 @@ select.text-input {
 .id3-cover-btn {
     padding: 6px 12px;
     font-size: 12px;
+}
+
+/* Log Analysis */
+.log-stats-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 8px;
+    margin-bottom: 12px;
+}
+
+.log-stat-item {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    padding: 10px;
+    text-align: center;
+}
+
+.log-stat-value {
+    font-size: 20px;
+    font-weight: 600;
+    color: var(--text);
+}
+
+.log-stat-value.warning {
+    color: #f0a030;
+}
+
+.log-stat-value.error {
+    color: #e05050;
+}
+
+.log-stat-label {
+    font-size: 11px;
+    color: var(--text-dim);
+    margin-top: 2px;
+}
+
+.log-message-list {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    margin-top: 6px;
+}
+
+.log-message-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 8px;
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    padding: 8px 10px;
+    font-size: 12px;
+}
+
+.log-message-text {
+    color: var(--text);
+    word-break: break-word;
+    flex: 1;
+    min-width: 0;
+}
+
+.log-message-count {
+    color: var(--text-dim);
+    font-weight: 600;
+    flex-shrink: 0;
+}
+
+/* Playlist */
+.playlist-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-top: 6px;
+}
+
+.playlist-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 5px 10px;
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    font-size: 12px;
+    color: var(--text);
+    cursor: pointer;
+    transition: background 0.15s, border-color 0.15s;
+}
+
+.playlist-chip:hover {
+    background: var(--bg-card-hover);
+    border-color: var(--text-dim);
+}
+
+.playlist-chip.active {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: #fff;
+}
+
+.playlist-chip-count {
+    font-size: 10px;
+    opacity: 0.6;
+}
+
+.playlist-track-list {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    max-height: 400px;
+    overflow-y: auto;
+}
+
+.playlist-track-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 8px;
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    font-size: 12px;
+}
+
+.playlist-track-row:hover {
+    background: var(--bg-card-hover);
+}
+
+.playlist-track-num {
+    width: 24px;
+    text-align: center;
+    color: var(--text-dim);
+    font-size: 11px;
+    flex-shrink: 0;
+}
+
+.playlist-track-info {
+    flex: 1;
+    min-width: 0;
+}
+
+.playlist-track-title {
+    color: var(--text);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.playlist-track-artist {
+    color: var(--text-dim);
+    font-size: 11px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.playlist-track-bpm {
+    color: var(--accent);
+    font-size: 11px;
+    flex-shrink: 0;
+    width: 32px;
+    text-align: right;
+}
+
+.playlist-track-time {
+    color: var(--text-dim);
+    font-size: 11px;
+    flex-shrink: 0;
+    width: 40px;
+    text-align: right;
+}
+
+/* Toast notification */
+.toast {
+    position: fixed;
+    top: 40px;
+    left: 50%;
+    transform: translateX(-50%) translateY(-20px);
+    background: var(--success);
+    color: #fff;
+    padding: 8px 24px;
+    border-radius: var(--radius-sm);
+    font-size: 13px;
+    font-weight: 500;
+    z-index: 9999;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.25s, transform 0.25s;
+}
+
+.toast.visible {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+    pointer-events: auto;
 }

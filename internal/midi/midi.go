@@ -36,7 +36,7 @@ func IsMIDI2Disabled() (bool, error) {
 	)
 	if err != nil {
 		// Key doesn't exist = MIDI 2.0 not installed on this system
-		return false, nil
+		return false, fmt.Errorf("MIDI 2.0 not found")
 	}
 	defer k.Close()
 

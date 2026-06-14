@@ -48,65 +48,40 @@ func FindEngineLibrary() (string, error) {
 	candidates := []string{
 		filepath.Join(os.Getenv("LOCALAPPDATA"), "EnginePrime", "Database", "m.db"),
 		filepath.Join(os.Getenv("APPDATA"), "EnginePrime", "Database", "m.db"),
-		filepath.Join(os.Getenv("LOCALAPPDATA"), "Engine DJ", "Database", "m.db"),
-		filepath.Join(os.Getenv("APPDATA"), "Engine DJ", "Database", "m.db"),
 	}
 
-	for _, p := range candidates {
-		if _, err := os.Stat(p); err == nil {
-			return p, nil
+	for _, c := range candidates {
+		if _, err := os.Stat(c); err == nil {
+			return c, nil
 		}
 	}
 
-	// Scan drive roots (external drives / USB sticks store the library at
-	// <drive>:\Engine Library\Database2\m.db).
-	for _, root := range driveRoots() {
-		if p, ok := findInRoot(root); ok {
-			return p, nil
+	drives := ListDrives()
+	for _, drive := range drives {
+		for _, rel := range dbRelPaths {
+			candidate := filepath.Join(drive+`\`, rel)
+			if _, err := os.Stat(candidate); err == nil {
+				return candidate, nil
+			}
 		}
 	}
 
-	return "", fmt.Errorf("Engine Library m.db not found")
+	return "", fmt.Errorf("Engine Library not found")
 }
 
-// FindInDrive looks for an Engine Library on a single drive (e.g. "D:").
+// FindInDrive locates m.db specifically on the given drive letter (e.g. "D:").
+// Returns the full path to m.db if found, otherwise an error.
 func FindInDrive(drive string) (string, error) {
-	drive = strings.TrimSpace(drive)
-	if drive == "" {
-		return "", fmt.Errorf("empty drive")
-	}
-	if !strings.HasSuffix(drive, `\`) {
-		drive += `\`
-	}
-	if p, ok := findInRoot(drive); ok {
-		return p, nil
-	}
-	return "", fmt.Errorf("Engine Library not found on %s", drive)
-}
-
-func findInRoot(root string) (string, bool) {
 	for _, rel := range dbRelPaths {
-		p := filepath.Join(root, rel)
-		if _, err := os.Stat(p); err == nil {
-			return p, true
+		candidate := filepath.Join(drive+`\`, rel)
+		if _, err := os.Stat(candidate); err == nil {
+			return candidate, nil
 		}
 	}
-	return "", false
+	return "", fmt.Errorf("Engine Library not found on drive %s", drive)
 }
 
-// driveRoots returns the root path of every present drive (C:\ .. Z:\).
-func driveRoots() []string {
-	var roots []string
-	for c := 'A'; c <= 'Z'; c++ {
-		root := string(c) + `:\`
-		if _, err := os.Stat(root); err == nil {
-			roots = append(roots, root)
-		}
-	}
-	return roots
-}
-
-// ListDrives returns the present drive letters in "C:" form.
+// ListDrives returns all mounted drive letters (e.g. "C:", "D:").
 func ListDrives() []string {
 	var drives []string
 	for c := 'A'; c <= 'Z'; c++ {
@@ -153,7 +128,7 @@ func CopyFile(src, dst string) error {
 func BackupDatabase(note string) (string, error) {
 	dbPath, err := ResolveLibrary()
 	if err != nil {
-		return "", err
+		return "", fmt.Errorf("no Engine Library found: %w", err)
 	}
 
 	dir, err := backupDir()
@@ -162,17 +137,23 @@ func BackupDatabase(note string) (string, error) {
 	}
 
 	timestamp := time.Now().Format("2006-01-02_15-04-05")
-	dstPath := filepath.Join(dir, fmt.Sprintf("engine_library_%s.db", timestamp))
-	if err := CopyFile(dbPath, dstPath); err != nil {
-		return "", fmt.Errorf("failed to backup database: %w", err)
-	}
-
+	filename := fmt.Sprintf("m_%s.db", timestamp)
 	if note != "" {
-		notePath := filepath.Join(dir, fmt.Sprintf("engine_library_%s.txt", timestamp))
-		os.WriteFile(notePath, []byte(note), 0644)
+		safeNote := strings.Map(func(r rune) rune {
+			if r == '/' || r == '\\' || r == ':' || r == '*' || r == '?' || r == '"' || r == '<' || r == '>' || r == '|' {
+				return '_'
+			}
+			return r
+		}, note)
+		filename = fmt.Sprintf("m_%s_%s.db", timestamp, safeNote)
 	}
 
-	return dstPath, nil
+	backupPath := filepath.Join(dir, filename)
+	if err := CopyFile(dbPath, backupPath); err != nil {
+		return "", fmt.Errorf("backup failed: %w", err)
+	}
+
+	return backupPath, nil
 }
 
 func ListBackups() ([]BackupInfo, error) {
@@ -183,34 +164,45 @@ func ListBackups() ([]BackupInfo, error) {
 
 	entries, err := os.ReadDir(dir)
 	if err != nil {
-		if os.IsNotExist(err) {
-			return nil, nil
-		}
 		return nil, err
 	}
 
 	var backups []BackupInfo
-	for _, e := range entries {
-		if e.IsDir() || !strings.HasSuffix(e.Name(), ".db") {
+	for _, entry := range entries {
+		if entry.IsDir() || !strings.HasSuffix(entry.Name(), ".db") {
 			continue
 		}
-		info, err := e.Info()
+
+		info, err := entry.Info()
 		if err != nil {
 			continue
 		}
+
+		parts := strings.SplitN(entry.Name(), "_", 4)
+		dateStr := ""
+		note := ""
+		if len(parts) >= 3 {
+			dateStr = parts[1] + " " + strings.Replace(parts[2], "-", ":", -1)
+		}
+		if len(parts) == 4 {
+			note = strings.TrimSuffix(parts[3], ".db")
+		}
+
 		backups = append(backups, BackupInfo{
-			Filename: e.Name(),
-			Date:     info.ModTime().Format("2006-01-02 15:04:05"),
+			Filename: entry.Name(),
+			Date:     dateStr,
 			Size:     info.Size(),
+			Note:     note,
 		})
 	}
+
 	return backups, nil
 }
 
-func RestoreDatabase(filename string) error {
+func RestoreDatabase(backupFilename string) error {
 	dbPath, err := ResolveLibrary()
 	if err != nil {
-		return err
+		return fmt.Errorf("no Engine Library found: %w", err)
 	}
 
 	dir, err := backupDir()
@@ -218,18 +210,22 @@ func RestoreDatabase(filename string) error {
 		return err
 	}
 
-	srcPath := filepath.Join(dir, filename)
-	if _, err := os.Stat(srcPath); err != nil {
-		return fmt.Errorf("backup file not found: %s", filename)
+	backupPath := filepath.Join(dir, backupFilename)
+	if _, err := os.Stat(backupPath); err != nil {
+		return fmt.Errorf("backup file not found: %w", err)
 	}
 
-	return CopyFile(srcPath, dbPath)
+	if err := CopyFile(backupPath, dbPath); err != nil {
+		return fmt.Errorf("restore failed: %w", err)
+	}
+
+	return nil
 }
 
 func OptimizeDatabase() error {
 	dbPath, err := ResolveLibrary()
 	if err != nil {
-		return err
+		return fmt.Errorf("no Engine Library found: %w", err)
 	}
 
 	db, err := sql.Open("sqlite3", dbPath)
@@ -249,4 +245,85 @@ func OptimizeDatabase() error {
 	}
 
 	return nil
+}
+
+// CountTracks returns the number of tracks in the given database.
+func CountTracks(dbPath string) int {
+	db, err := sql.Open("sqlite3", dbPath+"?mode=ro")
+	if err != nil {
+		return 0
+	}
+	defer db.Close()
+
+	var count int
+	err = db.QueryRow("SELECT COUNT(*) FROM Track").Scan(&count)
+	if err != nil {
+		return 0
+	}
+	return count
+}
+
+// RepairDatabase runs integrity checks and repairs on the database.
+// Returns a report of what was checked and fixed.
+func RepairDatabase() (string, error) {
+	dbPath, err := ResolveLibrary()
+	if err != nil {
+		return "", fmt.Errorf("no Engine Library found: %w", err)
+	}
+
+	db, err := sql.Open("sqlite3", dbPath)
+	if err != nil {
+		return "", fmt.Errorf("failed to open database: %w", err)
+	}
+	defer db.Close()
+
+	report := ""
+
+	// 1. Integrity check
+	var integrityResult string
+	err = db.QueryRow("PRAGMA integrity_check").Scan(&integrityResult)
+	if err != nil {
+		return "", fmt.Errorf("integrity check failed: %w", err)
+	}
+
+	if integrityResult == "ok" {
+		report += "✓ Integrity check: OK\n"
+	} else {
+		report += "✗ Integrity check: " + integrityResult + "\n"
+	}
+
+	// 2. Foreign key check
+	rows, err := db.Query("PRAGMA foreign_key_check")
+	if err != nil {
+		return report, fmt.Errorf("foreign key check failed: %w", err)
+	}
+	fkErrors := 0
+	for rows.Next() {
+		fkErrors++
+	}
+	rows.Close()
+
+	if fkErrors == 0 {
+		report += "✓ Foreign key check: OK\n"
+	} else {
+		report += fmt.Sprintf("✗ Foreign key check: %d errors\n", fkErrors)
+	}
+
+	// 3. Reindex
+	_, err = db.Exec("REINDEX")
+	if err != nil {
+		report += "✗ Reindex: failed\n"
+	} else {
+		report += "✓ Reindex: completed\n"
+	}
+
+	// 4. Analyze (update query optimizer statistics)
+	_, err = db.Exec("ANALYZE")
+	if err != nil {
+		report += "✗ Analyze: failed\n"
+	} else {
+		report += "✓ Analyze: completed\n"
+	}
+
+	return report, nil
 }

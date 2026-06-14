@@ -14,6 +14,7 @@ import (
 	"EngineTools/internal/database"
 	"EngineTools/internal/i18n"
 	"EngineTools/internal/id3"
+	"EngineTools/internal/logs"
 	"EngineTools/internal/manifest"
 	"EngineTools/internal/midi"
 	"EngineTools/internal/msi"
@@ -58,6 +59,11 @@ type StatusInfo struct {
 type ProcessItem struct {
 	Name string `json:"name"`
 	PID  uint32 `json:"pid"`
+}
+
+type DriveInfo struct {
+	Letter     string `json:"letter"`
+	TrackCount int    `json:"trackCount"`
 }
 
 func NewApp() *App {
@@ -533,6 +539,125 @@ func (a *App) OptimizeDatabase() string {
 	return "ok"
 }
 
+func (a *App) ListPlaylists() []database.PlaylistInfo {
+	playlists, err := database.ListPlaylists()
+	if err != nil {
+		a.log(fmt.Sprintf("Playlist error: %v", err))
+		return []database.PlaylistInfo{}
+	}
+	return playlists
+}
+
+func (a *App) GetPlaylistTracks(playlistID int) []database.TrackInfo {
+	tracks, err := database.GetPlaylistTracks(playlistID)
+	if err != nil {
+		a.log(fmt.Sprintf("Playlist tracks error: %v", err))
+		return []database.TrackInfo{}
+	}
+	return tracks
+}
+
+// RepairDatabase runs integrity checks and repairs on the database.
+func (a *App) RepairDatabase() string {
+	msgs := i18n.Get(a.lang)
+
+	if a.InstallPath != "" {
+		running, _ := process.FindRunningExesInDir(a.InstallPath)
+		if len(running) > 0 {
+			a.log(msgs.KillingProcesses)
+			for _, p := range running {
+				_ = process.KillProcess(p.PID)
+			}
+			time.Sleep(2 * time.Second)
+		}
+	}
+
+	a.log("正在检查和修复数据库...")
+	report, err := database.RepairDatabase()
+	if err != nil {
+		a.log(fmt.Sprintf("%s: %v", msgs.FixFailed, err))
+		return ""
+	}
+	a.log("数据库修复完成")
+	a.log(report)
+	return "ok"
+}
+
+// AnalyzeLogs analyzes Engine DJ log files and returns statistics.
+func (a *App) AnalyzeLogs() *logs.LogStats {
+	a.log("正在分析日志文件...")
+	stats, err := logs.AnalyzeLogs()
+	if err != nil {
+		a.log(fmt.Sprintf("日志分析失败: %v", err))
+		return nil
+	}
+	a.log(fmt.Sprintf("分析完成: %d个文件, %d条警告, %d条错误", stats.TotalFiles, stats.WarningCount, stats.ErrorCount))
+	return stats
+}
+
+// OpenLogsDir opens the Engine DJ logs directory in Explorer.
+func (a *App) OpenLogsDir() string {
+	logsDir := logs.GetLogsDir()
+	if _, err := os.Stat(logsDir); os.IsNotExist(err) {
+		a.log("日志目录不存在")
+		return ""
+	}
+	wailsRuntime.BrowserOpenURL(a.ctx, logsDir)
+	return "ok"
+}
+
+// CleanCache removes Engine DJ's QML and pipeline cache directories.
+// This can fix UI glitches and rendering issues after Engine DJ updates.
+func (a *App) CleanCache() string {
+	cacheDir := filepath.Join(os.Getenv("LOCALAPPDATA"), "AIR Music Technology", "EnginePrime", "cache")
+	if _, err := os.Stat(cacheDir); os.IsNotExist(err) {
+		a.log("缓存目录不存在，无需清理")
+		return "empty"
+	}
+
+	entries, err := os.ReadDir(cacheDir)
+	if err != nil {
+		a.log(fmt.Sprintf("读取缓存目录失败: %v", err))
+		return ""
+	}
+
+	totalRemoved := 0
+	for _, entry := range entries {
+		entryPath := filepath.Join(cacheDir, entry.Name())
+		if entry.IsDir() {
+			if err := os.RemoveAll(entryPath); err != nil {
+				a.log(fmt.Sprintf("删除 %s 失败: %v", entry.Name(), err))
+				continue
+			}
+		} else {
+			if err := os.Remove(entryPath); err != nil {
+				a.log(fmt.Sprintf("删除 %s 失败: %v", entry.Name(), err))
+				continue
+			}
+		}
+		totalRemoved++
+	}
+
+	a.log(fmt.Sprintf("已清理 %d 个缓存项", totalRemoved))
+	return "ok"
+}
+
+// GetCacheSize returns the size of the Engine DJ cache directory in bytes.
+func (a *App) GetCacheSize() int64 {
+	cacheDir := filepath.Join(os.Getenv("LOCALAPPDATA"), "AIR Music Technology", "EnginePrime", "cache")
+	var totalSize int64
+	filepath.Walk(cacheDir, func(path string, info os.FileInfo, err error) error {
+		if err != nil {
+			return nil
+		}
+		if !info.IsDir() {
+			totalSize += info.Size()
+		}
+		return nil
+	})
+	return totalSize
+}
+
 // ScanMSIOrphans scans the registry for orphaned MSI installer products.
 func (a *App) ScanMSIOrphans() []msi.OrphanedMSI {
 	msgs := i18n.Get(a.lang)
@@ -644,8 +769,27 @@ func (a *App) OpenDBDir() string {
 
 // ListDrives returns the present drive letters (e.g. ["C:", "D:"]) for the
 // database drive picker.
-func (a *App) ListDrives() []string {
-	return database.ListDrives()
+func (a *App) ListDrives() []DriveInfo {
+	allDrives := database.ListDrives()
+	var result []DriveInfo
+
+	for _, drive := range allDrives {
+		// Check if this drive has an Engine Library
+		dbPath, err := database.FindInDrive(drive)
+		if err != nil {
+			continue // Skip drives without Engine Library
+		}
+
+		// Count tracks in this database
+		trackCount := database.CountTracks(dbPath)
+
+		result = append(result, DriveInfo{
+			Letter:     drive,
+			TrackCount: trackCount,
+		})
+	}
+
+	return result
 }
 
 // SelectDrive scans the given drive for an Engine Library and, if found, pins
@@ -757,22 +901,52 @@ func (a *App) ID3ClearAll(filePath string) string {
 	return "ok"
 }
 
+func (a *App) ID3AntiPiracyV1(dir string) string {
+	count, err := id3.AntiPiracyV1(dir)
+	if err != nil {
+		a.log(fmt.Sprintf("Anti-piracy v1 error: %v", err))
+		return ""
+	}
+	a.log(fmt.Sprintf("Anti-piracy v1: cleared %d files", count))
+	return "ok"
+}
+
+func (a *App) ID3AntiPiracyV2(dir string) string {
+	count, err := id3.AntiPiracyV2(dir)
+	if err != nil {
+		a.log(fmt.Sprintf("Anti-piracy v2 error: %v", err))
+		return ""
+	}
+	a.log(fmt.Sprintf("Anti-piracy v2: shuffled %d files", count))
+	return "ok"
+}
+
+func (a *App) ID3AntiPiracyRestore(dir string) string {
+	count, err := id3.AntiPiracyRestore(dir)
+	if err != nil {
+		a.log(fmt.Sprintf("Anti-piracy restore error: %v", err))
+		return ""
+	}
+	a.log(fmt.Sprintf("Anti-piracy restore: restored %d files", count))
+	return "ok"
+}
+
+func (a *App) ID3PickDir() string {
+	dir, err := wailsRuntime.OpenDirectoryDialog(a.ctx, wailsRuntime.OpenDialogOptions{
+		Title: "Select Music Directory",
+	})
+	if err != nil || dir == "" {
+		return ""
+	}
+	return dir
+}
+
 // ---- USB Unlock ----
 
 // USBUnlockAvailable checks if any removable/external drive with "Engine Library" is present.
 // Returns the drive letter (e.g. "E:") if found, otherwise "".
 func (a *App) USBUnlockAvailable() string {
-	for _, d := range database.ListDrives() {
-		root := d + `\`
-		// Skip C: (system drive)
-		if strings.ToUpper(d) == "C:" {
-			continue
-		}
-		if unlock.DriveHasEngineLibrary(root) {
-			return d
-		}
-	}
-	return ""
+	return unlock.FindRemovableDriveWithLibrary()
 }
 
 // USBUnlockScan scans for processes blocking the given drive (excluding Engine DJ apps).
