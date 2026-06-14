@@ -11,8 +11,10 @@ import (
 	wailsRuntime "github.com/wailsapp/wails/v2/pkg/runtime"
 	"golang.org/x/sys/windows"
 
+	"EngineTools/internal/database"
 	"EngineTools/internal/i18n"
 	"EngineTools/internal/manifest"
+	"EngineTools/internal/msi"
 	"EngineTools/internal/process"
 	"EngineTools/internal/registry"
 )
@@ -29,6 +31,8 @@ type App struct {
 	IsAdmin             bool
 	StemsPath           string
 	StemsDetected       bool
+	DBPath              string
+	DBDetected          bool
 	Progress            float64
 }
 
@@ -41,6 +45,8 @@ type StatusInfo struct {
 	ManifestConfigured bool           `json:"manifestConfigured"`
 	IsAdmin            bool           `json:"isAdmin"`
 	StemsDetected      bool           `json:"stemsDetected"`
+	DBDetected         bool           `json:"dbDetected"`
+	DBPath             string         `json:"dbPath"`
 	ProcessRunning     bool           `json:"processRunning"`
 	RunningProcesses   []ProcessItem  `json:"runningProcesses"`
 }
@@ -61,6 +67,33 @@ func NewApp() *App {
 func (a *App) startup(ctx context.Context) {
 	a.ctx = ctx
 	go a.detectStatus()
+	go a.watchDrives()
+}
+
+// watchDrives polls the set of mounted logical drives and re-runs detection
+// whenever it changes (e.g. a USB stick is inserted or removed), so the
+// Engine Library on external drives is picked up automatically.
+func (a *App) watchDrives() {
+	last := getLogicalDrives()
+	ticker := time.NewTicker(2 * time.Second)
+	defer ticker.Stop()
+	for range ticker.C {
+		current := getLogicalDrives()
+		if current != last {
+			last = current
+			a.detectStatus()
+		}
+	}
+}
+
+// getLogicalDrives returns the bitmask of mounted drives from the Win32
+// GetLogicalDrives API. Bit 0 = A:, bit 1 = B:, etc.
+func getLogicalDrives() uint32 {
+	mask, err := windows.GetLogicalDrives()
+	if err != nil {
+		return 0
+	}
+	return mask
 }
 
 // findStemsProcessorDir locates the EnginePrime bin directory that contains
@@ -147,6 +180,17 @@ func (a *App) detectStatus() {
 	if a.StemsDetected {
 		manifestOK = manifestOK && manifest.ManifestExists(a.StemsPath)
 	}
+	dbPath, dbErr := database.ResolveLibrary()
+	a.DBPath = ""
+	a.DBDetected = false
+	if dbErr == nil && dbPath != "" {
+		a.DBPath = dbPath
+		a.DBDetected = true
+		a.log(fmt.Sprintf("%s: %s", msgs.DBLibraryPathLabel, dbPath))
+	} else {
+		a.log(fmt.Sprintf("%s: %s", msgs.DBLibraryPathLabel, msgs.DBLibraryNotFound))
+	}
+
 	a.ManifestConfigured = manifestOK
 
 	statusLabel := msgs.ManifestNotExists
@@ -192,6 +236,8 @@ func (a *App) GetStatus() StatusInfo {
 		ManifestConfigured: a.ManifestConfigured,
 		IsAdmin:            a.IsAdmin,
 		StemsDetected:      a.StemsDetected,
+		DBDetected:         a.DBDetected,
+		DBPath:             a.DBPath,
 		ProcessRunning:     len(running) > 0,
 		RunningProcesses:   procs,
 	}
@@ -301,6 +347,235 @@ func (a *App) FixCJKIssues() string {
 	return "ok"
 }
 
+// RestoreCJKFix reverts the CJK fix: removes the .manifest files and resets
+// the PreferExternalManifest registry value.
+func (a *App) RestoreCJKFix() string {
+	msgs := i18n.Get(a.lang)
+
+	result, err := wailsRuntime.MessageDialog(a.ctx, wailsRuntime.MessageDialogOptions{
+		Type:    wailsRuntime.QuestionDialog,
+		Title:   msgs.RestoreConfirmTitle,
+		Message: msgs.RestoreConfirmMessage,
+		Buttons: []string{"Yes", "No"},
+	})
+	if err != nil || result != "Yes" {
+		a.log("User cancelled restore")
+		return "cancelled"
+	}
+
+	a.setProgress(0)
+	a.log(msgs.Checking + "...")
+
+	if a.InstallPath != "" {
+		running, _ := process.FindRunningExesInDir(a.InstallPath)
+		if len(running) > 0 {
+			var names []string
+			for _, p := range running {
+				names = append(names, fmt.Sprintf("%s (PID: %d)", p.Name, p.PID))
+			}
+			confirmMsg := fmt.Sprintf(msgs.ProcessRunningMessage, strings.Join(names, "\n"))
+			res, err := wailsRuntime.MessageDialog(a.ctx, wailsRuntime.MessageDialogOptions{
+				Type:    wailsRuntime.QuestionDialog,
+				Title:   msgs.ProcessRunningTitle,
+				Message: confirmMsg,
+				Buttons: []string{"Yes", "No"},
+			})
+			if err != nil || res != "Yes" {
+				a.log("User cancelled process termination")
+				return "cancelled"
+			}
+			a.log(msgs.KillingProcesses)
+			for _, p := range running {
+				if err := process.KillProcess(p.PID); err != nil {
+					a.log(fmt.Sprintf("Failed to kill %s: %v", p.Name, err))
+				} else {
+					a.log(fmt.Sprintf("Killed %s (PID: %d)", p.Name, p.PID))
+				}
+			}
+			time.Sleep(2 * time.Second)
+		}
+	}
+	a.setProgress(0.3)
+
+	a.log(msgs.DeletingManifests)
+	if a.InstallPath != "" {
+		count, err := manifest.DeleteManifests(a.InstallPath)
+		if err != nil {
+			a.log(fmt.Sprintf("%s: %v", msgs.FixFailed, err))
+		} else {
+			a.log(fmt.Sprintf("%s (%d)", msgs.ManifestsDeleted, count))
+		}
+	}
+	if a.StemsDetected && a.StemsPath != "" {
+		stemsCount, err := manifest.DeleteManifests(a.StemsPath)
+		if err != nil {
+			a.log(fmt.Sprintf("%s: %v", msgs.FixFailed, err))
+		} else {
+			a.log(fmt.Sprintf("%s: STEM (%d)", msgs.ManifestsDeleted, stemsCount))
+		}
+	}
+	a.setProgress(0.6)
+
+	a.log(msgs.DeletingRegistry)
+	if err := registry.DeletePreferExternalManifest(); err != nil {
+		a.log(fmt.Sprintf("%s: %v", msgs.RegistryWriteError, err))
+		return msgs.FixFailed
+	}
+	a.log(msgs.RegistryDeleted)
+	a.setProgress(0.8)
+
+	a.log(msgs.RefreshingSystem)
+	process.RefreshSystemSettings()
+	a.log(msgs.SystemRefreshed)
+	a.setProgress(1.0)
+
+	a.log(msgs.RestoreCompleteTip)
+	a.ManifestConfigured = false
+
+	wailsRuntime.EventsEmit(a.ctx, "statusUpdate", a.GetStatus())
+
+	_, _ = wailsRuntime.MessageDialog(a.ctx, wailsRuntime.MessageDialogOptions{
+		Type:    wailsRuntime.InfoDialog,
+		Title:   msgs.RestoreComplete,
+		Message: msgs.RestoreCompleteTip,
+	})
+
+	return "ok"
+}
+
+// BackupDatabase copies the Engine Library m.db into the backup folder, with an
+// optional note.
+func (a *App) BackupDatabase(note string) string {
+	msgs := i18n.Get(a.lang)
+	a.log(msgs.DBBackingUp)
+	path, err := database.BackupDatabase(note)
+	if err != nil {
+		a.log(fmt.Sprintf("%s: %v", msgs.DBBackupError, err))
+		return ""
+	}
+	a.log(fmt.Sprintf("%s: %s", msgs.DBBackupComplete, path))
+	return "ok"
+}
+
+// ListBackups returns the available database backups, newest first.
+func (a *App) ListBackups() []database.BackupInfo {
+	backups, err := database.ListBackups()
+	if err != nil {
+		a.log(fmt.Sprintf("ListBackups error: %v", err))
+		return []database.BackupInfo{}
+	}
+	if backups == nil {
+		return []database.BackupInfo{}
+	}
+	return backups
+}
+
+// RestoreDatabase restores the Engine Library from the given backup filename.
+func (a *App) RestoreDatabase(filename string) string {
+	msgs := i18n.Get(a.lang)
+
+	result, err := wailsRuntime.MessageDialog(a.ctx, wailsRuntime.MessageDialogOptions{
+		Type:    wailsRuntime.QuestionDialog,
+		Title:   msgs.DBRestoreConfirmTitle,
+		Message: msgs.DBRestoreConfirmMessage,
+		Buttons: []string{"Yes", "No"},
+	})
+	if err != nil || result != "Yes" {
+		a.log("User cancelled database restore")
+		return "cancelled"
+	}
+
+	if a.InstallPath != "" {
+		running, _ := process.FindRunningExesInDir(a.InstallPath)
+		if len(running) > 0 {
+			a.log(msgs.KillingProcesses)
+			for _, p := range running {
+				_ = process.KillProcess(p.PID)
+			}
+			time.Sleep(2 * time.Second)
+		}
+	}
+
+	a.log(msgs.DBRestoring)
+	if err := database.RestoreDatabase(filename); err != nil {
+		a.log(fmt.Sprintf("%s: %v", msgs.FixFailed, err))
+		return ""
+	}
+	a.log(msgs.DBRestoreComplete)
+	return "ok"
+}
+
+// OptimizeDatabase runs VACUUM and REINDEX on the Engine Library.
+func (a *App) OptimizeDatabase() string {
+	msgs := i18n.Get(a.lang)
+
+	if a.InstallPath != "" {
+		running, _ := process.FindRunningExesInDir(a.InstallPath)
+		if len(running) > 0 {
+			a.log(msgs.KillingProcesses)
+			for _, p := range running {
+				_ = process.KillProcess(p.PID)
+			}
+			time.Sleep(2 * time.Second)
+		}
+	}
+
+	a.log(msgs.DBOptimizing)
+	if err := database.OptimizeDatabase(); err != nil {
+		a.log(fmt.Sprintf("%s: %v", msgs.FixFailed, err))
+		return ""
+	}
+	a.log(msgs.DBOptimizeComplete)
+	return "ok"
+}
+
+// ScanMSIOrphans scans the registry for orphaned MSI installer products.
+func (a *App) ScanMSIOrphans() []msi.OrphanedMSI {
+	msgs := i18n.Get(a.lang)
+	a.log(msgs.MSIScanning)
+	orphans, err := msi.ScanOrphans()
+	if err != nil {
+		a.log(fmt.Sprintf("%s: %v", msgs.MSICleanError, err))
+		return []msi.OrphanedMSI{}
+	}
+	if len(orphans) == 0 {
+		a.log(msgs.MSINoOrphans)
+		return []msi.OrphanedMSI{}
+	}
+	a.log(fmt.Sprintf(msgs.MSIFoundOrphans, len(orphans)))
+	return orphans
+}
+
+// CleanMSIOrphans removes the given MSI products via msizap.
+func (a *App) CleanMSIOrphans(productCodes []string) string {
+	msgs := i18n.Get(a.lang)
+
+	result, err := wailsRuntime.MessageDialog(a.ctx, wailsRuntime.MessageDialogOptions{
+		Type:    wailsRuntime.QuestionDialog,
+		Title:   msgs.MSIConfirmTitle,
+		Message: msgs.MSIConfirmMessage,
+		Buttons: []string{"Yes", "No"},
+	})
+	if err != nil || result != "Yes" {
+		a.log("User cancelled MSI cleanup")
+		return "cancelled"
+	}
+
+	a.log(msgs.MSICleaning)
+	failed := 0
+	for _, code := range productCodes {
+		if err := msi.CleanOrphan(code); err != nil {
+			a.log(fmt.Sprintf("%s: %s - %v", msgs.MSICleanError, code, err))
+			failed++
+		}
+	}
+	if failed > 0 {
+		return msgs.MSICleanError
+	}
+	a.log(msgs.MSICleanComplete)
+	return "ok"
+}
+
 func (a *App) HandleUTF8AlreadyEnabled() string {
 	msgs := i18n.Get(a.lang)
 
@@ -324,6 +599,67 @@ func (a *App) OpenRegionSettings() string {
 
 func (a *App) OpenRepository() {
 	wailsRuntime.BrowserOpenURL(a.ctx, "https://github.com/LaokeQwQ/EngineTools")
+}
+
+// OpenInstallDir opens the Engine DJ install directory in Explorer.
+func (a *App) OpenInstallDir() string {
+	if a.InstallPath == "" {
+		return ""
+	}
+	if err := process.OpenDirectory(a.InstallPath); err != nil {
+		a.log(fmt.Sprintf("Failed to open install directory: %v", err))
+		return err.Error()
+	}
+	return ""
+}
+
+// OpenStemsDir opens the STEM processor directory in Explorer.
+func (a *App) OpenStemsDir() string {
+	if a.StemsPath == "" {
+		return ""
+	}
+	if err := process.OpenDirectory(a.StemsPath); err != nil {
+		a.log(fmt.Sprintf("Failed to open STEM directory: %v", err))
+		return err.Error()
+	}
+	return ""
+}
+
+// OpenDBDir opens the folder containing the Engine Library database in Explorer,
+// with the m.db file selected.
+func (a *App) OpenDBDir() string {
+	if a.DBPath == "" {
+		return ""
+	}
+	if err := process.OpenDirectory(a.DBPath); err != nil {
+		a.log(fmt.Sprintf("Failed to open database directory: %v", err))
+		return err.Error()
+	}
+	return ""
+}
+
+// ListDrives returns the present drive letters (e.g. ["C:", "D:"]) for the
+// database drive picker.
+func (a *App) ListDrives() []string {
+	return database.ListDrives()
+}
+
+// SelectDrive scans the given drive for an Engine Library and, if found, pins
+// it as the active database. Returns the resolved m.db path, or "" if none was
+// found on that drive.
+func (a *App) SelectDrive(drive string) string {
+	msgs := i18n.Get(a.lang)
+	path, err := database.FindInDrive(drive)
+	if err != nil {
+		database.ClearLibraryPath()
+		a.log(fmt.Sprintf("%s: %s", msgs.DBLibraryNotFound, drive))
+		go a.detectStatus()
+		return ""
+	}
+	database.SetLibraryPath(path)
+	a.log(fmt.Sprintf("%s: %s", msgs.DBLibraryPathLabel, path))
+	go a.detectStatus()
+	return path
 }
 
 func (a *App) SetLanguage(lang string) string {

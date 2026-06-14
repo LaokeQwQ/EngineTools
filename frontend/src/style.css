@@ -492,3 +492,158 @@ html, body {
     color: var(--success);
     flex-shrink: 0;
 }
+
+/* Tabs */
+.tabs {
+    display: flex;
+    gap: 2px;
+    padding: 0 16px;
+    border-bottom: 1px solid var(--border);
+    flex-shrink: 0;
+}
+
+.tab {
+    background: transparent;
+    border: none;
+    border-bottom: 2px solid transparent;
+    color: var(--text-dim);
+    font-size: 13px;
+    font-weight: 500;
+    font-family: var(--font-sans);
+    padding: 10px 14px;
+    cursor: pointer;
+    transition: color 0.15s, border-color 0.15s;
+    outline: none;
+    margin-bottom: -1px;
+}
+
+.tab:hover {
+    color: var(--text);
+}
+
+.tab.active {
+    color: var(--accent);
+    border-bottom-color: var(--accent);
+}
+
+/* Text/select inputs */
+.text-input {
+    background: var(--bg-card);
+    color: var(--text);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    padding: 9px 12px;
+    font-size: 13px;
+    font-family: var(--font-sans);
+    outline: none;
+    width: 100%;
+    transition: border-color 0.15s;
+}
+
+.text-input:focus {
+    border-color: var(--accent);
+}
+
+.text-input:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+select.text-input {
+    appearance: none;
+    -webkit-appearance: none;
+    cursor: pointer;
+    padding-right: 26px;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%238892a8'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 10px center;
+}
+
+/* MSI orphan list */
+.msi-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    padding: 9px 12px;
+    cursor: pointer;
+    transition: background 0.15s, border-color 0.15s;
+}
+
+.msi-item:hover {
+    background: var(--bg-card-hover);
+    border-color: var(--text-dim);
+}
+
+.msi-item input[type="checkbox"] {
+    width: 15px;
+    height: 15px;
+    accent-color: var(--accent);
+    cursor: pointer;
+    flex-shrink: 0;
+}
+
+.msi-name {
+    font-size: 13px;
+    color: var(--text);
+    word-break: break-all;
+}
+
+/* Path value + open-folder icon */
+.info-value-group {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-width: 0;
+    justify-content: flex-end;
+}
+
+.info-value-group .info-value {
+    min-width: 0;
+}
+
+.folder-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    width: 26px;
+    height: 26px;
+    border-radius: var(--radius-sm);
+    color: var(--text-dim);
+    cursor: pointer;
+    transition: background 0.15s, color 0.15s;
+}
+
+.folder-btn:hover {
+    background: var(--bg-card-hover);
+    color: var(--accent);
+}
+
+/* Status card with a trailing action icon (e.g. STEM processor) */
+.status-card-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+}
+
+/* Drive select + confirm button on one row */
+.drive-select-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.drive-select-row .text-input {
+    flex: 1;
+    min-width: 0;
+}
+
+.drive-confirm-btn {
+    flex-shrink: 0;
+    padding: 9px 16px;
+    white-space: nowrap;
+}

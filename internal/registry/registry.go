@@ -303,6 +303,25 @@ func SetPreferExternalManifest() error {
 	return nil
 }
 
+func DeletePreferExternalManifest() error {
+	k, err := registry.OpenKey(
+		registry.LOCAL_MACHINE,
+		`SOFTWARE\Microsoft\Windows\CurrentVersion\SideBySide`,
+		registry.ALL_ACCESS,
+	)
+	if err != nil {
+		return nil
+	}
+	defer k.Close()
+
+	err = k.SetDWordValue("PreferExternalManifest", 0)
+	if err != nil {
+		return fmt.Errorf("failed to reset PreferExternalManifest: %w", err)
+	}
+
+	return nil
+}
+
 func GetPreferExternalManifest() (bool, error) {
 	k, err := registry.OpenKey(
 		registry.LOCAL_MACHINE,
