@@ -9,6 +9,8 @@ import {unlock} from '../models';
 
 export function BackupDatabase(arg1:string):Promise<string>;
 
+export function CheckForUpdates(arg1:string):Promise<Record<string, any>>;
+
 export function CleanMSIOrphans(arg1:Array<string>):Promise<string>;
 
 export function FixCJKIssues():Promise<string>;
