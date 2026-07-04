@@ -21,6 +21,7 @@ type TrackInfo struct {
 	BPM      float64 `json:"bpm"`
 	Length   int     `json:"length"`
 	Filename string  `json:"filename"`
+	Path     string  `json:"path"`
 	Key      int     `json:"key"`
 	KeyName  string  `json:"keyName"`
 	Camelot  string  `json:"camelot"`
@@ -80,7 +81,7 @@ func GetPlaylistTracks(playlistID int) ([]TrackInfo, error) {
 	rows, err := db.Query(`
 		SELECT t.id, COALESCE(t.title,''), COALESCE(t.artist,''), COALESCE(t.album,''),
 			COALESCE(t.genre,''), COALESCE(t.bpmAnalyzed, t.bpm, 0), COALESCE(t.length, 0),
-			COALESCE(t.filename,''), COALESCE(t.key, 0), COALESCE(t.rating, 0)
+			COALESCE(t.filename,''), COALESCE(t.path,''), COALESCE(t.key, 0), COALESCE(t.rating, 0)
 		FROM PlaylistEntity pe
 		JOIN Track t ON pe.trackId = t.id
 		WHERE pe.listId = ?
@@ -94,9 +95,10 @@ func GetPlaylistTracks(playlistID int) ([]TrackInfo, error) {
 	var tracks []TrackInfo
 	for rows.Next() {
 		var t TrackInfo
-		if err := rows.Scan(&t.ID, &t.Title, &t.Artist, &t.Album, &t.Genre, &t.BPM, &t.Length, &t.Filename, &t.Key, &t.Rating); err != nil {
+		if err := rows.Scan(&t.ID, &t.Title, &t.Artist, &t.Album, &t.Genre, &t.BPM, &t.Length, &t.Filename, &t.Path, &t.Key, &t.Rating); err != nil {
 			continue
 		}
+		t.Path = ResolveTrackPath(dbPath, t.Path)
 		t.KeyName = KeyName(t.Key)
 		t.Camelot = KeyCamelot(t.Key)
 		tracks = append(tracks, t)

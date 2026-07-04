@@ -13,7 +13,7 @@
   "info": {
     "companyName": "EngineTools",
     "productName": "Engine DJ Unicode Fix Tool",
-    "productVersion": "1.7.0",
+    "productVersion": "1.8.0",
     "copyright": "Copyright 2024 EngineTools. Licensed under Apache 2.0.",
     "comments": "Fix Unicode character display issues in Engine DJ by applying per-application UTF-8 manifest."
   }

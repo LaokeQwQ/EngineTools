@@ -229,6 +229,7 @@ export namespace database {
 	    bpm: number;
 	    length: number;
 	    filename: string;
+	    path: string;
 	    key: number;
 	    keyName: string;
 	    camelot: string;
@@ -248,6 +249,7 @@ export namespace database {
 	        this.bpm = source["bpm"];
 	        this.length = source["length"];
 	        this.filename = source["filename"];
+	        this.path = source["path"];
 	        this.key = source["key"];
 	        this.keyName = source["keyName"];
 	        this.camelot = source["camelot"];
@@ -445,6 +447,25 @@ export namespace i18n {
 	    skippedLabel: string;
 	    andMoreLabel: string;
 	    tracksUnit: string;
+	    tabSettings: string;
+	    settingsLanguageLabel: string;
+	    settingsExperimentalLabel: string;
+	    settingsExperimentalDesc: string;
+	    settingsExperimentalConfirmTitle: string;
+	    settingsExperimentalConfirmMsg: string;
+	    settingsExperimentalConfirmBtn: string;
+	    settingsAboutTitle: string;
+	    settingsAboutDesc: string;
+	    settingsContributors: string;
+	    id3DropZoneHint: string;
+	    noCoverLabel: string;
+	    changeCoverLabel: string;
+	    removeCoverLabel: string;
+	    id3TitlePlaceholder: string;
+	    id3ArtistPlaceholder: string;
+	    id3AlbumPlaceholder: string;
+	    id3YearPlaceholder: string;
+	    id3GenrePlaceholder: string;
 	
 	    static createFrom(source: any = {}) {
 	        return new Messages(source);
@@ -637,6 +658,25 @@ export namespace i18n {
 	        this.skippedLabel = source["skippedLabel"];
 	        this.andMoreLabel = source["andMoreLabel"];
 	        this.tracksUnit = source["tracksUnit"];
+	        this.tabSettings = source["tabSettings"];
+	        this.settingsLanguageLabel = source["settingsLanguageLabel"];
+	        this.settingsExperimentalLabel = source["settingsExperimentalLabel"];
+	        this.settingsExperimentalDesc = source["settingsExperimentalDesc"];
+	        this.settingsExperimentalConfirmTitle = source["settingsExperimentalConfirmTitle"];
+	        this.settingsExperimentalConfirmMsg = source["settingsExperimentalConfirmMsg"];
+	        this.settingsExperimentalConfirmBtn = source["settingsExperimentalConfirmBtn"];
+	        this.settingsAboutTitle = source["settingsAboutTitle"];
+	        this.settingsAboutDesc = source["settingsAboutDesc"];
+	        this.settingsContributors = source["settingsContributors"];
+	        this.id3DropZoneHint = source["id3DropZoneHint"];
+	        this.noCoverLabel = source["noCoverLabel"];
+	        this.changeCoverLabel = source["changeCoverLabel"];
+	        this.removeCoverLabel = source["removeCoverLabel"];
+	        this.id3TitlePlaceholder = source["id3TitlePlaceholder"];
+	        this.id3ArtistPlaceholder = source["id3ArtistPlaceholder"];
+	        this.id3AlbumPlaceholder = source["id3AlbumPlaceholder"];
+	        this.id3YearPlaceholder = source["id3YearPlaceholder"];
+	        this.id3GenrePlaceholder = source["id3GenrePlaceholder"];
 	    }
 	}
 

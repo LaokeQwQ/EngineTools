@@ -60,7 +60,8 @@ func GetSyncableTracks() ([]SyncableTrack, error) {
 			&t.BPM, &t.Key); err != nil {
 			continue
 		}
-		t.BPM = math.Round(t.BPM*100) / 100 // round to 2 decimal places
+		t.Path = ResolveTrackPath(dbPath, t.Path)
+		t.BPM = math.Round(t.BPM*100) / 100
 		t.KeyName = KeyName(t.Key)
 		t.Camelot = KeyCamelot(t.Key)
 		tracks = append(tracks, t)

@@ -45,6 +45,7 @@ func FindMissingTracks() ([]MissingTrack, error) {
 		if err := rows.Scan(&t.ID, &t.Title, &t.Artist, &t.Path, &t.Filename); err != nil {
 			continue
 		}
+		t.Path = ResolveTrackPath(dbPath, t.Path)
 		tracks = append(tracks, t)
 	}
 	if tracks == nil {

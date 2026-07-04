@@ -34,6 +34,12 @@ import {
     ID3AntiPiracyV1,
     ID3AntiPiracyV2,
     ID3AntiPiracyRestore,
+    ID3AntiPiracyV1Paths,
+    ID3AntiPiracyV2Paths,
+    ID3AntiPiracyRestorePaths,
+    ID3AntiPiracyV1Playlist,
+    ID3AntiPiracyV2Playlist,
+    ID3AntiPiracyRestorePlaylist,
     ID3PickDir,
     USBUnlockAvailable,
     USBUnlockScan,
@@ -53,10 +59,11 @@ import {
     GetSyncableTracks,
     SyncBPMKeyToTags,
     CompressCovers,
+    LogExperimentalEnabled,
 } from '../wailsjs/go/main/App.js'
 import { EventsOn } from '../wailsjs/runtime/runtime.js'
 
-const APP_VERSION = '1.7.0'
+const APP_VERSION = '1.8.0'
 
 const installPath = ref('')
 const engineVersion = ref('')
@@ -98,6 +105,7 @@ const msiBusy = ref(false)
 
 // ID3 Editor state
 const id3File = ref('')
+const editingTrack = ref(null) // TrackInfo from playlist click
 const id3Title = ref('')
 const id3Artist = ref('')
 const id3Album = ref('')
@@ -105,6 +113,7 @@ const id3Year = ref('')
 const id3Genre = ref('')
 const id3Cover = ref('')
 const id3Busy = ref(false)
+const id3DragOver = ref(false)
 
 // USB Unlock state
 const usbDrive = ref('')
@@ -158,11 +167,31 @@ const coverCompressBusy = ref(false)
 const coverCompressResult = ref(null)
 const coverCompressPlaylistId = ref(-1) // -1 = entire library
 
-// Anti-piracy easter egg state
+// Anti-piracy easter egg state (controlled by experimental toggle)
 const apDir = ref('')
+const apFile = ref('')
+const apPlaylistId = ref(-1)
+const apScope = ref('folder') // 'file' | 'folder' | 'playlist'
 const apBusy = ref(false)
-const apShowMenu = ref(false)
-const apClickCount = ref(0)
+
+// Experimental features state
+const experimentalEnabled = ref(localStorage.getItem('experimentalEnabled') === 'true')
+const showExperimentalConfirm = ref(false)
+const experimentalCountdown = ref(0)
+let experimentalTimer = null
+
+// Konami Code easter egg
+const konamiUrls = [
+    'https://www.bilibili.com/video/BV1dg4y1Z7B1',
+    'https://www.bilibili.com/video/BV1GJ411x7h7',
+    'https://www.bilibili.com/video/BV17KQcBfE69',
+    'https://www.bilibili.com/video/BV1XXVh65EgE',
+    'https://www.bilibili.com/video/BV1t9wszgE61',
+    'https://www.bilibili.com/video/BV1SqxHzoEuf',
+    'https://www.bilibili.com/video/BV1j4411W7F7',
+]
+const konamiCode = ['ArrowUp','ArrowUp','ArrowDown','ArrowDown','ArrowLeft','ArrowLeft','ArrowRight','ArrowRight','b','a']
+const konamiProgress = ref([])
 
 // Playlist viewer state
 const playlists = ref([])
@@ -193,6 +222,11 @@ const cacheSizeText = computed(() => {
     if (cacheSize.value <= 0) return ''
     const mb = (cacheSize.value / 1024 / 1024).toFixed(1)
     return (msgs.value.cacheSizeLabel || 'Cache size') + ': ' + mb + ' MB'
+})
+
+const maxPlayCount = computed(() => {
+    if (!playStats.value?.mostPlayed?.length) return 1
+    return Math.max(1, ...playStats.value.mostPlayed.map(t => t.playCount))
 })
 
 const id3FileName = computed(() => {
@@ -586,13 +620,55 @@ async function handleClearCache() {
     cacheBusy.value = false
 }
 
-function handleID3TitleClick() {
-    apClickCount.value++
-    if (apClickCount.value >= 5) {
-        apShowMenu.value = !apShowMenu.value
-        apClickCount.value = 0
+// ---- Experimental Features ----
+
+async function handleExperimentalToggle() {
+    if (experimentalEnabled.value) {
+        experimentalEnabled.value = false
+        localStorage.setItem('experimentalEnabled', 'false')
+        return
     }
-    setTimeout(() => { apClickCount.value = 0 }, 2000)
+    showExperimentalConfirm.value = true
+    experimentalCountdown.value = 5
+    clearInterval(experimentalTimer)
+    experimentalTimer = setInterval(() => {
+        experimentalCountdown.value--
+        if (experimentalCountdown.value <= 0) clearInterval(experimentalTimer)
+    }, 1000)
+}
+
+function cancelExperimental() {
+    showExperimentalConfirm.value = false
+    clearInterval(experimentalTimer)
+    experimentalCountdown.value = 0
+}
+
+async function confirmExperimental() {
+    if (experimentalCountdown.value > 0) return
+    try {
+        await LogExperimentalEnabled()
+        experimentalEnabled.value = true
+        localStorage.setItem('experimentalEnabled', 'true')
+    } catch (e) {
+        addLog('Error logging experimental enable: ' + e)
+    }
+    showExperimentalConfirm.value = false
+}
+
+// ---- Konami Code ----
+
+function handleKeydown(e) {
+    const expected = konamiCode[konamiProgress.value.length]
+    if (e.key === expected) {
+        konamiProgress.value = [...konamiProgress.value, e.key]
+        if (konamiProgress.value.length === konamiCode.length) {
+            konamiProgress.value = []
+            const url = konamiUrls[Math.floor(Math.random() * konamiUrls.length)]
+            window.open(url, '_blank')
+        }
+    } else {
+        konamiProgress.value = e.key === konamiCode[0] ? [e.key] : []
+    }
 }
 
 async function handlePickApDir() {
@@ -604,13 +680,41 @@ async function handlePickApDir() {
     }
 }
 
+async function handlePickApFile() {
+    try {
+        const path = await ID3PickFile()
+        if (path) apFile.value = path
+    } catch (e) {
+        addLog('Error: ' + e)
+    }
+}
+
+function apBackupKey() {
+    if (apScope.value === 'folder') return apDir.value
+    if (apScope.value === 'file') return apFile.value ? apFile.value + '_ap' : 'single'
+    return 'playlist_' + apPlaylistId.value
+}
+
+function apIsReady() {
+    if (apScope.value === 'folder') return !!apDir.value
+    if (apScope.value === 'file') return !!apFile.value
+    return apPlaylistId.value >= 0
+}
+
 async function handleAntiPiracyV1() {
-    if (!apDir.value) return
-    const ok = window.confirm('⚠️ 防偷歌 v1：将清除目录下所有音频文件的ID3标签（操作前自动备份）。\n\n确认执行？')
+    if (!apIsReady()) return
+    const ok = window.confirm('防偷歌 v1：清除所选范围内所有音频文件的ID3标签（操作前自动备份）。确认执行？')
     if (!ok) return
     apBusy.value = true
     try {
-        await ID3AntiPiracyV1(apDir.value)
+        if (apScope.value === 'folder') {
+            await ID3AntiPiracyV1(apDir.value)
+        } else if (apScope.value === 'file') {
+            await ID3AntiPiracyV1Paths([apFile.value], apBackupKey())
+        } else {
+            await ID3AntiPiracyV1Playlist(apPlaylistId.value)
+        }
+        showToast('v1 执行完成')
     } catch (e) {
         addLog('Error: ' + e)
     }
@@ -618,12 +722,19 @@ async function handleAntiPiracyV1() {
 }
 
 async function handleAntiPiracyV2() {
-    if (!apDir.value) return
-    const ok = window.confirm('⚠️ 防偷歌 v2：将随机打乱目录下所有音频文件的ID3标签（操作前自动备份）。\n\n确认执行？')
+    if (!apIsReady()) return
+    const ok = window.confirm('防偷歌 v2：随机打乱所选范围内所有音频文件的ID3标签（操作前自动备份）。确认执行？')
     if (!ok) return
     apBusy.value = true
     try {
-        await ID3AntiPiracyV2(apDir.value)
+        if (apScope.value === 'folder') {
+            await ID3AntiPiracyV2(apDir.value)
+        } else if (apScope.value === 'file') {
+            await ID3AntiPiracyV2Paths([apFile.value], apBackupKey())
+        } else {
+            await ID3AntiPiracyV2Playlist(apPlaylistId.value)
+        }
+        showToast('v2 执行完成')
     } catch (e) {
         addLog('Error: ' + e)
     }
@@ -631,10 +742,17 @@ async function handleAntiPiracyV2() {
 }
 
 async function handleAntiPiracyRestore() {
-    if (!apDir.value) return
+    if (!apIsReady()) return
     apBusy.value = true
     try {
-        await ID3AntiPiracyRestore(apDir.value)
+        if (apScope.value === 'folder') {
+            await ID3AntiPiracyRestore(apDir.value)
+        } else if (apScope.value === 'file') {
+            await ID3AntiPiracyRestorePaths(apBackupKey())
+        } else {
+            await ID3AntiPiracyRestorePlaylist(apPlaylistId.value)
+        }
+        showToast('恢复完成')
     } catch (e) {
         addLog('Error: ' + e)
     }
@@ -685,11 +803,11 @@ async function handleClickDrive(driveInfo) {
     dbBusy.value = true
     try {
         await SelectDrive(driveInfo.letter)
+        // Backend emits statusUpdate which triggers detectStatus() via event listener
     } catch (e) {
         addLog('Error: ' + e)
     }
     dbBusy.value = false
-    await detectStatus()
 }
 
 // ---- Tools tab (MSI cleanup) ----
@@ -730,11 +848,42 @@ async function handleCleanMSI() {
 
 // ---- ID3 Editor ----
 
+async function handleEditTrackFromPlaylist(track) {
+    if (!track.path) return
+    editingTrack.value = track
+    id3File.value = track.path
+    await loadID3(track.path)
+    // Navigate to Tools tab so the user sees the dedicated editor
+    await switchTab('tools')
+}
+
 async function handleID3Pick() {
     const path = await ID3PickFile()
     if (!path) return
+    editingTrack.value = null
     id3File.value = path
     await loadID3(path)
+}
+
+async function handleID3FileDrop(event) {
+    id3DragOver.value = false
+    const files = event.dataTransfer?.files
+    if (!files?.length) return
+    const audioExts = /\.(mp3|flac|wav|aiff|aif)$/i
+    for (const f of files) {
+        if (audioExts.test(f.name)) {
+            // In Wails WebView2, file.path may be available
+            const path = f.path || ''
+            if (path) {
+                editingTrack.value = null
+                id3File.value = path
+                await loadID3(path)
+                return
+            }
+        }
+    }
+    // Fallback: open file picker if path unavailable
+    await handleID3Pick()
 }
 
 async function loadID3(path) {
@@ -890,6 +1039,8 @@ async function switchTab(tab) {
     if (tab === 'tools' && !toolsTabLoaded.value) {
         await checkUSBDrive()
         await checkMIDI2Status()
+        // Load playlists for Cover Compression scope selector
+        if (playlists.value.length === 0) await loadPlaylists()
         toolsTabLoaded.value = true
     }
 }
@@ -935,29 +1086,21 @@ let marqueeInterval = null
 onMounted(async () => {
     await loadMessages()
 
-    EventsOn('log', (entry) => {
-        addLog(entry)
-    })
-
-    EventsOn('progress', (value) => {
-        progress.value = value * 100
-    })
-
-    EventsOn('statusUpdate', async () => {
-        await detectStatus()
-    })
+    EventsOn('log', (entry) => { addLog(entry) })
+    EventsOn('progress', (value) => { progress.value = value * 100 })
+    EventsOn('statusUpdate', async () => { await detectStatus() })
 
     await detectStatus()
     try { cacheSize.value = await GetCacheSize() } catch (_) {}
+
+    // Konami Code listener
+    window.addEventListener('keydown', handleKeydown)
 
     marqueeInterval = setInterval(() => {
         currentMarquee.value = (currentMarquee.value + 1) % marqueeTexts.value.length
     }, 5000)
 
-    // Auto check for updates 1 second after startup
-    setTimeout(() => {
-        checkForUpdates()
-    }, 1000)
+    setTimeout(() => { checkForUpdates() }, 1000)
 })
 </script>
 
@@ -987,9 +1130,6 @@ onMounted(async () => {
                     <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path>
                 </svg>
             </button>
-            <select class="lang-select no-drag" :value="currentLang" @change="changeLanguage($event.target.value)">
-                <option v-for="lang in languages" :key="lang.code" :value="lang.code">{{ lang.native }}</option>
-            </select>
         </div>
     </div>
 
@@ -1002,6 +1142,9 @@ onMounted(async () => {
         </button>
         <button class="tab" :class="{ active: activeTab === 'tools' }" @click="switchTab('tools')">
             {{ msgs.tabTools || 'Tools' }}
+        </button>
+        <button class="tab" :class="{ active: activeTab === 'settings' }" @click="switchTab('settings')">
+            {{ msgs.tabSettings || 'Settings' }}
         </button>
     </div>
 
@@ -1206,7 +1349,11 @@ onMounted(async () => {
 
             <div v-if="selectedPlaylist && playlistTracks.length > 0" class="library-section" style="margin-top: 4px;">
                 <div class="playlist-track-list">
-                    <div v-for="(t, i) in playlistTracks" :key="t.id" class="playlist-track-row">
+                    <div v-for="(t, i) in playlistTracks" :key="t.id"
+                        class="playlist-track-row no-drag"
+                        :class="{ 'track-editing': editingTrack && editingTrack.id === t.id }"
+                        :style="t.path ? 'cursor:pointer;' : ''"
+                        @click="t.path && handleEditTrackFromPlaylist(t)">
                         <span class="playlist-track-num">{{ i + 1 }}</span>
                         <div class="playlist-track-info">
                             <div class="playlist-track-title">{{ t.title || t.filename }}</div>
@@ -1218,6 +1365,8 @@ onMounted(async () => {
                     </div>
                 </div>
             </div>
+
+            <!-- 点击曲目将跳转到 Tools > ID3 编辑器 -->
         </template>
 
         <!-- Library Stats -->
@@ -1290,45 +1439,52 @@ onMounted(async () => {
 
         <!-- Play Stats -->
         <div class="library-section" style="margin-top:12px;" v-if="dbDetected">
-            <div class="library-section-title">{{ msgs.playHistoryTitle || 'Play History' }}</div>
+            <div class="library-section-title">{{ msgs.playHistoryTitle || '播放历史' }}</div>
             <button class="btn btn-secondary no-drag" @click="handlePlayStats" :disabled="playStatsBusy">
                 <span v-if="playStatsBusy" class="loading-spinner"></span>
-                {{ playStatsBusy ? (msgs.playHistoryLoading || 'Loading...') : (msgs.playHistoryLoad || 'Load Stats') }}
+                {{ playStatsBusy ? (msgs.playHistoryLoading || '加载中...') : (msgs.playHistoryLoad || '加载统计') }}
             </button>
             <template v-if="playStats">
                 <div class="playlist-chips" style="margin-top:8px;">
-                    <span class="playlist-chip no-drag" :class="{ active: playStatsTab === 'most' }" @click="playStatsTab = 'most'">{{ msgs.playHistoryMostPlayed || 'Most Played' }}</span>
-                    <span class="playlist-chip no-drag" :class="{ active: playStatsTab === 'recent' }" @click="playStatsTab = 'recent'">{{ msgs.playHistoryRecent || 'Recent' }}</span>
-                    <span class="playlist-chip no-drag" :class="{ active: playStatsTab === 'never' }" @click="playStatsTab = 'never'">{{ msgs.playHistoryNeverPlayed || 'Never Played' }}</span>
+                    <span class="playlist-chip no-drag" :class="{ active: playStatsTab === 'most' }" @click="playStatsTab = 'most'">{{ msgs.playHistoryMostPlayed || '已播放' }}</span>
+                    <span class="playlist-chip no-drag" :class="{ active: playStatsTab === 'recent' }" @click="playStatsTab = 'recent'">{{ msgs.playHistoryRecent || '最近播放' }}</span>
+                    <span class="playlist-chip no-drag" :class="{ active: playStatsTab === 'never' }" @click="playStatsTab = 'never'">{{ msgs.playHistoryNeverPlayed || '从未播放' }}</span>
                 </div>
-                <div class="playlist-track-list" style="max-height:220px;overflow-y:auto;margin-top:4px;">
-                    <template v-if="playStatsTab === 'most'">
-                        <div v-for="t in playStats.mostPlayed" :key="t.id" class="playlist-track-row">
-                            <div class="playlist-track-info">
-                                <div class="playlist-track-title">{{ t.title }}</div>
-                                <div class="playlist-track-artist">{{ t.artist }}</div>
-                            </div>
-                            <span class="playlist-track-bpm" style="color:var(--accent)">×{{ t.playCount }}</span>
+
+                <!-- Played tracks (sorted by recency — Engine DJ has no per-track play count) -->
+                <div v-if="playStatsTab === 'most'" class="playlist-track-list" style="max-height:220px;overflow-y:auto;margin-top:4px;">
+                    <div v-if="playStats.mostPlayed.length === 0" class="library-stats">{{ msgs.dbNoneFound || '暂无数据' }}</div>
+                    <div v-for="t in playStats.mostPlayed" :key="t.id" class="playlist-track-row">
+                        <div class="playlist-track-info">
+                            <div class="playlist-track-title">{{ t.title || '—' }}</div>
+                            <div class="playlist-track-artist">{{ t.artist }}</div>
                         </div>
-                    </template>
-                    <template v-if="playStatsTab === 'recent'">
-                        <div v-for="t in playStats.recentPlayed" :key="t.id" class="playlist-track-row">
-                            <div class="playlist-track-info">
-                                <div class="playlist-track-title">{{ t.title }}</div>
-                                <div class="playlist-track-artist">{{ t.artist }}</div>
-                            </div>
-                            <span class="playlist-track-time" style="font-size:10px;">{{ t.lastPlayed.slice(0,10) }}</span>
+                        <span class="playlist-track-time" style="font-size:10px;">{{ t.lastPlayed.slice(0,10) }}</span>
+                    </div>
+                </div>
+
+                <!-- Recently Played: list -->
+                <div v-if="playStatsTab === 'recent'" class="playlist-track-list" style="max-height:220px;overflow-y:auto;margin-top:4px;">
+                    <div v-if="playStats.recentPlayed.length === 0" class="library-stats">{{ msgs.dbNoneFound || '暂无数据' }}</div>
+                    <div v-for="t in playStats.recentPlayed" :key="t.id" class="playlist-track-row">
+                        <div class="playlist-track-info">
+                            <div class="playlist-track-title">{{ t.title }}</div>
+                            <div class="playlist-track-artist">{{ t.artist }}</div>
                         </div>
-                    </template>
-                    <template v-if="playStatsTab === 'never'">
-                        <div v-for="t in playStats.neverPlayed" :key="t.id" class="playlist-track-row">
-                            <div class="playlist-track-info">
-                                <div class="playlist-track-title">{{ t.title }}</div>
-                                <div class="playlist-track-artist">{{ t.artist }}</div>
-                            </div>
-                            <span class="playlist-track-bpm" style="color:var(--text-secondary)">{{ t.bpm > 0 ? Math.round(t.bpm) : '' }}</span>
+                        <span class="playlist-track-time" style="font-size:10px;">{{ t.lastPlayed.slice(0,10) }}</span>
+                    </div>
+                </div>
+
+                <!-- Never Played: list -->
+                <div v-if="playStatsTab === 'never'" class="playlist-track-list" style="max-height:220px;overflow-y:auto;margin-top:4px;">
+                    <div v-if="playStats.neverPlayed.length === 0" class="library-stats">{{ msgs.dbNoneFound || '暂无数据' }}</div>
+                    <div v-for="t in playStats.neverPlayed" :key="t.id" class="playlist-track-row">
+                        <div class="playlist-track-info">
+                            <div class="playlist-track-title">{{ t.title }}</div>
+                            <div class="playlist-track-artist">{{ t.artist }}</div>
                         </div>
-                    </template>
+                        <span class="playlist-track-bpm" style="color:var(--text-secondary)">{{ t.bpm > 0 ? Math.round(t.bpm) : '' }}</span>
+                    </div>
                 </div>
             </template>
         </div>
@@ -1380,58 +1536,97 @@ onMounted(async () => {
 
         <!-- ID3 Editor -->
         <div class="library-section" style="margin-top: 12px;">
-            <div class="library-section-title" @click="handleID3TitleClick" style="cursor: default; user-select: none;">{{ msgs.id3EditorTitle || 'ID3 Tag Editor' }}</div>
-            <button class="btn btn-secondary no-drag" @click="handleID3Pick" :disabled="id3Busy">
-                {{ id3File ? id3FileName : (msgs.id3PickFileButton || 'Select Audio File') }}
-            </button>
+            <div class="library-section-title">{{ msgs.id3EditorTitle || 'ID3 标签编辑' }}</div>
+
+            <!-- Drop zone / file picker -->
+            <div class="id3-drop-zone no-drag"
+                :class="{ 'drop-active': id3DragOver }"
+                @click="handleID3Pick"
+                @dragover.prevent="id3DragOver = true"
+                @dragleave="id3DragOver = false"
+                @drop.prevent="handleID3FileDrop">
+                <span v-if="id3File" class="id3-drop-filename">{{ id3FileName }}</span>
+                <span v-else class="id3-drop-hint">{{ msgs.id3DropZoneHint || '拖入音频文件，或点击选择' }}</span>
+            </div>
+
+            <!-- Hint if loaded from playlist -->
+            <div v-if="editingTrack" class="library-stats" style="margin-top:4px;font-size:11px;">
+                {{ editingTrack.artist ? editingTrack.artist + ' — ' : '' }}{{ editingTrack.title || editingTrack.filename }}
+                <span style="margin-left:8px;cursor:pointer;color:var(--text-secondary);" @click="editingTrack=null;id3File=''" class="no-drag">✕</span>
+            </div>
         </div>
 
         <template v-if="id3File">
             <div class="info-card">
                 <div class="id3-cover-row">
                     <img v-if="id3Cover" :src="id3Cover" class="id3-cover-img" />
-                    <div v-else class="id3-cover-placeholder">No Cover</div>
+                    <div v-else class="id3-cover-placeholder">{{ msgs.noCoverLabel || '无封面' }}</div>
                     <div class="id3-cover-actions">
-                        <button class="btn btn-secondary no-drag id3-cover-btn" @click="handleID3SetCover" :disabled="id3Busy">Change</button>
-                        <button class="btn btn-secondary no-drag id3-cover-btn" @click="handleID3ClearCover" :disabled="id3Busy || !id3Cover">Remove</button>
+                        <button class="btn btn-secondary no-drag id3-cover-btn" @click="handleID3SetCover" :disabled="id3Busy">{{ msgs.changeCoverLabel || '更换' }}</button>
+                        <button class="btn btn-secondary no-drag id3-cover-btn" @click="handleID3ClearCover" :disabled="id3Busy || !id3Cover">{{ msgs.removeCoverLabel || '删除' }}</button>
                     </div>
                 </div>
             </div>
             <div class="library-section">
-                <input class="text-input no-drag" v-model="id3Title" placeholder="Title" :disabled="id3Busy" />
-                <input class="text-input no-drag" v-model="id3Artist" placeholder="Artist" :disabled="id3Busy" />
-                <input class="text-input no-drag" v-model="id3Album" placeholder="Album" :disabled="id3Busy" />
+                <input class="text-input no-drag" v-model="id3Title" :placeholder="msgs.id3TitlePlaceholder || '标题'" :disabled="id3Busy" />
+                <input class="text-input no-drag" v-model="id3Artist" :placeholder="msgs.id3ArtistPlaceholder || '艺术家'" :disabled="id3Busy" />
+                <input class="text-input no-drag" v-model="id3Album" :placeholder="msgs.id3AlbumPlaceholder || '专辑'" :disabled="id3Busy" />
                 <div class="drive-select-row">
-                    <input class="text-input no-drag" v-model="id3Year" placeholder="Year" :disabled="id3Busy" style="flex:1" />
-                    <input class="text-input no-drag" v-model="id3Genre" placeholder="Genre" :disabled="id3Busy" style="flex:1" />
+                    <input class="text-input no-drag" v-model="id3Year" :placeholder="msgs.id3YearPlaceholder || '年份'" :disabled="id3Busy" style="flex:1" />
+                    <input class="text-input no-drag" v-model="id3Genre" :placeholder="msgs.id3GenrePlaceholder || '风格'" :disabled="id3Busy" style="flex:1" />
                 </div>
                 <div class="drive-select-row">
-                    <button class="btn btn-primary no-drag" style="flex:1" @click="handleID3Save" :disabled="id3Busy">{{ msgs.id3SaveButton || 'Save' }}</button>
-                    <button class="btn btn-restore-all no-drag" style="flex:1" @click="handleID3ClearAll" :disabled="id3Busy">{{ msgs.id3ClearAllButton || 'Clear All' }}</button>
+                    <button class="btn btn-primary no-drag" style="flex:1" @click="handleID3Save" :disabled="id3Busy">{{ msgs.id3SaveButton || '保存' }}</button>
+                    <button class="btn btn-restore-all no-drag" style="flex:1" @click="handleID3ClearAll" :disabled="id3Busy">{{ msgs.id3ClearAllButton || '清除全部' }}</button>
                 </div>
             </div>
         </template>
 
-        <!-- Anti-piracy Easter Egg (hidden, activated by clicking ID3 title 5 times) -->
-        <template v-if="apShowMenu">
+        <!-- Anti-piracy (visible only when experimental features enabled) -->
+        <template v-if="experimentalEnabled">
             <div class="library-section" style="margin-top: 12px; border: 1px dashed var(--warning); border-radius: var(--radius-sm); padding: 12px;">
                 <div class="library-section-title" style="color: var(--warning);">防偷歌模式</div>
-                <div class="library-stats">对指定目录下的所有音频文件批量操作ID3标签，操作前自动备份</div>
-                <button class="btn btn-secondary no-drag" @click="handlePickApDir" :disabled="apBusy">
+                <div class="library-stats" style="margin-bottom:8px;">对所选范围内的音频文件批量操作 ID3 标签，操作前自动备份</div>
+
+                <!-- Scope selector -->
+                <div class="playlist-chips" style="margin-bottom:8px;">
+                    <span class="playlist-chip no-drag" :class="{ active: apScope === 'file' }" @click="apScope = 'file'">单个文件</span>
+                    <span class="playlist-chip no-drag" :class="{ active: apScope === 'folder' }" @click="apScope = 'folder'">文件夹</span>
+                    <span class="playlist-chip no-drag" :class="{ active: apScope === 'playlist' }" @click="apScope = 'playlist'">Playlist</span>
+                </div>
+
+                <!-- File picker -->
+                <button v-if="apScope === 'file'" class="btn btn-secondary no-drag" @click="handlePickApFile" :disabled="apBusy">
+                    {{ apFile ? apFile.split(/[/\\]/).pop() : '选择单个音频文件' }}
+                </button>
+
+                <!-- Folder picker -->
+                <button v-if="apScope === 'folder'" class="btn btn-secondary no-drag" @click="handlePickApDir" :disabled="apBusy">
                     {{ apDir || '选择音乐目录' }}
                 </button>
-                <template v-if="apDir">
+
+                <!-- Playlist selector -->
+                <select v-if="apScope === 'playlist'" class="text-input no-drag"
+                    v-model="apPlaylistId" :disabled="apBusy" style="margin-bottom:4px;">
+                    <option :value="-1" disabled>选择播放列表</option>
+                    <option v-for="pl in playlists" :key="pl.id" :value="pl.id">
+                        {{ pl.title }} ({{ pl.count }})
+                    </option>
+                </select>
+
+                <!-- Action buttons -->
+                <template v-if="apIsReady()">
                     <div class="drive-select-row" style="margin-top: 8px;">
                         <button class="btn btn-restore-all no-drag" style="flex:1" @click="handleAntiPiracyV1" :disabled="apBusy">
                             <span v-if="apBusy" class="loading-spinner"></span>
-                            v1 清除全部标签
+                            v1 清除标签
                         </button>
                         <button class="btn btn-restore-all no-drag" style="flex:1" @click="handleAntiPiracyV2" :disabled="apBusy">
                             <span v-if="apBusy" class="loading-spinner"></span>
-                            v2 随机打乱标签
+                            v2 打乱标签
                         </button>
                     </div>
-                    <button class="btn btn-secondary no-drag" style="margin-top: 6px;" @click="handleAntiPiracyRestore" :disabled="apBusy">
+                    <button class="btn btn-secondary no-drag" style="margin-top: 6px;width:100%;" @click="handleAntiPiracyRestore" :disabled="apBusy">
                         恢复备份
                     </button>
                 </template>
@@ -1583,8 +1778,8 @@ onMounted(async () => {
             </div>
         </template>
 
-        <!-- BPM / Key Write-back -->
-        <div class="library-section" style="margin-top: 12px;">
+        <!-- BPM / Key Write-back (experimental) -->
+        <div class="library-section" style="margin-top: 12px;" v-if="experimentalEnabled">
             <div class="library-section-title">{{ msgs.bpmKeySyncTitle || 'BPM / Key → ID3 Sync' }}</div>
             <div class="library-stats">{{ msgs.bpmKeySyncDesc || '将 Engine DJ 分析出的 BPM 和调号写回音频文件标签（TBPM / TKEY）' }}</div>
             <button class="btn btn-secondary no-drag" @click="handleLoadSyncPreview" :disabled="syncBusy">
@@ -1621,29 +1816,18 @@ onMounted(async () => {
             <div class="library-section-title">{{ msgs.coverCompressTitle || 'Cover Art Compression' }}</div>
 
             <!-- Tips -->
-            <div class="library-stats" style="background:rgba(255,196,0,0.07);border:1px solid rgba(255,196,0,0.25);border-radius:6px;padding:8px 10px;margin-bottom:10px;line-height:1.6;">
-                💡 {{ msgs.coverCompressTip || 'Compressing covers to ≤1 MB improves Engine OS USB load performance.' }}
+            <div class="library-stats" style="border-left:3px solid var(--warning);padding-left:10px;margin-bottom:10px;">
+                {{ msgs.coverCompressTip || 'Compressing covers to ≤1 MB improves Engine OS USB load performance.' }}
             </div>
 
             <!-- Scope selector -->
-            <div class="drive-select-row" style="margin-bottom:8px;">
-                <button class="drive-chip no-drag"
-                    :class="{ active: coverCompressPlaylistId === -1 }"
-                    @click="coverCompressPlaylistId = -1"
-                    :disabled="coverCompressBusy">
-                    <span class="drive-letter" style="font-size:11px;">All</span>
-                    <span class="drive-count">{{ msgs.coverCompressAllLibrary || 'Entire Library' }}</span>
-                </button>
-                <button v-for="pl in playlists" :key="pl.id"
-                    class="drive-chip no-drag"
-                    :class="{ active: coverCompressPlaylistId === pl.id }"
-                    @click="coverCompressPlaylistId = pl.id"
-                    :disabled="coverCompressBusy"
-                    style="margin-left:4px;">
-                    <span class="drive-letter" style="font-size:11px;max-width:80px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">{{ pl.title }}</span>
-                    <span class="drive-count">{{ pl.count }}</span>
-                </button>
-            </div>
+            <select class="text-input no-drag" v-model="coverCompressPlaylistId"
+                :disabled="coverCompressBusy" style="margin-bottom:8px;">
+                <option :value="-1">{{ msgs.coverCompressAllLibrary || '全部曲库' }}</option>
+                <option v-for="pl in playlists" :key="pl.id" :value="pl.id">
+                    {{ pl.title }} ({{ pl.count }})
+                </option>
+            </select>
 
             <button class="btn btn-primary no-drag" @click="handleCompressCovers" :disabled="coverCompressBusy">
                 <span v-if="coverCompressBusy" class="loading-spinner"></span>
@@ -1687,6 +1871,73 @@ onMounted(async () => {
         </div>
     </div>
 
+    <!-- SETTINGS TAB -->
+    <div class="content" v-show="activeTab === 'settings'">
+        <!-- Language -->
+        <div class="library-section">
+            <div class="library-section-title">{{ msgs.settingsLanguageLabel || '显示语言' }}</div>
+            <div class="drive-grid no-drag" style="flex-wrap:wrap;">
+                <button v-for="lang in languages" :key="lang.code"
+                    class="drive-chip"
+                    :class="{ active: currentLang === lang.code }"
+                    @click="changeLanguage(lang.code)">
+                    <span class="drive-letter" style="font-size:12px;">{{ lang.native }}</span>
+                </button>
+            </div>
+        </div>
+
+        <!-- Experimental Features -->
+        <div class="library-section" style="margin-top:12px;">
+            <div class="library-section-title">{{ msgs.settingsExperimentalLabel || '实验性功能' }}</div>
+            <div class="library-stats" style="margin-bottom:8px;">{{ msgs.settingsExperimentalDesc || '解锁隐藏的开发者功能，请谨慎使用。' }}</div>
+
+            <!-- Toggle -->
+            <label class="no-drag" style="display:flex;align-items:center;gap:10px;cursor:pointer;">
+                <div class="toggle-switch" :class="{ on: experimentalEnabled }" @click="handleExperimentalToggle">
+                    <div class="toggle-knob"></div>
+                </div>
+                <span style="font-size:13px;">{{ experimentalEnabled ? (msgs.settingsExperimentalLabel || '已开启') : (msgs.settingsExperimentalLabel || '已关闭') }}</span>
+            </label>
+
+            <!-- Countdown confirm -->
+            <div v-if="showExperimentalConfirm" class="info-card" style="margin-top:10px;border:1px solid var(--warning);">
+                <div style="font-size:12px;color:var(--text-secondary);margin-bottom:8px;">
+                    {{ msgs.settingsExperimentalConfirmMsg || '' }}
+                </div>
+                <div class="drive-select-row">
+                    <button class="btn btn-restore-all no-drag" style="flex:1;"
+                        :disabled="experimentalCountdown > 0"
+                        @click="confirmExperimental">
+                        {{ experimentalCountdown > 0
+                            ? (experimentalCountdown + 's...')
+                            : (msgs.settingsExperimentalConfirmBtn || '确认开启') }}
+                    </button>
+                    <button class="btn btn-secondary no-drag" style="flex:1;" @click="cancelExperimental">
+                        {{ msgs.restoreButton || '取消' }}
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- About -->
+        <div class="library-section" style="margin-top:12px;">
+            <div class="library-section-title">{{ msgs.settingsAboutTitle || '关于' }}</div>
+            <div class="info-card">
+                <div class="info-row">
+                    <span class="info-label">Engine Tools</span>
+                    <span class="info-value">v{{ APP_VERSION }}</span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">{{ msgs.settingsContributors || '贡献者' }}</span>
+                    <span class="info-value" style="color:var(--accent);cursor:pointer;" @click="openGitHub">@LaokeQwQ</span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label muted" style="font-size:11px;">{{ msgs.settingsAboutDesc || '非官方个人工具' }}</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <div class="progress-wrapper">
         <div class="progress-bar" :class="{ active: showProgress }">
             <div class="progress-fill" :style="{ width: progress + '%' }"></div>
@@ -1702,6 +1953,114 @@ onMounted(async () => {
 </template>
 
 <style>
+/* Bar chart visualization */
+.vis-chart {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-height: 260px;
+  overflow-y: auto;
+}
+.vis-bar-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+}
+.vis-bar-name {
+  width: 100px;
+  min-width: 100px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--text-secondary);
+  text-align: right;
+  font-size: 10px;
+}
+.vis-bar-outer {
+  flex: 1;
+  height: 14px;
+  background: rgba(255,255,255,0.06);
+  border-radius: 2px;
+  overflow: hidden;
+}
+.vis-bar-fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--accent) 0%, color-mix(in srgb, var(--accent) 60%, transparent) 100%);
+  border-radius: 2px;
+  transition: width 0.6s cubic-bezier(.4,0,.2,1);
+}
+.vis-bar-count {
+  min-width: 24px;
+  text-align: right;
+  color: var(--text-secondary);
+  font-size: 10px;
+}
+
+/* ID3 drop zone */
+.id3-drop-zone {
+  border: 1px dashed rgba(255,255,255,0.2);
+  border-radius: var(--radius-sm, 6px);
+  padding: 14px 12px;
+  text-align: center;
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s;
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+.id3-drop-zone:hover,
+.id3-drop-zone.drop-active {
+  border-color: var(--accent);
+  background: rgba(var(--accent-rgb, 99,179,237), 0.07);
+  color: var(--accent);
+}
+.id3-drop-filename {
+  color: var(--text-primary);
+  font-size: 11px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  display: block;
+  max-width: 100%;
+}
+.id3-drop-hint {
+  opacity: 0.7;
+}
+
+/* Toggle switch */
+.toggle-switch {
+  width: 40px;
+  height: 22px;
+  background: rgba(255,255,255,0.12);
+  border-radius: 11px;
+  position: relative;
+  cursor: pointer;
+  transition: background 0.2s;
+  flex-shrink: 0;
+}
+.toggle-switch.on {
+  background: var(--accent);
+}
+.toggle-knob {
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 16px;
+  height: 16px;
+  background: #fff;
+  border-radius: 50%;
+  transition: transform 0.2s;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.3);
+}
+.toggle-switch.on .toggle-knob {
+  transform: translateX(18px);
+}
+
+.track-editing {
+  background: rgba(var(--accent-rgb, 99,179,237), 0.12) !important;
+  outline: 1px solid var(--accent);
+}
+
 .marquee-text {
   font-size: 11px;
   color: var(--text-secondary);
