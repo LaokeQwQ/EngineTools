@@ -219,6 +219,16 @@ type Messages struct {
 	SettingsAboutTitle          string `json:"settingsAboutTitle"`
 	SettingsAboutDesc           string `json:"settingsAboutDesc"`
 	SettingsContributors        string `json:"settingsContributors"`
+	// ID3 editor
+	ID3DropZoneHint    string `json:"id3DropZoneHint"`
+	NoCoverLabel       string `json:"noCoverLabel"`
+	ChangeCoverLabel   string `json:"changeCoverLabel"`
+	RemoveCoverLabel   string `json:"removeCoverLabel"`
+	ID3TitlePlaceholder  string `json:"id3TitlePlaceholder"`
+	ID3ArtistPlaceholder string `json:"id3ArtistPlaceholder"`
+	ID3AlbumPlaceholder  string `json:"id3AlbumPlaceholder"`
+	ID3YearPlaceholder   string `json:"id3YearPlaceholder"`
+	ID3GenrePlaceholder  string `json:"id3GenrePlaceholder"`
 }
 
 var translations = map[Lang]Messages{
@@ -415,6 +425,15 @@ var translations = map[Lang]Messages{
 		SettingsAboutTitle:          "关于",
 		SettingsAboutDesc:           "非官方个人工具 · 与 inMusic / Engine DJ 品牌无关",
 		SettingsContributors:        "贡献者",
+		ID3DropZoneHint:    "将音频文件拖入此处，或点击选择",
+		NoCoverLabel:       "无封面",
+		ChangeCoverLabel:   "更换",
+		RemoveCoverLabel:   "删除",
+		ID3TitlePlaceholder:  "标题",
+		ID3ArtistPlaceholder: "艺术家",
+		ID3AlbumPlaceholder:  "专辑",
+		ID3YearPlaceholder:   "年份",
+		ID3GenrePlaceholder:  "流派",
 	},
 	JA: {
 		AppTitle:              "Engine Tools",
@@ -609,6 +628,15 @@ var translations = map[Lang]Messages{
 		SettingsAboutTitle:          "このアプリについて",
 		SettingsAboutDesc:           "非公式の個人ツール・inMusic / Engine DJ ブランドとは無関係",
 		SettingsContributors:        "コントリビューター",
+		ID3DropZoneHint:    "音声ファイルをドロップ、またはクリックして選択",
+		NoCoverLabel:       "カバーなし",
+		ChangeCoverLabel:   "変更",
+		RemoveCoverLabel:   "削除",
+		ID3TitlePlaceholder:  "タイトル",
+		ID3ArtistPlaceholder: "アーティスト",
+		ID3AlbumPlaceholder:  "アルバム",
+		ID3YearPlaceholder:   "年",
+		ID3GenrePlaceholder:  "ジャンル",
 	},
 	KO: {
 		AppTitle:              "Engine Tools",
@@ -803,6 +831,15 @@ var translations = map[Lang]Messages{
 		SettingsAboutTitle:          "앱 정보",
 		SettingsAboutDesc:           "비공식 개인 도구 · inMusic / Engine DJ 브랜드와 무관",
 		SettingsContributors:        "기여자",
+		ID3DropZoneHint:    "오디오 파일을 드롭하거나 클릭하여 선택",
+		NoCoverLabel:       "커버 없음",
+		ChangeCoverLabel:   "변경",
+		RemoveCoverLabel:   "삭제",
+		ID3TitlePlaceholder:  "제목",
+		ID3ArtistPlaceholder: "아티스트",
+		ID3AlbumPlaceholder:  "앨범",
+		ID3YearPlaceholder:   "연도",
+		ID3GenrePlaceholder:  "장르",
 	},
 	EN: {
 		AppTitle:              "Engine Tools",
@@ -997,6 +1034,15 @@ var translations = map[Lang]Messages{
 		SettingsAboutTitle:          "About",
 		SettingsAboutDesc:           "Unofficial personal tool · Not affiliated with inMusic / Engine DJ",
 		SettingsContributors:        "Contributors",
+		ID3DropZoneHint:    "Drop audio file here, or click to select",
+		NoCoverLabel:       "No Cover",
+		ChangeCoverLabel:   "Change",
+		RemoveCoverLabel:   "Remove",
+		ID3TitlePlaceholder:  "Title",
+		ID3ArtistPlaceholder: "Artist",
+		ID3AlbumPlaceholder:  "Album",
+		ID3YearPlaceholder:   "Year",
+		ID3GenrePlaceholder:  "Genre",
 	},
 }
 

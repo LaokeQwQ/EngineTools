@@ -107,6 +107,7 @@ const id3Year = ref('')
 const id3Genre = ref('')
 const id3Cover = ref('')
 const id3Busy = ref(false)
+const id3DragOver = ref(false)
 
 // USB Unlock state
 const usbDrive = ref('')
@@ -801,13 +802,37 @@ async function handleEditTrackFromPlaylist(track) {
     editingTrack.value = track
     id3File.value = track.path
     await loadID3(track.path)
+    // Navigate to Tools tab so the user sees the dedicated editor
+    await switchTab('tools')
 }
 
 async function handleID3Pick() {
     const path = await ID3PickFile()
     if (!path) return
+    editingTrack.value = null
     id3File.value = path
     await loadID3(path)
+}
+
+async function handleID3FileDrop(event) {
+    id3DragOver.value = false
+    const files = event.dataTransfer?.files
+    if (!files?.length) return
+    const audioExts = /\.(mp3|flac|wav|aiff|aif)$/i
+    for (const f of files) {
+        if (audioExts.test(f.name)) {
+            // In Wails WebView2, file.path may be available
+            const path = f.path || ''
+            if (path) {
+                editingTrack.value = null
+                id3File.value = path
+                await loadID3(path)
+                return
+            }
+        }
+    }
+    // Fallback: open file picker if path unavailable
+    await handleID3Pick()
 }
 
 async function loadID3(path) {
@@ -963,6 +988,8 @@ async function switchTab(tab) {
     if (tab === 'tools' && !toolsTabLoaded.value) {
         await checkUSBDrive()
         await checkMIDI2Status()
+        // Load playlists for Cover Compression scope selector
+        if (playlists.value.length === 0) await loadPlaylists()
         toolsTabLoaded.value = true
     }
 }
@@ -1052,9 +1079,6 @@ onMounted(async () => {
                     <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path>
                 </svg>
             </button>
-            <select class="lang-select no-drag" :value="currentLang" @change="changeLanguage($event.target.value)">
-                <option v-for="lang in languages" :key="lang.code" :value="lang.code">{{ lang.native }}</option>
-            </select>
         </div>
     </div>
 
@@ -1291,34 +1315,7 @@ onMounted(async () => {
                 </div>
             </div>
 
-            <!-- 内联 ID3 编辑器（从 playlist 点击进入） -->
-            <div v-if="editingTrack && id3File" class="library-section" style="margin-top:8px;border-top:1px solid var(--border);padding-top:8px;">
-                <div class="library-section-title" style="display:flex;justify-content:space-between;align-items:center;">
-                    <span>{{ msgs.id3EditorTitle || '标签编辑' }}</span>
-                    <span class="no-drag" style="font-size:11px;color:var(--text-secondary);cursor:pointer;" @click="editingTrack=null;id3File=''">✕</span>
-                </div>
-                <div class="info-card" style="margin-bottom:8px;">
-                    <div class="id3-cover-row">
-                        <img v-if="id3Cover" :src="id3Cover" class="id3-cover-img" />
-                        <div v-else class="id3-cover-placeholder" style="font-size:11px;">{{ msgs.noCoverLabel || '无封面' }}</div>
-                        <div class="id3-cover-actions">
-                            <button class="btn btn-secondary no-drag id3-cover-btn" @click="handleID3SetCover" :disabled="id3Busy">{{ msgs.changeCoverLabel || '更换' }}</button>
-                            <button class="btn btn-secondary no-drag id3-cover-btn" @click="handleID3ClearCover" :disabled="id3Busy || !id3Cover">{{ msgs.removeCoverLabel || '删除' }}</button>
-                        </div>
-                    </div>
-                </div>
-                <input class="text-input no-drag" v-model="id3Title" :placeholder="msgs.id3TitlePlaceholder || '标题'" :disabled="id3Busy" />
-                <input class="text-input no-drag" v-model="id3Artist" :placeholder="msgs.id3ArtistPlaceholder || '艺术家'" :disabled="id3Busy" />
-                <input class="text-input no-drag" v-model="id3Album" :placeholder="msgs.id3AlbumPlaceholder || '专辑'" :disabled="id3Busy" />
-                <div class="drive-select-row">
-                    <input class="text-input no-drag" v-model="id3Year" :placeholder="msgs.id3YearPlaceholder || '年份'" :disabled="id3Busy" style="flex:1" />
-                    <input class="text-input no-drag" v-model="id3Genre" :placeholder="msgs.id3GenrePlaceholder || '风格'" :disabled="id3Busy" style="flex:1" />
-                </div>
-                <div class="drive-select-row">
-                    <button class="btn btn-primary no-drag" style="flex:1" @click="handleID3Save" :disabled="id3Busy">{{ msgs.id3SaveButton || '保存' }}</button>
-                    <button class="btn btn-restore-all no-drag" style="flex:1" @click="handleID3ClearAll" :disabled="id3Busy">{{ msgs.id3ClearAllButton || '清除全部' }}</button>
-                </div>
-            </div>
+            <!-- 点击曲目将跳转到 Tools > ID3 编辑器 -->
         </template>
 
         <!-- Library Stats -->
@@ -1490,34 +1487,48 @@ onMounted(async () => {
 
         <!-- ID3 Editor -->
         <div class="library-section" style="margin-top: 12px;">
-            <div class="library-section-title" @click="handleID3TitleClick" style="cursor: default; user-select: none;">{{ msgs.id3EditorTitle || 'ID3 Tag Editor' }}</div>
-            <button class="btn btn-secondary no-drag" @click="handleID3Pick" :disabled="id3Busy">
-                {{ id3File ? id3FileName : (msgs.id3PickFileButton || 'Select Audio File') }}
-            </button>
+            <div class="library-section-title">{{ msgs.id3EditorTitle || 'ID3 标签编辑' }}</div>
+
+            <!-- Drop zone / file picker -->
+            <div class="id3-drop-zone no-drag"
+                :class="{ 'drop-active': id3DragOver }"
+                @click="handleID3Pick"
+                @dragover.prevent="id3DragOver = true"
+                @dragleave="id3DragOver = false"
+                @drop.prevent="handleID3FileDrop">
+                <span v-if="id3File" class="id3-drop-filename">{{ id3FileName }}</span>
+                <span v-else class="id3-drop-hint">{{ msgs.id3DropZoneHint || '拖入音频文件，或点击选择' }}</span>
+            </div>
+
+            <!-- Hint if loaded from playlist -->
+            <div v-if="editingTrack" class="library-stats" style="margin-top:4px;font-size:11px;">
+                {{ editingTrack.artist ? editingTrack.artist + ' — ' : '' }}{{ editingTrack.title || editingTrack.filename }}
+                <span style="margin-left:8px;cursor:pointer;color:var(--text-secondary);" @click="editingTrack=null;id3File=''" class="no-drag">✕</span>
+            </div>
         </div>
 
         <template v-if="id3File">
             <div class="info-card">
                 <div class="id3-cover-row">
                     <img v-if="id3Cover" :src="id3Cover" class="id3-cover-img" />
-                    <div v-else class="id3-cover-placeholder">No Cover</div>
+                    <div v-else class="id3-cover-placeholder">{{ msgs.noCoverLabel || '无封面' }}</div>
                     <div class="id3-cover-actions">
-                        <button class="btn btn-secondary no-drag id3-cover-btn" @click="handleID3SetCover" :disabled="id3Busy">Change</button>
-                        <button class="btn btn-secondary no-drag id3-cover-btn" @click="handleID3ClearCover" :disabled="id3Busy || !id3Cover">Remove</button>
+                        <button class="btn btn-secondary no-drag id3-cover-btn" @click="handleID3SetCover" :disabled="id3Busy">{{ msgs.changeCoverLabel || '更换' }}</button>
+                        <button class="btn btn-secondary no-drag id3-cover-btn" @click="handleID3ClearCover" :disabled="id3Busy || !id3Cover">{{ msgs.removeCoverLabel || '删除' }}</button>
                     </div>
                 </div>
             </div>
             <div class="library-section">
-                <input class="text-input no-drag" v-model="id3Title" placeholder="Title" :disabled="id3Busy" />
-                <input class="text-input no-drag" v-model="id3Artist" placeholder="Artist" :disabled="id3Busy" />
-                <input class="text-input no-drag" v-model="id3Album" placeholder="Album" :disabled="id3Busy" />
+                <input class="text-input no-drag" v-model="id3Title" :placeholder="msgs.id3TitlePlaceholder || '标题'" :disabled="id3Busy" />
+                <input class="text-input no-drag" v-model="id3Artist" :placeholder="msgs.id3ArtistPlaceholder || '艺术家'" :disabled="id3Busy" />
+                <input class="text-input no-drag" v-model="id3Album" :placeholder="msgs.id3AlbumPlaceholder || '专辑'" :disabled="id3Busy" />
                 <div class="drive-select-row">
-                    <input class="text-input no-drag" v-model="id3Year" placeholder="Year" :disabled="id3Busy" style="flex:1" />
-                    <input class="text-input no-drag" v-model="id3Genre" placeholder="Genre" :disabled="id3Busy" style="flex:1" />
+                    <input class="text-input no-drag" v-model="id3Year" :placeholder="msgs.id3YearPlaceholder || '年份'" :disabled="id3Busy" style="flex:1" />
+                    <input class="text-input no-drag" v-model="id3Genre" :placeholder="msgs.id3GenrePlaceholder || '风格'" :disabled="id3Busy" style="flex:1" />
                 </div>
                 <div class="drive-select-row">
-                    <button class="btn btn-primary no-drag" style="flex:1" @click="handleID3Save" :disabled="id3Busy">{{ msgs.id3SaveButton || 'Save' }}</button>
-                    <button class="btn btn-restore-all no-drag" style="flex:1" @click="handleID3ClearAll" :disabled="id3Busy">{{ msgs.id3ClearAllButton || 'Clear All' }}</button>
+                    <button class="btn btn-primary no-drag" style="flex:1" @click="handleID3Save" :disabled="id3Busy">{{ msgs.id3SaveButton || '保存' }}</button>
+                    <button class="btn btn-restore-all no-drag" style="flex:1" @click="handleID3ClearAll" :disabled="id3Busy">{{ msgs.id3ClearAllButton || '清除全部' }}</button>
                 </div>
             </div>
         </template>
@@ -1883,42 +1894,74 @@ onMounted(async () => {
 .vis-chart {
   display: flex;
   flex-direction: column;
-  gap: 5px;
+  gap: 6px;
+  max-height: 260px;
+  overflow-y: auto;
 }
 .vis-bar-row {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
   font-size: 11px;
 }
 .vis-bar-name {
-  width: 110px;
-  min-width: 110px;
+  width: 100px;
+  min-width: 100px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
   color: var(--text-secondary);
   text-align: right;
+  font-size: 10px;
 }
 .vis-bar-outer {
   flex: 1;
-  height: 16px;
+  height: 14px;
   background: rgba(255,255,255,0.06);
-  border-radius: 3px;
+  border-radius: 2px;
   overflow: hidden;
 }
 .vis-bar-fill {
   height: 100%;
-  background: var(--accent);
-  border-radius: 3px;
+  background: linear-gradient(90deg, var(--accent) 0%, color-mix(in srgb, var(--accent) 60%, transparent) 100%);
+  border-radius: 2px;
   transition: width 0.6s cubic-bezier(.4,0,.2,1);
 }
 .vis-bar-count {
-  min-width: 28px;
+  min-width: 24px;
   text-align: right;
+  color: var(--text-secondary);
+  font-size: 10px;
+}
+
+/* ID3 drop zone */
+.id3-drop-zone {
+  border: 1px dashed rgba(255,255,255,0.2);
+  border-radius: var(--radius-sm, 6px);
+  padding: 14px 12px;
+  text-align: center;
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s;
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+.id3-drop-zone:hover,
+.id3-drop-zone.drop-active {
+  border-color: var(--accent);
+  background: rgba(var(--accent-rgb, 99,179,237), 0.07);
   color: var(--accent);
-  font-weight: 600;
+}
+.id3-drop-filename {
+  color: var(--text-primary);
   font-size: 11px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  display: block;
+  max-width: 100%;
+}
+.id3-drop-hint {
+  opacity: 0.7;
 }
 
 /* Toggle switch */
