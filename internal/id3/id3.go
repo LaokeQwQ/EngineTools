@@ -37,6 +37,32 @@ func ReadTag(filePath string) (TagInfo, error) {
 	return info, nil
 }
 
+// WriteBPMKey writes BPM and/or musical key back into the file's ID3v2 tags.
+// bpm should be a string like "128.00" and key a name like "Am" or "C".
+// Pass empty string for either field to leave it unchanged.
+func WriteBPMKey(filePath, bpm, key string) error {
+	tag, err := id3v2.Open(filePath, id3v2.Options{Parse: true})
+	if err != nil {
+		return fmt.Errorf("failed to open file: %w", err)
+	}
+	defer tag.Close()
+
+	changed := false
+	if bpm != "" {
+		tag.AddTextFrame(tag.CommonID("BPM"), id3v2.EncodingUTF8, bpm)
+		changed = true
+	}
+	if key != "" {
+		// TKEY frame holds the initial key
+		tag.AddTextFrame(tag.CommonID("Initial key"), id3v2.EncodingUTF8, key)
+		changed = true
+	}
+	if !changed {
+		return nil
+	}
+	return tag.Save()
+}
+
 // WriteTag writes the given metadata fields to the file. Empty strings are
 // skipped (not cleared). Use ClearTag to remove fields.
 func WriteTag(filePath, title, artist, album, year, genre string) error {

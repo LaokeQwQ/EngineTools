@@ -2,8 +2,8 @@
 import { ref, onMounted, computed } from 'vue'
 import {
     GetStatus,
-    FixCJKIssues,
-    RestoreCJKFix,
+    FixUnicodeIssues,
+    RestoreUnicodeFix,
     HandleUTF8AlreadyEnabled,
     OpenRegionSettings,
     SetLanguage,
@@ -45,10 +45,18 @@ import {
     AnalyzeLogs,
     OpenLogsDir,
     CleanCache,
+    GetCacheSize,
+    GetLibraryStats,
+    GetPlayStats,
+    ScanMissingTracks,
+    RemoveMissingTracks,
+    GetSyncableTracks,
+    SyncBPMKeyToTags,
+    CompressCovers,
 } from '../wailsjs/go/main/App.js'
 import { EventsOn } from '../wailsjs/runtime/runtime.js'
 
-const APP_VERSION = '1.6.0'
+const APP_VERSION = '1.7.0'
 
 const installPath = ref('')
 const engineVersion = ref('')
@@ -118,6 +126,37 @@ const logBusy = ref(false)
 
 // Cache cleanup state
 const cacheBusy = ref(false)
+const cacheSize = ref(0)
+
+// Tab lazy-load flags
+const dbTabLoaded = ref(false)
+const toolsTabLoaded = ref(false)
+
+// Library stats state
+const libraryStats = ref(null)
+const libraryStatsBusy = ref(false)
+
+// Play stats state
+const playStats = ref(null)
+const playStatsBusy = ref(false)
+const playStatsTab = ref('most') // 'most' | 'recent' | 'never'
+
+// Missing tracks state
+const missingTracks = ref([])
+const missingSelected = ref([])
+const missingBusy = ref(false)
+const missingScanned = ref(false)
+
+// BPM/Key sync state
+const syncBusy = ref(false)
+const syncResult = ref(null)
+const syncPreviewTracks = ref([])
+const syncPreviewLoaded = ref(false)
+
+// Cover compression state
+const coverCompressBusy = ref(false)
+const coverCompressResult = ref(null)
+const coverCompressPlaylistId = ref(-1) // -1 = entire library
 
 // Anti-piracy easter egg state
 const apDir = ref('')
@@ -142,6 +181,19 @@ function showToast(msg) {
     if (toastTimer) clearTimeout(toastTimer)
     toastTimer = setTimeout(() => { toastVisible.value = false }, 3000)
 }
+
+function showErrorToast(msg) {
+    toastMsg.value = '❌ ' + msg
+    toastVisible.value = true
+    if (toastTimer) clearTimeout(toastTimer)
+    toastTimer = setTimeout(() => { toastVisible.value = false }, 4000)
+}
+
+const cacheSizeText = computed(() => {
+    if (cacheSize.value <= 0) return ''
+    const mb = (cacheSize.value / 1024 / 1024).toFixed(1)
+    return (msgs.value.cacheSizeLabel || 'Cache size') + ': ' + mb + ' MB'
+})
 
 const id3FileName = computed(() => {
     if (!id3File.value) return ''
@@ -243,7 +295,7 @@ async function handleFix() {
     progress.value = 0
 
     try {
-        const result = await FixCJKIssues()
+        const result = await FixUnicodeIssues()
         if (result === 'ok') {
             manifestConfigured.value = true
         }
@@ -265,7 +317,7 @@ async function handleRestore() {
     progress.value = 0
 
     try {
-        await RestoreCJKFix()
+        await RestoreUnicodeFix()
     } catch (e) {
         addLog('Error: ' + e)
     }
@@ -314,6 +366,7 @@ async function handleBackup() {
         showToast(msgs.value.dbBackupComplete || 'Backup complete')
     } catch (e) {
         addLog('Error: ' + e)
+        showErrorToast(msgs.value.dbBackupError || 'Backup failed')
     }
     dbBusy.value = false
 }
@@ -326,6 +379,7 @@ async function handleRestoreDB() {
         showToast(msgs.value.dbRestoreComplete || 'Restore complete')
     } catch (e) {
         addLog('Error: ' + e)
+        showErrorToast(msgs.value.dbRestoreConfirmTitle || 'Restore failed')
     }
     dbBusy.value = false
 }
@@ -337,6 +391,7 @@ async function handleOptimize() {
         showToast(msgs.value.dbOptimizeComplete || 'Optimization complete')
     } catch (e) {
         addLog('Error: ' + e)
+        showErrorToast(msgs.value.dbOptimizeButton || 'Optimization failed')
     }
     dbBusy.value = false
 }
@@ -348,20 +403,166 @@ async function handleRepair() {
         showToast(msgs.value.dbRepairComplete || 'Repair complete')
     } catch (e) {
         addLog('Error: ' + e)
+        showErrorToast(msgs.value.dbRepairButton || 'Repair failed')
     }
     dbBusy.value = false
     await detectStatus()
 }
 
+// ---- Library Stats ----
+
+async function handleLibraryStats() {
+    libraryStatsBusy.value = true
+    try {
+        libraryStats.value = await GetLibraryStats()
+    } catch (e) {
+        addLog('Error: ' + e)
+        showErrorToast('Library stats failed')
+    }
+    libraryStatsBusy.value = false
+}
+
+function formatDuration(seconds) {
+    if (!seconds) return '0h 0m'
+    const h = Math.floor(seconds / 3600)
+    const m = Math.floor((seconds % 3600) / 60)
+    return `${h}h ${m}m`
+}
+
+function formatBytes(bytes) {
+    if (!bytes) return '0 MB'
+    const gb = bytes / (1024 * 1024 * 1024)
+    if (gb >= 1) return gb.toFixed(1) + ' GB'
+    return (bytes / (1024 * 1024)).toFixed(0) + ' MB'
+}
+
+// ---- Play Stats ----
+
+async function handlePlayStats() {
+    playStatsBusy.value = true
+    try {
+        playStats.value = await GetPlayStats()
+    } catch (e) {
+        addLog('Error: ' + e)
+        showErrorToast('Play stats failed')
+    }
+    playStatsBusy.value = false
+}
+
+// ---- Missing Tracks ----
+
+async function handleScanMissing() {
+    missingBusy.value = true
+    missingSelected.value = []
+    try {
+        missingTracks.value = await ScanMissingTracks()
+        missingScanned.value = true
+    } catch (e) {
+        addLog('Error: ' + e)
+        showErrorToast('Scan failed')
+    }
+    missingBusy.value = false
+}
+
+function toggleMissingTrack(id) {
+    const idx = missingSelected.value.indexOf(id)
+    if (idx === -1) missingSelected.value.push(id)
+    else missingSelected.value.splice(idx, 1)
+}
+
+function toggleAllMissing() {
+    if (missingSelected.value.length === missingTracks.value.length) {
+        missingSelected.value = []
+    } else {
+        missingSelected.value = missingTracks.value.map(t => t.id)
+    }
+}
+
+async function handleRemoveMissing() {
+    if (missingSelected.value.length === 0) return
+    const ok = window.confirm(`确认从数据库删除 ${missingSelected.value.length} 条缺失记录？此操作不可撤销。`)
+    if (!ok) return
+    missingBusy.value = true
+    try {
+        await RemoveMissingTracks(missingSelected.value)
+        showToast(`已删除 ${missingSelected.value.length} 条记录`)
+        await handleScanMissing()
+    } catch (e) {
+        addLog('Error: ' + e)
+        showErrorToast('Delete failed')
+    }
+    missingBusy.value = false
+}
+
+// ---- BPM/Key Sync ----
+
+async function handleLoadSyncPreview() {
+    syncPreviewLoaded.value = false
+    try {
+        syncPreviewTracks.value = await GetSyncableTracks()
+        syncPreviewLoaded.value = true
+    } catch (e) {
+        addLog('Error: ' + e)
+    }
+}
+
+async function handleSyncBPMKey() {
+    if (!syncPreviewLoaded.value) return
+    const ok = window.confirm(`将向 ${syncPreviewTracks.value.length} 个文件写回 BPM 和 Key 标签。确认继续？`)
+    if (!ok) return
+    syncBusy.value = true
+    syncResult.value = null
+    try {
+        syncResult.value = await SyncBPMKeyToTags()
+        if (syncResult.value.success > 0) {
+            showToast(`写回完成：${syncResult.value.success} 成功`)
+        }
+        if (syncResult.value.failed > 0) {
+            showErrorToast(`${syncResult.value.failed} 个文件写入失败`)
+        }
+    } catch (e) {
+        addLog('Error: ' + e)
+        showErrorToast('Sync failed')
+    }
+    syncBusy.value = false
+}
+
+// ---- Cover Art Compression ----
+
+async function handleCompressCovers() {
+    const scope = coverCompressPlaylistId.value < 0 ? '整个 Library' : `播放列表 ${coverCompressPlaylistId.value}`
+    const ok = window.confirm(`将压缩 ${scope} 中所有大于 1 MB 的封面至 1 MB 以内。此操作会修改音频文件的 ID3 标签。\n\n确认继续？`)
+    if (!ok) return
+    coverCompressBusy.value = true
+    coverCompressResult.value = null
+    try {
+        coverCompressResult.value = await CompressCovers(coverCompressPlaylistId.value, 1024)
+        const r = coverCompressResult.value
+        if (r.compressed > 0) {
+            const saved = r.savedBytes > 1048576
+                ? (r.savedBytes / 1048576).toFixed(1) + ' MB'
+                : Math.round(r.savedBytes / 1024) + ' KB'
+            showToast(`压缩完成：${r.compressed} 首，节省 ${saved}`)
+        } else {
+            showToast('所有封面已在 1 MB 以内，无需压缩')
+        }
+    } catch (e) {
+        addLog('Error: ' + e)
+        showErrorToast('Cover compression failed')
+    }
+    coverCompressBusy.value = false
+}
+
 async function handleAnalyzeLogs() {
-    logsBusy.value = true
+    logBusy.value = true
     try {
         logStats.value = await AnalyzeLogs()
     } catch (e) {
         addLog('Error: ' + e)
+        showErrorToast(msgs.value.logAnalysisTitle || 'Log analysis failed')
         logStats.value = null
     }
-    logsBusy.value = false
+    logBusy.value = false
 }
 
 async function handleOpenLogsDir() {
@@ -376,9 +577,11 @@ async function handleClearCache() {
     cacheBusy.value = true
     try {
         await CleanCache()
+        cacheSize.value = 0
         showToast(msgs.value.cacheCleanComplete || 'Cache cleared')
     } catch (e) {
         addLog('Error: ' + e)
+        showErrorToast(msgs.value.cacheCleanTitle || 'Cache clear failed')
     }
     cacheBusy.value = false
 }
@@ -403,8 +606,8 @@ async function handlePickApDir() {
 
 async function handleAntiPiracyV1() {
     if (!apDir.value) return
-    if (!confirm('防偷歌模式 1.0：将清除目录下所有音频文件的ID3信息，确定继续？')) return
-    if (!confirm('再次确认：此操作会清除所有标签信息（已自动备份），是否继续？')) return
+    const ok = window.confirm('⚠️ 防偷歌 v1：将清除目录下所有音频文件的ID3标签（操作前自动备份）。\n\n确认执行？')
+    if (!ok) return
     apBusy.value = true
     try {
         await ID3AntiPiracyV1(apDir.value)
@@ -416,8 +619,8 @@ async function handleAntiPiracyV1() {
 
 async function handleAntiPiracyV2() {
     if (!apDir.value) return
-    if (!confirm('防偷歌模式 2.0：将随机打乱目录下所有音频文件的ID3信息，确定继续？')) return
-    if (!confirm('再次确认：此操作会随机交换所有标签信息（已自动备份），是否继续？')) return
+    const ok = window.confirm('⚠️ 防偷歌 v2：将随机打乱目录下所有音频文件的ID3标签（操作前自动备份）。\n\n确认执行？')
+    if (!ok) return
     apBusy.value = true
     try {
         await ID3AntiPiracyV2(apDir.value)
@@ -635,6 +838,7 @@ async function handleUSBUnlock() {
         await checkUSBDrive()
     } catch (e) {
         addLog('Error: ' + e)
+        showErrorToast(msgs.value.usbUnlockTitle || 'USB unlock failed')
     }
     usbBusy.value = false
 }
@@ -657,6 +861,7 @@ async function handleMIDI2Disable() {
         await checkMIDI2Status()
     } catch (e) {
         addLog('Error: ' + e)
+        showErrorToast(msgs.value.midi2Title || 'MIDI 2.0 disable failed')
     }
     midi2Busy.value = false
 }
@@ -669,20 +874,23 @@ async function handleMIDI2Enable() {
         await checkMIDI2Status()
     } catch (e) {
         addLog('Error: ' + e)
+        showErrorToast(msgs.value.midi2Title || 'MIDI 2.0 enable failed')
     }
     midi2Busy.value = false
 }
 
 async function switchTab(tab) {
     activeTab.value = tab
-    if (tab === 'database') {
-        if (drives.value.length === 0) await loadDrives()
-        if (backups.value.length === 0) await refreshBackups()
-        if (playlists.value.length === 0) await loadPlaylists()
+    if (tab === 'database' && !dbTabLoaded.value) {
+        await loadDrives()
+        await refreshBackups()
+        await loadPlaylists()
+        dbTabLoaded.value = true
     }
-    if (tab === 'tools') {
+    if (tab === 'tools' && !toolsTabLoaded.value) {
         await checkUSBDrive()
         await checkMIDI2Status()
+        toolsTabLoaded.value = true
     }
 }
 
@@ -740,6 +948,7 @@ onMounted(async () => {
     })
 
     await detectStatus()
+    try { cacheSize.value = await GetCacheSize() } catch (_) {}
 
     marqueeInterval = setInterval(() => {
         currentMarquee.value = (currentMarquee.value + 1) % marqueeTexts.value.length
@@ -865,7 +1074,7 @@ onMounted(async () => {
                 :disabled="fixing || !installPath"
             >
                 <span v-if="fixing" class="loading-spinner"></span>
-                {{ fixing ? (msgs.progressFixing || 'Fixing...') : (msgs.fixButton || 'Fix CJK Character Reading Issues') }}
+                {{ fixing ? (msgs.progressFixing || 'Fixing...') : (msgs.fixButton || 'Fix Unicode Character Encoding Issues') }}
             </button>
 
             <button
@@ -1004,11 +1213,125 @@ onMounted(async () => {
                             <div class="playlist-track-artist">{{ t.artist }}</div>
                         </div>
                         <span class="playlist-track-bpm" v-if="t.bpm">{{ Math.round(t.bpm) }}</span>
+                        <span class="playlist-track-bpm" v-if="t.camelot" style="color:var(--accent);font-size:10px;">{{ t.camelot }}</span>
                         <span class="playlist-track-time">{{ formatTime(t.length) }}</span>
                     </div>
                 </div>
             </div>
         </template>
+
+        <!-- Library Stats -->
+        <div class="library-section" style="margin-top:12px;" v-if="dbDetected">
+            <div class="library-section-title">Library Stats</div>
+            <button class="btn btn-secondary no-drag" @click="handleLibraryStats" :disabled="libraryStatsBusy">
+                <span v-if="libraryStatsBusy" class="loading-spinner"></span>
+                {{ libraryStatsBusy ? 'Analyzing...' : 'Show Library Stats' }}
+            </button>
+            <template v-if="libraryStats">
+                <div class="info-card" style="margin-top:8px;">
+                    <div class="info-row"><span class="info-label">Tracks</span><span class="info-value">{{ libraryStats.totalTracks }}</span></div>
+                    <div class="info-row"><span class="info-label">Total duration</span><span class="info-value">{{ formatDuration(libraryStats.totalDuration) }}</span></div>
+                    <div class="info-row"><span class="info-label">Library size</span><span class="info-value">{{ formatBytes(libraryStats.totalFileBytes) }}</span></div>
+                    <div class="info-row"><span class="info-label">Analyzed</span><span class="info-value">{{ libraryStats.analyzedTracks }}<span class="muted" style="font-size:11px;"> / {{ libraryStats.totalTracks }}</span></span></div>
+                    <div class="info-row" v-if="libraryStats.missingTracks > 0">
+                        <span class="info-label" style="color:var(--error)">Missing files</span>
+                        <span class="info-value" style="color:var(--error)">{{ libraryStats.missingTracks }}</span>
+                    </div>
+                    <div class="info-row"><span class="info-label">Never played</span><span class="info-value">{{ libraryStats.neverPlayed }}</span></div>
+                </div>
+                <div v-if="libraryStats.topGenres.length > 0" class="info-card" style="margin-top:6px;">
+                    <div class="info-row" v-for="g in libraryStats.topGenres.slice(0,5)" :key="g.key">
+                        <span class="info-label">{{ g.key }}</span><span class="info-value muted">{{ g.count }}</span>
+                    </div>
+                </div>
+                <div v-if="libraryStats.fileTypes.length > 0" class="info-card" style="margin-top:6px;">
+                    <div class="info-row" v-for="f in libraryStats.fileTypes" :key="f.key">
+                        <span class="info-label">{{ f.key }}</span><span class="info-value muted">{{ f.count }}</span>
+                    </div>
+                </div>
+            </template>
+        </div>
+
+        <!-- Missing Tracks -->
+        <div class="library-section" style="margin-top:12px;" v-if="dbDetected">
+            <div class="library-section-title" style="color:var(--error)">Missing Tracks</div>
+            <div class="library-stats">Scan for tracks whose files no longer exist on disk</div>
+            <button class="btn btn-primary no-drag" @click="handleScanMissing" :disabled="missingBusy">
+                <span v-if="missingBusy" class="loading-spinner"></span>
+                {{ missingBusy ? 'Scanning...' : 'Scan Missing Files' }}
+            </button>
+            <template v-if="missingScanned">
+                <div v-if="missingTracks.length === 0" class="status-card status-success" style="margin-top:8px;">
+                    <div class="status-text"><div class="status-detail">No missing tracks ✓</div></div>
+                </div>
+                <template v-else>
+                    <div class="library-section-title" style="margin-top:8px;color:var(--error)">{{ missingTracks.length }} missing</div>
+                    <div class="drive-select-row" style="margin-bottom:6px;">
+                        <button class="btn btn-secondary no-drag" style="flex:1;font-size:11px;" @click="toggleAllMissing" :disabled="missingBusy">
+                            {{ missingSelected.length === missingTracks.length ? 'Deselect All' : 'Select All' }}
+                        </button>
+                        <button class="btn btn-restore-all no-drag" style="flex:1;font-size:11px;" @click="handleRemoveMissing" :disabled="missingBusy || missingSelected.length === 0">
+                            Remove {{ missingSelected.length > 0 ? '(' + missingSelected.length + ')' : '' }}
+                        </button>
+                    </div>
+                    <div class="playlist-track-list" style="max-height:200px;overflow-y:auto;">
+                        <div v-for="t in missingTracks" :key="t.id" class="playlist-track-row no-drag" @click="toggleMissingTrack(t.id)"
+                            :style="missingSelected.includes(t.id) ? 'background:rgba(255,80,80,0.1);' : ''">
+                            <input type="checkbox" :checked="missingSelected.includes(t.id)" @click.stop="toggleMissingTrack(t.id)" style="flex-shrink:0;" />
+                            <div class="playlist-track-info">
+                                <div class="playlist-track-title" style="color:var(--error)">{{ t.title || t.filename }}</div>
+                                <div class="playlist-track-artist">{{ t.artist }}</div>
+                            </div>
+                        </div>
+                    </div>
+                </template>
+            </template>
+        </div>
+
+        <!-- Play Stats -->
+        <div class="library-section" style="margin-top:12px;" v-if="dbDetected">
+            <div class="library-section-title">Play History</div>
+            <button class="btn btn-secondary no-drag" @click="handlePlayStats" :disabled="playStatsBusy">
+                <span v-if="playStatsBusy" class="loading-spinner"></span>
+                {{ playStatsBusy ? 'Loading...' : 'Load Play Stats' }}
+            </button>
+            <template v-if="playStats">
+                <div class="playlist-chips" style="margin-top:8px;">
+                    <span class="playlist-chip no-drag" :class="{ active: playStatsTab === 'most' }" @click="playStatsTab = 'most'">Most Played</span>
+                    <span class="playlist-chip no-drag" :class="{ active: playStatsTab === 'recent' }" @click="playStatsTab = 'recent'">Recent</span>
+                    <span class="playlist-chip no-drag" :class="{ active: playStatsTab === 'never' }" @click="playStatsTab = 'never'">Never Played</span>
+                </div>
+                <div class="playlist-track-list" style="max-height:220px;overflow-y:auto;margin-top:4px;">
+                    <template v-if="playStatsTab === 'most'">
+                        <div v-for="t in playStats.mostPlayed" :key="t.id" class="playlist-track-row">
+                            <div class="playlist-track-info">
+                                <div class="playlist-track-title">{{ t.title }}</div>
+                                <div class="playlist-track-artist">{{ t.artist }}</div>
+                            </div>
+                            <span class="playlist-track-bpm" style="color:var(--accent)">×{{ t.playCount }}</span>
+                        </div>
+                    </template>
+                    <template v-if="playStatsTab === 'recent'">
+                        <div v-for="t in playStats.recentPlayed" :key="t.id" class="playlist-track-row">
+                            <div class="playlist-track-info">
+                                <div class="playlist-track-title">{{ t.title }}</div>
+                                <div class="playlist-track-artist">{{ t.artist }}</div>
+                            </div>
+                            <span class="playlist-track-time" style="font-size:10px;">{{ t.lastPlayed.slice(0,10) }}</span>
+                        </div>
+                    </template>
+                    <template v-if="playStatsTab === 'never'">
+                        <div v-for="t in playStats.neverPlayed" :key="t.id" class="playlist-track-row">
+                            <div class="playlist-track-info">
+                                <div class="playlist-track-title">{{ t.title }}</div>
+                                <div class="playlist-track-artist">{{ t.artist }}</div>
+                            </div>
+                            <span class="playlist-track-bpm" style="color:var(--text-secondary)">{{ t.bpm > 0 ? Math.round(t.bpm) : '' }}</span>
+                        </div>
+                    </template>
+                </div>
+            </template>
+        </div>
     </div>
 
     <!-- TOOLS TAB -->
@@ -1205,9 +1528,9 @@ onMounted(async () => {
                 {{ msgs.logAnalysisDescription || 'Analyze Engine DJ log files for errors and warnings' }}
             </div>
             <div class="drive-select-row">
-                <button class="btn btn-primary no-drag" style="flex:1" @click="handleAnalyzeLogs" :disabled="logsBusy">
-                    <span v-if="logsBusy" class="loading-spinner"></span>
-                    {{ logsBusy ? (msgs.logAnalyzing || 'Analyzing...') : (msgs.logAnalyzeButton || 'Analyze Logs') }}
+                <button class="btn btn-primary no-drag" style="flex:1" @click="handleAnalyzeLogs" :disabled="logBusy">
+                    <span v-if="logBusy" class="loading-spinner"></span>
+                    {{ logBusy ? (msgs.logAnalyzing || 'Analyzing...') : (msgs.logAnalyzeButton || 'Analyze Logs') }}
                 </button>
                 <button class="btn btn-secondary no-drag" style="flex:1" @click="handleOpenLogsDir">
                     {{ msgs.logOpenDir || 'Open Log Folder' }}
@@ -1260,12 +1583,104 @@ onMounted(async () => {
             </div>
         </template>
 
+        <!-- BPM / Key Write-back -->
+        <div class="library-section" style="margin-top: 12px;">
+            <div class="library-section-title">BPM / Key → ID3 Sync</div>
+            <div class="library-stats">Write Engine DJ's analyzed BPM and musical key back into audio file tags (TBPM / TKEY).</div>
+            <button class="btn btn-secondary no-drag" @click="handleLoadSyncPreview" :disabled="syncBusy">
+                {{ syncPreviewLoaded ? syncPreviewTracks.length + ' tracks ready' : 'Load Analyzable Tracks' }}
+            </button>
+            <template v-if="syncPreviewLoaded">
+                <div class="info-card" style="margin-top:6px;" v-if="syncPreviewTracks.length > 0">
+                    <div class="info-row" v-for="t in syncPreviewTracks.slice(0,5)" :key="t.id">
+                        <span class="info-label" style="max-width:60%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">{{ t.artist ? t.artist + ' – ' + t.title : t.title }}</span>
+                        <span class="info-value" style="color:var(--text-secondary);font-size:11px;">{{ t.bpm > 0 ? Math.round(t.bpm) + ' BPM' : '' }}{{ t.camelot ? ' · ' + t.camelot : '' }}</span>
+                    </div>
+                    <div v-if="syncPreviewTracks.length > 5" class="info-row">
+                        <span class="info-label muted">… and {{ syncPreviewTracks.length - 5 }} more</span>
+                    </div>
+                </div>
+                <button v-if="syncPreviewTracks.length > 0"
+                    class="btn btn-primary no-drag" style="margin-top:6px;"
+                    @click="handleSyncBPMKey" :disabled="syncBusy">
+                    <span v-if="syncBusy" class="loading-spinner"></span>
+                    {{ syncBusy ? 'Writing tags...' : 'Write BPM + Key to ' + syncPreviewTracks.length + ' files' }}
+                </button>
+            </template>
+            <template v-if="syncResult">
+                <div class="status-card" :class="syncResult.failed > 0 ? 'status-warning' : 'status-success'" style="margin-top:8px;">
+                    <div class="status-text">
+                        <div class="status-detail">✓ {{ syncResult.success }} written{{ syncResult.failed > 0 ? '   ✗ ' + syncResult.failed + ' failed' : '' }}</div>
+                    </div>
+                </div>
+            </template>
+        </div>
+
+        <!-- Cover Art Compression -->
+        <div class="library-section" style="margin-top: 12px;">
+            <div class="library-section-title">Cover Art Compression</div>
+
+            <!-- Tips -->
+            <div class="library-stats" style="background:rgba(255,196,0,0.07);border:1px solid rgba(255,196,0,0.25);border-radius:6px;padding:8px 10px;margin-bottom:10px;line-height:1.6;">
+                💡 <strong>为什么需要压缩封面？</strong><br>
+                通过将所有歌曲 ID3 封面图片压缩至 1 MB 以内，可以显著改善 Engine OS 设备（如 SC6000、Prime 4 等）在读取 U 盘数据库时的加载性能。超大封面（常见于 FLAC 文件）是 USB 读取卡顿的主要原因之一。
+            </div>
+
+            <!-- Scope selector -->
+            <div class="drive-select-row" style="margin-bottom:8px;">
+                <button class="drive-chip no-drag"
+                    :class="{ active: coverCompressPlaylistId === -1 }"
+                    @click="coverCompressPlaylistId = -1"
+                    :disabled="coverCompressBusy">
+                    <span class="drive-letter" style="font-size:11px;">All</span>
+                    <span class="drive-count">entire library</span>
+                </button>
+                <button v-for="pl in playlists" :key="pl.id"
+                    class="drive-chip no-drag"
+                    :class="{ active: coverCompressPlaylistId === pl.id }"
+                    @click="coverCompressPlaylistId = pl.id"
+                    :disabled="coverCompressBusy"
+                    style="margin-left:4px;">
+                    <span class="drive-letter" style="font-size:11px;max-width:80px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">{{ pl.title }}</span>
+                    <span class="drive-count">{{ pl.count }}</span>
+                </button>
+            </div>
+
+            <button class="btn btn-primary no-drag" @click="handleCompressCovers" :disabled="coverCompressBusy">
+                <span v-if="coverCompressBusy" class="loading-spinner"></span>
+                {{ coverCompressBusy ? 'Compressing...' : 'Compress Covers ≤ 1 MB' }}
+            </button>
+
+            <!-- Result -->
+            <template v-if="coverCompressResult">
+                <div class="status-card"
+                    :class="coverCompressResult.failed > 0 ? 'status-warning' : 'status-success'"
+                    style="margin-top:8px;">
+                    <div class="status-text">
+                        <div class="status-detail">
+                            ✓ {{ coverCompressResult.compressed }} compressed
+                            <span v-if="coverCompressResult.savedBytes > 0" style="margin-left:6px;color:var(--accent)">
+                                (saved {{ coverCompressResult.savedBytes > 1048576
+                                    ? (coverCompressResult.savedBytes/1048576).toFixed(1)+' MB'
+                                    : Math.round(coverCompressResult.savedBytes/1024)+' KB' }})
+                            </span>
+                            · {{ coverCompressResult.skipped }} already OK
+                            <span v-if="coverCompressResult.failed > 0" style="color:var(--error);margin-left:4px;">
+                                · ✗ {{ coverCompressResult.failed }} failed
+                            </span>
+                        </div>
+                    </div>
+                </div>
+            </template>
+        </div>
+
         <!-- Cache Cleanup -->
         <div class="library-section" style="margin-top: 12px;">
             <div class="library-section-title">{{ msgs.cacheCleanTitle || 'Cache Cleanup' }}</div>
             <div class="library-stats">
                 {{ msgs.cacheCleanDescription || 'Clear Engine DJ UI cache to fix display glitches' }}
             </div>
+            <div v-if="cacheSizeText" class="library-stats" style="color: var(--warning)">{{ cacheSizeText }}</div>
             <button class="btn btn-primary no-drag" @click="handleClearCache" :disabled="cacheBusy">
                 <span v-if="cacheBusy" class="loading-spinner"></span>
                 {{ cacheBusy ? (msgs.cacheClearing || 'Clearing...') : (msgs.cacheCleanButton || 'Clear Cache') }}

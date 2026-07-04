@@ -18,11 +18,25 @@ export function CleanCache():Promise<string>;
 
 export function CleanMSIOrphans(arg1:Array<string>):Promise<string>;
 
-export function FixCJKIssues():Promise<string>;
+export function FixUnicodeIssues():Promise<string>;
 
 export function GetAvailableLanguages():Promise<Array<Record<string, string>>>;
 
 export function GetCacheSize():Promise<number>;
+
+export function GetLibraryStats():Promise<database.LibraryStats|null>;
+
+export function GetPlayStats():Promise<database.PlayStats|null>;
+
+export function GetSyncableTracks():Promise<Array<database.SyncableTrack>>;
+
+export function ScanMissingTracks():Promise<Array<database.MissingTrack>>;
+
+export function RemoveMissingTracks(arg1:Array<number>):Promise<string>;
+
+export function SyncBPMKeyToTags():Promise<Record<string, any>>;
+
+export function CompressCovers(arg1:number, arg2:number):Promise<Record<string, any>>;
 
 export function GetMessages():Promise<i18n.Messages>;
 
@@ -84,7 +98,7 @@ export function Refresh():Promise<main.StatusInfo>;
 
 export function RepairDatabase():Promise<string>;
 
-export function RestoreCJKFix():Promise<string>;
+export function RestoreUnicodeFix():Promise<string>;
 
 export function RestoreDatabase(arg1:string):Promise<string>;
 
