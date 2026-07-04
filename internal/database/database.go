@@ -30,6 +30,26 @@ func SetLibraryPath(p string) { manualPath = p }
 // ClearLibraryPath drops the manual selection and returns to auto-detection.
 func ClearLibraryPath() { manualPath = "" }
 
+// ResolveTrackPath converts a possibly-relative track path from the Engine DJ
+// database to an absolute file-system path.
+//
+// Engine DJ stores track paths relative to the Engine Library directory, so
+// "../Music/song.mp3" stored in a DB at "E:\Engine Library\Database2\m.db"
+// resolves to "E:\Music\song.mp3".
+// Absolute paths are returned as-is.
+func ResolveTrackPath(dbFilePath, trackPath string) string {
+	if trackPath == "" {
+		return ""
+	}
+	if filepath.IsAbs(trackPath) {
+		return filepath.Clean(trackPath)
+	}
+	// dbFilePath is e.g. "E:\Engine Library\Database2\m.db"
+	// → engine library dir = "E:\Engine Library"
+	engineLibraryDir := filepath.Dir(filepath.Dir(dbFilePath))
+	return filepath.Clean(filepath.Join(engineLibraryDir, trackPath))
+}
+
 // ResolveLibrary returns the active library path: the manual selection if it
 // is still valid, otherwise the result of auto-detection.
 func ResolveLibrary() (string, error) {

@@ -1446,22 +1446,20 @@ onMounted(async () => {
             </button>
             <template v-if="playStats">
                 <div class="playlist-chips" style="margin-top:8px;">
-                    <span class="playlist-chip no-drag" :class="{ active: playStatsTab === 'most' }" @click="playStatsTab = 'most'">{{ msgs.playHistoryMostPlayed || '最多播放' }}</span>
+                    <span class="playlist-chip no-drag" :class="{ active: playStatsTab === 'most' }" @click="playStatsTab = 'most'">{{ msgs.playHistoryMostPlayed || '已播放' }}</span>
                     <span class="playlist-chip no-drag" :class="{ active: playStatsTab === 'recent' }" @click="playStatsTab = 'recent'">{{ msgs.playHistoryRecent || '最近播放' }}</span>
                     <span class="playlist-chip no-drag" :class="{ active: playStatsTab === 'never' }" @click="playStatsTab = 'never'">{{ msgs.playHistoryNeverPlayed || '从未播放' }}</span>
                 </div>
 
-                <!-- Most Played: bar chart -->
-                <div v-if="playStatsTab === 'most'" class="vis-chart" style="margin-top:8px;">
+                <!-- Played tracks (sorted by recency — Engine DJ has no per-track play count) -->
+                <div v-if="playStatsTab === 'most'" class="playlist-track-list" style="max-height:220px;overflow-y:auto;margin-top:4px;">
                     <div v-if="playStats.mostPlayed.length === 0" class="library-stats">{{ msgs.dbNoneFound || '暂无数据' }}</div>
-                    <div v-for="t in playStats.mostPlayed" :key="t.id" class="vis-bar-row">
-                        <div class="vis-bar-name">{{ t.title || t.artist || '—' }}</div>
-                        <div class="vis-bar-outer">
-                            <div class="vis-bar-fill"
-                                :style="{ width: Math.max(4, (t.playCount / maxPlayCount * 100)) + '%' }">
-                            </div>
+                    <div v-for="t in playStats.mostPlayed" :key="t.id" class="playlist-track-row">
+                        <div class="playlist-track-info">
+                            <div class="playlist-track-title">{{ t.title || '—' }}</div>
+                            <div class="playlist-track-artist">{{ t.artist }}</div>
                         </div>
-                        <span class="vis-bar-count">×{{ t.playCount }}</span>
+                        <span class="playlist-track-time" style="font-size:10px;">{{ t.lastPlayed.slice(0,10) }}</span>
                     </div>
                 </div>
 

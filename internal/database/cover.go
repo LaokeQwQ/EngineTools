@@ -39,6 +39,7 @@ func GetAllTrackPaths() ([]TrackPath, error) {
 	for rows.Next() {
 		var t TrackPath
 		if rows.Scan(&t.ID, &t.Path) == nil && t.Path != "" {
+			t.Path = ResolveTrackPath(dbPath, t.Path)
 			tracks = append(tracks, t)
 		}
 	}
@@ -77,6 +78,7 @@ func GetPlaylistTrackPaths(playlistID int) ([]TrackPath, error) {
 	for rows.Next() {
 		var t TrackPath
 		if rows.Scan(&t.ID, &t.Path) == nil && t.Path != "" {
+			t.Path = ResolveTrackPath(dbPath, t.Path)
 			tracks = append(tracks, t)
 		}
 	}

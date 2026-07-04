@@ -98,6 +98,7 @@ func GetPlaylistTracks(playlistID int) ([]TrackInfo, error) {
 		if err := rows.Scan(&t.ID, &t.Title, &t.Artist, &t.Album, &t.Genre, &t.BPM, &t.Length, &t.Filename, &t.Path, &t.Key, &t.Rating); err != nil {
 			continue
 		}
+		t.Path = ResolveTrackPath(dbPath, t.Path)
 		t.KeyName = KeyName(t.Key)
 		t.Camelot = KeyCamelot(t.Key)
 		tracks = append(tracks, t)
