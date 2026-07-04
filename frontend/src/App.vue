@@ -1747,24 +1747,13 @@ onMounted(async () => {
             </div>
 
             <!-- Scope selector -->
-            <div class="drive-select-row" style="margin-bottom:8px;">
-                <button class="drive-chip no-drag"
-                    :class="{ active: coverCompressPlaylistId === -1 }"
-                    @click="coverCompressPlaylistId = -1"
-                    :disabled="coverCompressBusy">
-                    <span class="drive-letter" style="font-size:11px;">All</span>
-                    <span class="drive-count">{{ msgs.coverCompressAllLibrary || 'Entire Library' }}</span>
-                </button>
-                <button v-for="pl in playlists" :key="pl.id"
-                    class="drive-chip no-drag"
-                    :class="{ active: coverCompressPlaylistId === pl.id }"
-                    @click="coverCompressPlaylistId = pl.id"
-                    :disabled="coverCompressBusy"
-                    style="margin-left:4px;">
-                    <span class="drive-letter" style="font-size:11px;max-width:80px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">{{ pl.title }}</span>
-                    <span class="drive-count">{{ pl.count }}</span>
-                </button>
-            </div>
+            <select class="text-input no-drag" v-model="coverCompressPlaylistId"
+                :disabled="coverCompressBusy" style="margin-bottom:8px;">
+                <option :value="-1">{{ msgs.coverCompressAllLibrary || '全部曲库' }}</option>
+                <option v-for="pl in playlists" :key="pl.id" :value="pl.id">
+                    {{ pl.title }} ({{ pl.count }})
+                </option>
+            </select>
 
             <button class="btn btn-primary no-drag" @click="handleCompressCovers" :disabled="coverCompressBusy">
                 <span v-if="coverCompressBusy" class="loading-spinner"></span>
