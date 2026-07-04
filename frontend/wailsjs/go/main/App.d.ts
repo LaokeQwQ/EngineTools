@@ -18,7 +18,7 @@ export function CleanCache():Promise<string>;
 
 export function CleanMSIOrphans(arg1:Array<string>):Promise<string>;
 
-export function FixCJKIssues():Promise<string>;
+export function FixUnicodeIssues():Promise<string>;
 
 export function GetAvailableLanguages():Promise<Array<Record<string, string>>>;
 
@@ -84,7 +84,7 @@ export function Refresh():Promise<main.StatusInfo>;
 
 export function RepairDatabase():Promise<string>;
 
-export function RestoreCJKFix():Promise<string>;
+export function RestoreUnicodeFix():Promise<string>;
 
 export function RestoreDatabase(arg1:string):Promise<string>;
 

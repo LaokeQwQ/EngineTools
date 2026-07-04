@@ -22,8 +22,8 @@ export function CleanMSIOrphans(arg1) {
   return window['go']['main']['App']['CleanMSIOrphans'](arg1);
 }
 
-export function FixCJKIssues() {
-  return window['go']['main']['App']['FixCJKIssues']();
+export function FixUnicodeIssues() {
+  return window['go']['main']['App']['FixUnicodeIssues']();
 }
 
 export function GetAvailableLanguages() {
@@ -154,8 +154,8 @@ export function RepairDatabase() {
   return window['go']['main']['App']['RepairDatabase']();
 }
 
-export function RestoreCJKFix() {
-  return window['go']['main']['App']['RestoreCJKFix']();
+export function RestoreUnicodeFix() {
+  return window['go']['main']['App']['RestoreUnicodeFix']();
 }
 
 export function RestoreDatabase(arg1) {

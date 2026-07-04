@@ -263,7 +263,7 @@ func (a *App) Refresh() StatusInfo {
 	return a.GetStatus()
 }
 
-func (a *App) FixCJKIssues() string {
+func (a *App) FixUnicodeIssues() string {
 	msgs := i18n.Get(a.lang)
 
 	if a.InstallPath == "" {
@@ -362,9 +362,9 @@ func (a *App) FixCJKIssues() string {
 	return "ok"
 }
 
-// RestoreCJKFix reverts the CJK fix: removes the .manifest files and resets
+// RestoreUnicodeFix reverts the Unicode fix: removes the .manifest files and resets
 // the PreferExternalManifest registry value.
-func (a *App) RestoreCJKFix() string {
+func (a *App) RestoreUnicodeFix() string {
 	msgs := i18n.Get(a.lang)
 
 	result, err := wailsRuntime.MessageDialog(a.ctx, wailsRuntime.MessageDialogOptions{

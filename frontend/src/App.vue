@@ -2,8 +2,8 @@
 import { ref, onMounted, computed } from 'vue'
 import {
     GetStatus,
-    FixCJKIssues,
-    RestoreCJKFix,
+    FixUnicodeIssues,
+    RestoreUnicodeFix,
     HandleUTF8AlreadyEnabled,
     OpenRegionSettings,
     SetLanguage,
@@ -262,7 +262,7 @@ async function handleFix() {
     progress.value = 0
 
     try {
-        const result = await FixCJKIssues()
+        const result = await FixUnicodeIssues()
         if (result === 'ok') {
             manifestConfigured.value = true
         }
@@ -284,7 +284,7 @@ async function handleRestore() {
     progress.value = 0
 
     try {
-        await RestoreCJKFix()
+        await RestoreUnicodeFix()
     } catch (e) {
         addLog('Error: ' + e)
     }
@@ -897,7 +897,7 @@ onMounted(async () => {
                 :disabled="fixing || !installPath"
             >
                 <span v-if="fixing" class="loading-spinner"></span>
-                {{ fixing ? (msgs.progressFixing || 'Fixing...') : (msgs.fixButton || 'Fix CJK Character Reading Issues') }}
+                {{ fixing ? (msgs.progressFixing || 'Fixing...') : (msgs.fixButton || 'Fix Unicode Character Encoding Issues') }}
             </button>
 
             <button
