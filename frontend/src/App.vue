@@ -53,6 +53,7 @@ import {
     GetSyncableTracks,
     SyncBPMKeyToTags,
     CompressCovers,
+    LogExperimentalEnabled,
 } from '../wailsjs/go/main/App.js'
 import { EventsOn } from '../wailsjs/runtime/runtime.js'
 
@@ -159,11 +160,28 @@ const coverCompressBusy = ref(false)
 const coverCompressResult = ref(null)
 const coverCompressPlaylistId = ref(-1) // -1 = entire library
 
-// Anti-piracy easter egg state
+// Anti-piracy easter egg state (controlled by experimental toggle)
 const apDir = ref('')
 const apBusy = ref(false)
-const apShowMenu = ref(false)
-const apClickCount = ref(0)
+
+// Experimental features state
+const experimentalEnabled = ref(localStorage.getItem('experimentalEnabled') === 'true')
+const showExperimentalConfirm = ref(false)
+const experimentalCountdown = ref(0)
+let experimentalTimer = null
+
+// Konami Code easter egg
+const konamiUrls = [
+    'https://www.bilibili.com/video/BV1dg4y1Z7B1',
+    'https://www.bilibili.com/video/BV1GJ411x7h7',
+    'https://www.bilibili.com/video/BV17KQcBfE69',
+    'https://www.bilibili.com/video/BV1XXVh65EgE',
+    'https://www.bilibili.com/video/BV1t9wszgE61',
+    'https://www.bilibili.com/video/BV1SqxHzoEuf',
+    'https://www.bilibili.com/video/BV1j4411W7F7',
+]
+const konamiCode = ['ArrowUp','ArrowUp','ArrowDown','ArrowDown','ArrowLeft','ArrowLeft','ArrowRight','ArrowRight','b','a']
+const konamiProgress = ref([])
 
 // Playlist viewer state
 const playlists = ref([])
@@ -194,6 +212,11 @@ const cacheSizeText = computed(() => {
     if (cacheSize.value <= 0) return ''
     const mb = (cacheSize.value / 1024 / 1024).toFixed(1)
     return (msgs.value.cacheSizeLabel || 'Cache size') + ': ' + mb + ' MB'
+})
+
+const maxPlayCount = computed(() => {
+    if (!playStats.value?.mostPlayed?.length) return 1
+    return Math.max(1, ...playStats.value.mostPlayed.map(t => t.playCount))
 })
 
 const id3FileName = computed(() => {
@@ -587,13 +610,55 @@ async function handleClearCache() {
     cacheBusy.value = false
 }
 
-function handleID3TitleClick() {
-    apClickCount.value++
-    if (apClickCount.value >= 5) {
-        apShowMenu.value = !apShowMenu.value
-        apClickCount.value = 0
+// ---- Experimental Features ----
+
+async function handleExperimentalToggle() {
+    if (experimentalEnabled.value) {
+        experimentalEnabled.value = false
+        localStorage.setItem('experimentalEnabled', 'false')
+        return
     }
-    setTimeout(() => { apClickCount.value = 0 }, 2000)
+    showExperimentalConfirm.value = true
+    experimentalCountdown.value = 5
+    clearInterval(experimentalTimer)
+    experimentalTimer = setInterval(() => {
+        experimentalCountdown.value--
+        if (experimentalCountdown.value <= 0) clearInterval(experimentalTimer)
+    }, 1000)
+}
+
+function cancelExperimental() {
+    showExperimentalConfirm.value = false
+    clearInterval(experimentalTimer)
+    experimentalCountdown.value = 0
+}
+
+async function confirmExperimental() {
+    if (experimentalCountdown.value > 0) return
+    try {
+        await LogExperimentalEnabled()
+        experimentalEnabled.value = true
+        localStorage.setItem('experimentalEnabled', 'true')
+    } catch (e) {
+        addLog('Error logging experimental enable: ' + e)
+    }
+    showExperimentalConfirm.value = false
+}
+
+// ---- Konami Code ----
+
+function handleKeydown(e) {
+    const expected = konamiCode[konamiProgress.value.length]
+    if (e.key === expected) {
+        konamiProgress.value = [...konamiProgress.value, e.key]
+        if (konamiProgress.value.length === konamiCode.length) {
+            konamiProgress.value = []
+            const url = konamiUrls[Math.floor(Math.random() * konamiUrls.length)]
+            window.open(url, '_blank')
+        }
+    } else {
+        konamiProgress.value = e.key === konamiCode[0] ? [e.key] : []
+    }
 }
 
 async function handlePickApDir() {
@@ -943,29 +1008,21 @@ let marqueeInterval = null
 onMounted(async () => {
     await loadMessages()
 
-    EventsOn('log', (entry) => {
-        addLog(entry)
-    })
-
-    EventsOn('progress', (value) => {
-        progress.value = value * 100
-    })
-
-    EventsOn('statusUpdate', async () => {
-        await detectStatus()
-    })
+    EventsOn('log', (entry) => { addLog(entry) })
+    EventsOn('progress', (value) => { progress.value = value * 100 })
+    EventsOn('statusUpdate', async () => { await detectStatus() })
 
     await detectStatus()
     try { cacheSize.value = await GetCacheSize() } catch (_) {}
+
+    // Konami Code listener
+    window.addEventListener('keydown', handleKeydown)
 
     marqueeInterval = setInterval(() => {
         currentMarquee.value = (currentMarquee.value + 1) % marqueeTexts.value.length
     }, 5000)
 
-    // Auto check for updates 1 second after startup
-    setTimeout(() => {
-        checkForUpdates()
-    }, 1000)
+    setTimeout(() => { checkForUpdates() }, 1000)
 })
 </script>
 
@@ -1010,6 +1067,9 @@ onMounted(async () => {
         </button>
         <button class="tab" :class="{ active: activeTab === 'tools' }" @click="switchTab('tools')">
             {{ msgs.tabTools || 'Tools' }}
+        </button>
+        <button class="tab" :class="{ active: activeTab === 'settings' }" @click="switchTab('settings')">
+            {{ msgs.tabSettings || 'Settings' }}
         </button>
     </div>
 
@@ -1331,45 +1391,54 @@ onMounted(async () => {
 
         <!-- Play Stats -->
         <div class="library-section" style="margin-top:12px;" v-if="dbDetected">
-            <div class="library-section-title">{{ msgs.playHistoryTitle || 'Play History' }}</div>
+            <div class="library-section-title">{{ msgs.playHistoryTitle || '播放历史' }}</div>
             <button class="btn btn-secondary no-drag" @click="handlePlayStats" :disabled="playStatsBusy">
                 <span v-if="playStatsBusy" class="loading-spinner"></span>
-                {{ playStatsBusy ? (msgs.playHistoryLoading || 'Loading...') : (msgs.playHistoryLoad || 'Load Stats') }}
+                {{ playStatsBusy ? (msgs.playHistoryLoading || '加载中...') : (msgs.playHistoryLoad || '加载统计') }}
             </button>
             <template v-if="playStats">
                 <div class="playlist-chips" style="margin-top:8px;">
-                    <span class="playlist-chip no-drag" :class="{ active: playStatsTab === 'most' }" @click="playStatsTab = 'most'">{{ msgs.playHistoryMostPlayed || 'Most Played' }}</span>
-                    <span class="playlist-chip no-drag" :class="{ active: playStatsTab === 'recent' }" @click="playStatsTab = 'recent'">{{ msgs.playHistoryRecent || 'Recent' }}</span>
-                    <span class="playlist-chip no-drag" :class="{ active: playStatsTab === 'never' }" @click="playStatsTab = 'never'">{{ msgs.playHistoryNeverPlayed || 'Never Played' }}</span>
+                    <span class="playlist-chip no-drag" :class="{ active: playStatsTab === 'most' }" @click="playStatsTab = 'most'">{{ msgs.playHistoryMostPlayed || '最多播放' }}</span>
+                    <span class="playlist-chip no-drag" :class="{ active: playStatsTab === 'recent' }" @click="playStatsTab = 'recent'">{{ msgs.playHistoryRecent || '最近播放' }}</span>
+                    <span class="playlist-chip no-drag" :class="{ active: playStatsTab === 'never' }" @click="playStatsTab = 'never'">{{ msgs.playHistoryNeverPlayed || '从未播放' }}</span>
                 </div>
-                <div class="playlist-track-list" style="max-height:220px;overflow-y:auto;margin-top:4px;">
-                    <template v-if="playStatsTab === 'most'">
-                        <div v-for="t in playStats.mostPlayed" :key="t.id" class="playlist-track-row">
-                            <div class="playlist-track-info">
-                                <div class="playlist-track-title">{{ t.title }}</div>
-                                <div class="playlist-track-artist">{{ t.artist }}</div>
+
+                <!-- Most Played: bar chart -->
+                <div v-if="playStatsTab === 'most'" class="vis-chart" style="margin-top:8px;">
+                    <div v-if="playStats.mostPlayed.length === 0" class="library-stats">{{ msgs.dbNoneFound || '暂无数据' }}</div>
+                    <div v-for="t in playStats.mostPlayed" :key="t.id" class="vis-bar-row">
+                        <div class="vis-bar-name">{{ t.title || t.artist || '—' }}</div>
+                        <div class="vis-bar-outer">
+                            <div class="vis-bar-fill"
+                                :style="{ width: Math.max(4, (t.playCount / maxPlayCount * 100)) + '%' }">
                             </div>
-                            <span class="playlist-track-bpm" style="color:var(--accent)">×{{ t.playCount }}</span>
                         </div>
-                    </template>
-                    <template v-if="playStatsTab === 'recent'">
-                        <div v-for="t in playStats.recentPlayed" :key="t.id" class="playlist-track-row">
-                            <div class="playlist-track-info">
-                                <div class="playlist-track-title">{{ t.title }}</div>
-                                <div class="playlist-track-artist">{{ t.artist }}</div>
-                            </div>
-                            <span class="playlist-track-time" style="font-size:10px;">{{ t.lastPlayed.slice(0,10) }}</span>
+                        <span class="vis-bar-count">×{{ t.playCount }}</span>
+                    </div>
+                </div>
+
+                <!-- Recently Played: list -->
+                <div v-if="playStatsTab === 'recent'" class="playlist-track-list" style="max-height:220px;overflow-y:auto;margin-top:4px;">
+                    <div v-if="playStats.recentPlayed.length === 0" class="library-stats">{{ msgs.dbNoneFound || '暂无数据' }}</div>
+                    <div v-for="t in playStats.recentPlayed" :key="t.id" class="playlist-track-row">
+                        <div class="playlist-track-info">
+                            <div class="playlist-track-title">{{ t.title }}</div>
+                            <div class="playlist-track-artist">{{ t.artist }}</div>
                         </div>
-                    </template>
-                    <template v-if="playStatsTab === 'never'">
-                        <div v-for="t in playStats.neverPlayed" :key="t.id" class="playlist-track-row">
-                            <div class="playlist-track-info">
-                                <div class="playlist-track-title">{{ t.title }}</div>
-                                <div class="playlist-track-artist">{{ t.artist }}</div>
-                            </div>
-                            <span class="playlist-track-bpm" style="color:var(--text-secondary)">{{ t.bpm > 0 ? Math.round(t.bpm) : '' }}</span>
+                        <span class="playlist-track-time" style="font-size:10px;">{{ t.lastPlayed.slice(0,10) }}</span>
+                    </div>
+                </div>
+
+                <!-- Never Played: list -->
+                <div v-if="playStatsTab === 'never'" class="playlist-track-list" style="max-height:220px;overflow-y:auto;margin-top:4px;">
+                    <div v-if="playStats.neverPlayed.length === 0" class="library-stats">{{ msgs.dbNoneFound || '暂无数据' }}</div>
+                    <div v-for="t in playStats.neverPlayed" :key="t.id" class="playlist-track-row">
+                        <div class="playlist-track-info">
+                            <div class="playlist-track-title">{{ t.title }}</div>
+                            <div class="playlist-track-artist">{{ t.artist }}</div>
                         </div>
-                    </template>
+                        <span class="playlist-track-bpm" style="color:var(--text-secondary)">{{ t.bpm > 0 ? Math.round(t.bpm) : '' }}</span>
+                    </div>
                 </div>
             </template>
         </div>
@@ -1453,8 +1522,8 @@ onMounted(async () => {
             </div>
         </template>
 
-        <!-- Anti-piracy Easter Egg (hidden, activated by clicking ID3 title 5 times) -->
-        <template v-if="apShowMenu">
+        <!-- Anti-piracy (visible only when experimental features enabled) -->
+        <template v-if="experimentalEnabled">
             <div class="library-section" style="margin-top: 12px; border: 1px dashed var(--warning); border-radius: var(--radius-sm); padding: 12px;">
                 <div class="library-section-title" style="color: var(--warning);">防偷歌模式</div>
                 <div class="library-stats">对指定目录下的所有音频文件批量操作ID3标签，操作前自动备份</div>
@@ -1624,8 +1693,8 @@ onMounted(async () => {
             </div>
         </template>
 
-        <!-- BPM / Key Write-back -->
-        <div class="library-section" style="margin-top: 12px;">
+        <!-- BPM / Key Write-back (experimental) -->
+        <div class="library-section" style="margin-top: 12px;" v-if="experimentalEnabled">
             <div class="library-section-title">{{ msgs.bpmKeySyncTitle || 'BPM / Key → ID3 Sync' }}</div>
             <div class="library-stats">{{ msgs.bpmKeySyncDesc || '将 Engine DJ 分析出的 BPM 和调号写回音频文件标签（TBPM / TKEY）' }}</div>
             <button class="btn btn-secondary no-drag" @click="handleLoadSyncPreview" :disabled="syncBusy">
@@ -1728,6 +1797,73 @@ onMounted(async () => {
         </div>
     </div>
 
+    <!-- SETTINGS TAB -->
+    <div class="content" v-show="activeTab === 'settings'">
+        <!-- Language -->
+        <div class="library-section">
+            <div class="library-section-title">{{ msgs.settingsLanguageLabel || '显示语言' }}</div>
+            <div class="drive-grid no-drag" style="flex-wrap:wrap;">
+                <button v-for="lang in languages" :key="lang.code"
+                    class="drive-chip"
+                    :class="{ active: currentLang === lang.code }"
+                    @click="changeLanguage(lang.code)">
+                    <span class="drive-letter" style="font-size:12px;">{{ lang.native }}</span>
+                </button>
+            </div>
+        </div>
+
+        <!-- Experimental Features -->
+        <div class="library-section" style="margin-top:12px;">
+            <div class="library-section-title">{{ msgs.settingsExperimentalLabel || '实验性功能' }}</div>
+            <div class="library-stats" style="margin-bottom:8px;">{{ msgs.settingsExperimentalDesc || '解锁隐藏的开发者功能，请谨慎使用。' }}</div>
+
+            <!-- Toggle -->
+            <label class="no-drag" style="display:flex;align-items:center;gap:10px;cursor:pointer;">
+                <div class="toggle-switch" :class="{ on: experimentalEnabled }" @click="handleExperimentalToggle">
+                    <div class="toggle-knob"></div>
+                </div>
+                <span style="font-size:13px;">{{ experimentalEnabled ? (msgs.settingsExperimentalLabel || '已开启') : (msgs.settingsExperimentalLabel || '已关闭') }}</span>
+            </label>
+
+            <!-- Countdown confirm -->
+            <div v-if="showExperimentalConfirm" class="info-card" style="margin-top:10px;border:1px solid var(--warning);">
+                <div style="font-size:12px;color:var(--text-secondary);margin-bottom:8px;">
+                    {{ msgs.settingsExperimentalConfirmMsg || '' }}
+                </div>
+                <div class="drive-select-row">
+                    <button class="btn btn-restore-all no-drag" style="flex:1;"
+                        :disabled="experimentalCountdown > 0"
+                        @click="confirmExperimental">
+                        {{ experimentalCountdown > 0
+                            ? (experimentalCountdown + 's...')
+                            : (msgs.settingsExperimentalConfirmBtn || '确认开启') }}
+                    </button>
+                    <button class="btn btn-secondary no-drag" style="flex:1;" @click="cancelExperimental">
+                        {{ msgs.restoreButton || '取消' }}
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- About -->
+        <div class="library-section" style="margin-top:12px;">
+            <div class="library-section-title">{{ msgs.settingsAboutTitle || '关于' }}</div>
+            <div class="info-card">
+                <div class="info-row">
+                    <span class="info-label">Engine Tools</span>
+                    <span class="info-value">v{{ APP_VERSION }}</span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">{{ msgs.settingsContributors || '贡献者' }}</span>
+                    <span class="info-value" style="color:var(--accent);cursor:pointer;" @click="openGitHub">@LaokeQwQ</span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label muted" style="font-size:11px;">{{ msgs.settingsAboutDesc || '非官方个人工具' }}</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <div class="progress-wrapper">
         <div class="progress-bar" :class="{ active: showProgress }">
             <div class="progress-fill" :style="{ width: progress + '%' }"></div>
@@ -1743,6 +1879,77 @@ onMounted(async () => {
 </template>
 
 <style>
+/* Bar chart visualization */
+.vis-chart {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+.vis-bar-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 11px;
+}
+.vis-bar-name {
+  width: 110px;
+  min-width: 110px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--text-secondary);
+  text-align: right;
+}
+.vis-bar-outer {
+  flex: 1;
+  height: 16px;
+  background: rgba(255,255,255,0.06);
+  border-radius: 3px;
+  overflow: hidden;
+}
+.vis-bar-fill {
+  height: 100%;
+  background: var(--accent);
+  border-radius: 3px;
+  transition: width 0.6s cubic-bezier(.4,0,.2,1);
+}
+.vis-bar-count {
+  min-width: 28px;
+  text-align: right;
+  color: var(--accent);
+  font-weight: 600;
+  font-size: 11px;
+}
+
+/* Toggle switch */
+.toggle-switch {
+  width: 40px;
+  height: 22px;
+  background: rgba(255,255,255,0.12);
+  border-radius: 11px;
+  position: relative;
+  cursor: pointer;
+  transition: background 0.2s;
+  flex-shrink: 0;
+}
+.toggle-switch.on {
+  background: var(--accent);
+}
+.toggle-knob {
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 16px;
+  height: 16px;
+  background: #fff;
+  border-radius: 50%;
+  transition: transform 0.2s;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.3);
+}
+.toggle-switch.on .toggle-knob {
+  transform: translateX(18px);
+}
+
 .track-editing {
   background: rgba(var(--accent-rgb, 99,179,237), 0.12) !important;
   outline: 1px solid var(--accent);

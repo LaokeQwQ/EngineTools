@@ -12,6 +12,7 @@ import (
 	"golang.org/x/sys/windows"
 
 	"EngineTools/internal/database"
+	"EngineTools/internal/experimental"
 	"EngineTools/internal/i18n"
 	"EngineTools/internal/id3"
 	"EngineTools/internal/logs"
@@ -1073,6 +1074,17 @@ func (a *App) GetAvailableLanguages() []map[string]string {
 // shutdown is called by Wails when the application is closing.
 // Context cancellation propagates to the watchDrives goroutine via a.ctx.Done().
 func (a *App) shutdown(ctx context.Context) {}
+
+// LogExperimentalEnabled records an activation timestamp in the
+// experimental_allow.xml audit file (hidden + read-only on disk).
+func (a *App) LogExperimentalEnabled() string {
+	if err := experimental.LogEnabled(); err != nil {
+		a.log(fmt.Sprintf("experimental log error: %v", err))
+		return err.Error()
+	}
+	a.log("实验性功能已开启（记录已写入审计文件）")
+	return "ok"
+}
 
 // ---- Cover Art Compression ----
 

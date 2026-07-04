@@ -122,6 +122,10 @@ export function ListPlaylists() {
   return window['go']['main']['App']['ListPlaylists']();
 }
 
+export function LogExperimentalEnabled() {
+  return window['go']['main']['App']['LogExperimentalEnabled']();
+}
+
 export function MIDI2Disable() {
   return window['go']['main']['App']['MIDI2Disable']();
 }

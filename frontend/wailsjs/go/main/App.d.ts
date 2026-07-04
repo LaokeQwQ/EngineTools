@@ -68,6 +68,8 @@ export function ListDrives():Promise<Array<main.DriveInfo>>;
 
 export function ListPlaylists():Promise<Array<database.PlaylistInfo>>;
 
+export function LogExperimentalEnabled():Promise<string>;
+
 export function MIDI2Disable():Promise<string>;
 
 export function MIDI2Enable():Promise<string>;

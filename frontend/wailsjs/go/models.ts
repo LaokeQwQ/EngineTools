@@ -447,6 +447,16 @@ export namespace i18n {
 	    skippedLabel: string;
 	    andMoreLabel: string;
 	    tracksUnit: string;
+	    tabSettings: string;
+	    settingsLanguageLabel: string;
+	    settingsExperimentalLabel: string;
+	    settingsExperimentalDesc: string;
+	    settingsExperimentalConfirmTitle: string;
+	    settingsExperimentalConfirmMsg: string;
+	    settingsExperimentalConfirmBtn: string;
+	    settingsAboutTitle: string;
+	    settingsAboutDesc: string;
+	    settingsContributors: string;
 	
 	    static createFrom(source: any = {}) {
 	        return new Messages(source);
@@ -639,6 +649,16 @@ export namespace i18n {
 	        this.skippedLabel = source["skippedLabel"];
 	        this.andMoreLabel = source["andMoreLabel"];
 	        this.tracksUnit = source["tracksUnit"];
+	        this.tabSettings = source["tabSettings"];
+	        this.settingsLanguageLabel = source["settingsLanguageLabel"];
+	        this.settingsExperimentalLabel = source["settingsExperimentalLabel"];
+	        this.settingsExperimentalDesc = source["settingsExperimentalDesc"];
+	        this.settingsExperimentalConfirmTitle = source["settingsExperimentalConfirmTitle"];
+	        this.settingsExperimentalConfirmMsg = source["settingsExperimentalConfirmMsg"];
+	        this.settingsExperimentalConfirmBtn = source["settingsExperimentalConfirmBtn"];
+	        this.settingsAboutTitle = source["settingsAboutTitle"];
+	        this.settingsAboutDesc = source["settingsAboutDesc"];
+	        this.settingsContributors = source["settingsContributors"];
 	    }
 	}
 
