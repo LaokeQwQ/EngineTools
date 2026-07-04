@@ -22,6 +22,10 @@ export function CleanMSIOrphans(arg1) {
   return window['go']['main']['App']['CleanMSIOrphans'](arg1);
 }
 
+export function CompressCovers(arg1, arg2) {
+  return window['go']['main']['App']['CompressCovers'](arg1, arg2);
+}
+
 export function FixUnicodeIssues() {
   return window['go']['main']['App']['FixUnicodeIssues']();
 }
@@ -38,32 +42,12 @@ export function GetLibraryStats() {
   return window['go']['main']['App']['GetLibraryStats']();
 }
 
-export function GetPlayStats() {
-  return window['go']['main']['App']['GetPlayStats']();
-}
-
-export function GetSyncableTracks() {
-  return window['go']['main']['App']['GetSyncableTracks']();
-}
-
-export function ScanMissingTracks() {
-  return window['go']['main']['App']['ScanMissingTracks']();
-}
-
-export function RemoveMissingTracks(arg1) {
-  return window['go']['main']['App']['RemoveMissingTracks'](arg1);
-}
-
-export function SyncBPMKeyToTags() {
-  return window['go']['main']['App']['SyncBPMKeyToTags']();
-}
-
-export function CompressCovers(arg1, arg2) {
-  return window['go']['main']['App']['CompressCovers'](arg1, arg2);
-}
-
 export function GetMessages() {
   return window['go']['main']['App']['GetMessages']();
+}
+
+export function GetPlayStats() {
+  return window['go']['main']['App']['GetPlayStats']();
 }
 
 export function GetPlaylistTracks(arg1) {
@@ -72,6 +56,10 @@ export function GetPlaylistTracks(arg1) {
 
 export function GetStatus() {
   return window['go']['main']['App']['GetStatus']();
+}
+
+export function GetSyncableTracks() {
+  return window['go']['main']['App']['GetSyncableTracks']();
 }
 
 export function HandleUTF8AlreadyEnabled() {
@@ -178,20 +166,28 @@ export function Refresh() {
   return window['go']['main']['App']['Refresh']();
 }
 
-export function RepairDatabase() {
-  return window['go']['main']['App']['RepairDatabase']();
+export function RemoveMissingTracks(arg1) {
+  return window['go']['main']['App']['RemoveMissingTracks'](arg1);
 }
 
-export function RestoreUnicodeFix() {
-  return window['go']['main']['App']['RestoreUnicodeFix']();
+export function RepairDatabase() {
+  return window['go']['main']['App']['RepairDatabase']();
 }
 
 export function RestoreDatabase(arg1) {
   return window['go']['main']['App']['RestoreDatabase'](arg1);
 }
 
+export function RestoreUnicodeFix() {
+  return window['go']['main']['App']['RestoreUnicodeFix']();
+}
+
 export function ScanMSIOrphans() {
   return window['go']['main']['App']['ScanMSIOrphans']();
+}
+
+export function ScanMissingTracks() {
+  return window['go']['main']['App']['ScanMissingTracks']();
 }
 
 export function SelectDrive(arg1) {
@@ -200,6 +196,10 @@ export function SelectDrive(arg1) {
 
 export function SetLanguage(arg1) {
   return window['go']['main']['App']['SetLanguage'](arg1);
+}
+
+export function SyncBPMKeyToTags() {
+  return window['go']['main']['App']['SyncBPMKeyToTags']();
 }
 
 export function USBUnlockAvailable() {
