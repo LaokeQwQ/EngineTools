@@ -56,7 +56,7 @@ import {
 } from '../wailsjs/go/main/App.js'
 import { EventsOn } from '../wailsjs/runtime/runtime.js'
 
-const APP_VERSION = '1.6.0'
+const APP_VERSION = '1.7.0'
 
 const installPath = ref('')
 const engineVersion = ref('')
