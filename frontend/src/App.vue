@@ -98,6 +98,7 @@ const msiBusy = ref(false)
 
 // ID3 Editor state
 const id3File = ref('')
+const editingTrack = ref(null) // TrackInfo from playlist click
 const id3Title = ref('')
 const id3Artist = ref('')
 const id3Album = ref('')
@@ -685,11 +686,11 @@ async function handleClickDrive(driveInfo) {
     dbBusy.value = true
     try {
         await SelectDrive(driveInfo.letter)
+        // Backend emits statusUpdate which triggers detectStatus() via event listener
     } catch (e) {
         addLog('Error: ' + e)
     }
     dbBusy.value = false
-    await detectStatus()
 }
 
 // ---- Tools tab (MSI cleanup) ----
@@ -729,6 +730,13 @@ async function handleCleanMSI() {
 }
 
 // ---- ID3 Editor ----
+
+async function handleEditTrackFromPlaylist(track) {
+    if (!track.path) return
+    editingTrack.value = track
+    id3File.value = track.path
+    await loadID3(track.path)
+}
 
 async function handleID3Pick() {
     const path = await ID3PickFile()
@@ -1206,7 +1214,11 @@ onMounted(async () => {
 
             <div v-if="selectedPlaylist && playlistTracks.length > 0" class="library-section" style="margin-top: 4px;">
                 <div class="playlist-track-list">
-                    <div v-for="(t, i) in playlistTracks" :key="t.id" class="playlist-track-row">
+                    <div v-for="(t, i) in playlistTracks" :key="t.id"
+                        class="playlist-track-row no-drag"
+                        :class="{ 'track-editing': editingTrack && editingTrack.id === t.id }"
+                        :style="t.path ? 'cursor:pointer;' : ''"
+                        @click="t.path && handleEditTrackFromPlaylist(t)">
                         <span class="playlist-track-num">{{ i + 1 }}</span>
                         <div class="playlist-track-info">
                             <div class="playlist-track-title">{{ t.title || t.filename }}</div>
@@ -1216,6 +1228,35 @@ onMounted(async () => {
                         <span class="playlist-track-bpm" v-if="t.camelot" style="color:var(--accent);font-size:10px;">{{ t.camelot }}</span>
                         <span class="playlist-track-time">{{ formatTime(t.length) }}</span>
                     </div>
+                </div>
+            </div>
+
+            <!-- 内联 ID3 编辑器（从 playlist 点击进入） -->
+            <div v-if="editingTrack && id3File" class="library-section" style="margin-top:8px;border-top:1px solid var(--border);padding-top:8px;">
+                <div class="library-section-title" style="display:flex;justify-content:space-between;align-items:center;">
+                    <span>{{ msgs.id3EditorTitle || '标签编辑' }}</span>
+                    <span class="no-drag" style="font-size:11px;color:var(--text-secondary);cursor:pointer;" @click="editingTrack=null;id3File=''">✕</span>
+                </div>
+                <div class="info-card" style="margin-bottom:8px;">
+                    <div class="id3-cover-row">
+                        <img v-if="id3Cover" :src="id3Cover" class="id3-cover-img" />
+                        <div v-else class="id3-cover-placeholder" style="font-size:11px;">{{ msgs.noCoverLabel || '无封面' }}</div>
+                        <div class="id3-cover-actions">
+                            <button class="btn btn-secondary no-drag id3-cover-btn" @click="handleID3SetCover" :disabled="id3Busy">{{ msgs.changeCoverLabel || '更换' }}</button>
+                            <button class="btn btn-secondary no-drag id3-cover-btn" @click="handleID3ClearCover" :disabled="id3Busy || !id3Cover">{{ msgs.removeCoverLabel || '删除' }}</button>
+                        </div>
+                    </div>
+                </div>
+                <input class="text-input no-drag" v-model="id3Title" :placeholder="msgs.id3TitlePlaceholder || '标题'" :disabled="id3Busy" />
+                <input class="text-input no-drag" v-model="id3Artist" :placeholder="msgs.id3ArtistPlaceholder || '艺术家'" :disabled="id3Busy" />
+                <input class="text-input no-drag" v-model="id3Album" :placeholder="msgs.id3AlbumPlaceholder || '专辑'" :disabled="id3Busy" />
+                <div class="drive-select-row">
+                    <input class="text-input no-drag" v-model="id3Year" :placeholder="msgs.id3YearPlaceholder || '年份'" :disabled="id3Busy" style="flex:1" />
+                    <input class="text-input no-drag" v-model="id3Genre" :placeholder="msgs.id3GenrePlaceholder || '风格'" :disabled="id3Busy" style="flex:1" />
+                </div>
+                <div class="drive-select-row">
+                    <button class="btn btn-primary no-drag" style="flex:1" @click="handleID3Save" :disabled="id3Busy">{{ msgs.id3SaveButton || '保存' }}</button>
+                    <button class="btn btn-restore-all no-drag" style="flex:1" @click="handleID3ClearAll" :disabled="id3Busy">{{ msgs.id3ClearAllButton || '清除全部' }}</button>
                 </div>
             </div>
         </template>
@@ -1621,8 +1662,8 @@ onMounted(async () => {
             <div class="library-section-title">{{ msgs.coverCompressTitle || 'Cover Art Compression' }}</div>
 
             <!-- Tips -->
-            <div class="library-stats" style="background:rgba(255,196,0,0.07);border:1px solid rgba(255,196,0,0.25);border-radius:6px;padding:8px 10px;margin-bottom:10px;line-height:1.6;">
-                💡 {{ msgs.coverCompressTip || 'Compressing covers to ≤1 MB improves Engine OS USB load performance.' }}
+            <div class="library-stats" style="border-left:3px solid var(--warning);padding-left:10px;margin-bottom:10px;">
+                {{ msgs.coverCompressTip || 'Compressing covers to ≤1 MB improves Engine OS USB load performance.' }}
             </div>
 
             <!-- Scope selector -->
@@ -1702,6 +1743,11 @@ onMounted(async () => {
 </template>
 
 <style>
+.track-editing {
+  background: rgba(var(--accent-rgb, 99,179,237), 0.12) !important;
+  outline: 1px solid var(--accent);
+}
+
 .marquee-text {
   font-size: 11px;
   color: var(--text-secondary);

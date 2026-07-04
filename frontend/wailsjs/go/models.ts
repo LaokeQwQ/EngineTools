@@ -229,6 +229,7 @@ export namespace database {
 	    bpm: number;
 	    length: number;
 	    filename: string;
+	    path: string;
 	    key: number;
 	    keyName: string;
 	    camelot: string;
@@ -248,6 +249,7 @@ export namespace database {
 	        this.bpm = source["bpm"];
 	        this.length = source["length"];
 	        this.filename = source["filename"];
+	        this.path = source["path"];
 	        this.key = source["key"];
 	        this.keyName = source["keyName"];
 	        this.camelot = source["camelot"];
