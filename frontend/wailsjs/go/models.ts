@@ -1,5 +1,19 @@
 export namespace database {
 	
+	export class BPMBucket {
+	    range: string;
+	    count: number;
+	
+	    static createFrom(source: any = {}) {
+	        return new BPMBucket(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.range = source["range"];
+	        this.count = source["count"];
+	    }
+	}
 	export class BackupInfo {
 	    filename: string;
 	    date: string;
@@ -17,6 +31,150 @@ export namespace database {
 	        this.size = source["size"];
 	        this.note = source["note"];
 	    }
+	}
+	export class KVCount {
+	    key: string;
+	    count: number;
+	
+	    static createFrom(source: any = {}) {
+	        return new KVCount(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.key = source["key"];
+	        this.count = source["count"];
+	    }
+	}
+	export class TrackSummary {
+	    id: number;
+	    title: string;
+	    artist: string;
+	    bpm: number;
+	    key: number;
+	    keyName: string;
+	    playCount: number;
+	    lastPlayed: string;
+	    dateAdded: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new TrackSummary(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.id = source["id"];
+	        this.title = source["title"];
+	        this.artist = source["artist"];
+	        this.bpm = source["bpm"];
+	        this.key = source["key"];
+	        this.keyName = source["keyName"];
+	        this.playCount = source["playCount"];
+	        this.lastPlayed = source["lastPlayed"];
+	        this.dateAdded = source["dateAdded"];
+	    }
+	}
+	export class LibraryStats {
+	    totalTracks: number;
+	    totalDuration: number;
+	    totalFileBytes: number;
+	    analyzedTracks: number;
+	    missingTracks: number;
+	    neverPlayed: number;
+	    fileTypes: KVCount[];
+	    topGenres: KVCount[];
+	    bpmDistribution: BPMBucket[];
+	    recentlyAdded: TrackSummary[];
+	
+	    static createFrom(source: any = {}) {
+	        return new LibraryStats(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.totalTracks = source["totalTracks"];
+	        this.totalDuration = source["totalDuration"];
+	        this.totalFileBytes = source["totalFileBytes"];
+	        this.analyzedTracks = source["analyzedTracks"];
+	        this.missingTracks = source["missingTracks"];
+	        this.neverPlayed = source["neverPlayed"];
+	        this.fileTypes = this.convertValues(source["fileTypes"], KVCount);
+	        this.topGenres = this.convertValues(source["topGenres"], KVCount);
+	        this.bpmDistribution = this.convertValues(source["bpmDistribution"], BPMBucket);
+	        this.recentlyAdded = this.convertValues(source["recentlyAdded"], TrackSummary);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	export class MissingTrack {
+	    id: number;
+	    title: string;
+	    artist: string;
+	    path: string;
+	    filename: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new MissingTrack(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.id = source["id"];
+	        this.title = source["title"];
+	        this.artist = source["artist"];
+	        this.path = source["path"];
+	        this.filename = source["filename"];
+	    }
+	}
+	export class PlayStats {
+	    mostPlayed: TrackSummary[];
+	    recentPlayed: TrackSummary[];
+	    neverPlayed: TrackSummary[];
+	
+	    static createFrom(source: any = {}) {
+	        return new PlayStats(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.mostPlayed = this.convertValues(source["mostPlayed"], TrackSummary);
+	        this.recentPlayed = this.convertValues(source["recentPlayed"], TrackSummary);
+	        this.neverPlayed = this.convertValues(source["neverPlayed"], TrackSummary);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
 	}
 	export class PlaylistInfo {
 	    id: number;
@@ -36,6 +194,32 @@ export namespace database {
 	        this.count = source["count"];
 	    }
 	}
+	export class SyncableTrack {
+	    id: number;
+	    title: string;
+	    artist: string;
+	    path: string;
+	    bpm: number;
+	    key: number;
+	    keyName: string;
+	    camelot: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new SyncableTrack(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.id = source["id"];
+	        this.title = source["title"];
+	        this.artist = source["artist"];
+	        this.path = source["path"];
+	        this.bpm = source["bpm"];
+	        this.key = source["key"];
+	        this.keyName = source["keyName"];
+	        this.camelot = source["camelot"];
+	    }
+	}
 	export class TrackInfo {
 	    id: number;
 	    title: string;
@@ -49,11 +233,11 @@ export namespace database {
 	    keyName: string;
 	    camelot: string;
 	    rating: number;
-
-	    static createFrom(source: any = ) {
+	
+	    static createFrom(source: any = {}) {
 	        return new TrackInfo(source);
 	    }
-
+	
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.id = source["id"];
@@ -65,92 +249,9 @@ export namespace database {
 	        this.length = source["length"];
 	        this.filename = source["filename"];
 	        this.key = source["key"];
-	        this.keyName = source["keyName"] || "";
-	        this.camelot = source["camelot"] || "";
+	        this.keyName = source["keyName"];
+	        this.camelot = source["camelot"];
 	        this.rating = source["rating"];
-	    }
-	}
-	export class MissingTrack {
-	    id: number; title: string; artist: string; path: string; filename: string;
-	    static createFrom(source: any = {}) { return new MissingTrack(source); }
-	    constructor(source: any = {}) {
-	        if ('string' === typeof source) source = JSON.parse(source);
-	        this.id = source["id"]; this.title = source["title"];
-	        this.artist = source["artist"]; this.path = source["path"];
-	        this.filename = source["filename"];
-	    }
-	}
-	export class SyncableTrack {
-	    id: number; title: string; artist: string; path: string;
-	    bpm: number; key: number; keyName: string; camelot: string;
-	    static createFrom(source: any = {}) { return new SyncableTrack(source); }
-	    constructor(source: any = {}) {
-	        if ('string' === typeof source) source = JSON.parse(source);
-	        this.id = source["id"]; this.title = source["title"];
-	        this.artist = source["artist"]; this.path = source["path"];
-	        this.bpm = source["bpm"]; this.key = source["key"];
-	        this.keyName = source["keyName"] || ""; this.camelot = source["camelot"] || "";
-	    }
-	}
-	export class KVCount {
-	    key: string; count: number;
-	    static createFrom(source: any = {}) { return new KVCount(source); }
-	    constructor(source: any = {}) {
-	        if ('string' === typeof source) source = JSON.parse(source);
-	        this.key = source["key"]; this.count = source["count"];
-	    }
-	}
-	export class BPMBucket {
-	    range: string; count: number;
-	    static createFrom(source: any = {}) { return new BPMBucket(source); }
-	    constructor(source: any = {}) {
-	        if ('string' === typeof source) source = JSON.parse(source);
-	        this.range = source["range"]; this.count = source["count"];
-	    }
-	}
-	export class TrackSummary {
-	    id: number; title: string; artist: string;
-	    bpm: number; key: number; keyName: string;
-	    playCount: number; lastPlayed: string; dateAdded: string;
-	    static createFrom(source: any = {}) { return new TrackSummary(source); }
-	    constructor(source: any = {}) {
-	        if ('string' === typeof source) source = JSON.parse(source);
-	        this.id = source["id"]; this.title = source["title"];
-	        this.artist = source["artist"]; this.bpm = source["bpm"];
-	        this.key = source["key"]; this.keyName = source["keyName"] || "";
-	        this.playCount = source["playCount"] || 0;
-	        this.lastPlayed = source["lastPlayed"] || "";
-	        this.dateAdded = source["dateAdded"] || "";
-	    }
-	}
-	export class LibraryStats {
-	    totalTracks: number; totalDuration: number; totalFileBytes: number;
-	    analyzedTracks: number; missingTracks: number; neverPlayed: number;
-	    fileTypes: KVCount[]; topGenres: KVCount[];
-	    bpmDistribution: BPMBucket[]; recentlyAdded: TrackSummary[];
-	    static createFrom(source: any = {}) { return new LibraryStats(source); }
-	    constructor(source: any = {}) {
-	        if ('string' === typeof source) source = JSON.parse(source);
-	        this.totalTracks = source["totalTracks"] || 0;
-	        this.totalDuration = source["totalDuration"] || 0;
-	        this.totalFileBytes = source["totalFileBytes"] || 0;
-	        this.analyzedTracks = source["analyzedTracks"] || 0;
-	        this.missingTracks = source["missingTracks"] || 0;
-	        this.neverPlayed = source["neverPlayed"] || 0;
-	        this.fileTypes = source["fileTypes"] || [];
-	        this.topGenres = source["topGenres"] || [];
-	        this.bpmDistribution = source["bpmDistribution"] || [];
-	        this.recentlyAdded = source["recentlyAdded"] || [];
-	    }
-	}
-	export class PlayStats {
-	    mostPlayed: TrackSummary[]; recentPlayed: TrackSummary[]; neverPlayed: TrackSummary[];
-	    static createFrom(source: any = {}) { return new PlayStats(source); }
-	    constructor(source: any = {}) {
-	        if ('string' === typeof source) source = JSON.parse(source);
-	        this.mostPlayed = source["mostPlayed"] || [];
-	        this.recentPlayed = source["recentPlayed"] || [];
-	        this.neverPlayed = source["neverPlayed"] || [];
 	    }
 	}
 
@@ -248,6 +349,8 @@ export namespace i18n {
 	    dbRepairButton: string;
 	    dbRepairing: string;
 	    dbRepairComplete: string;
+	    dbRepairStart: string;
+	    dbRepairDone: string;
 	    dbNoteLabel: string;
 	    dbNoneFound: string;
 	    dbNoBackups: string;
@@ -305,6 +408,43 @@ export namespace i18n {
 	    updateChecking: string;
 	    updateTooltip: string;
 	    operationSuccess: string;
+	    libraryStatsTitle: string;
+	    libraryStatsButton: string;
+	    libraryStatsBusy: string;
+	    missingTracksTitle: string;
+	    missingTracksScan: string;
+	    missingTracksScanning: string;
+	    missingTracksNone: string;
+	    missingTracksRemove: string;
+	    missingTracksSelectAll: string;
+	    missingTracksDeselectAll: string;
+	    playHistoryTitle: string;
+	    playHistoryLoad: string;
+	    playHistoryLoading: string;
+	    playHistoryMostPlayed: string;
+	    playHistoryRecent: string;
+	    playHistoryNeverPlayed: string;
+	    bpmKeySyncTitle: string;
+	    bpmKeySyncLoad: string;
+	    bpmKeySyncReady: string;
+	    bpmKeySyncWrite: string;
+	    bpmKeySyncWriting: string;
+	    coverCompressTitle: string;
+	    coverCompressButton: string;
+	    coverCompressCompressing: string;
+	    coverCompressAllLibrary: string;
+	    coverCompressTip: string;
+	    totalTracksLabel: string;
+	    totalDurationLabel: string;
+	    librarySizeLabel: string;
+	    analyzedLabel: string;
+	    missingTracksDesc: string;
+	    bpmKeySyncDesc: string;
+	    failedLabel: string;
+	    savedLabel: string;
+	    skippedLabel: string;
+	    andMoreLabel: string;
+	    tracksUnit: string;
 	
 	    static createFrom(source: any = {}) {
 	        return new Messages(source);
@@ -401,6 +541,8 @@ export namespace i18n {
 	        this.dbRepairButton = source["dbRepairButton"];
 	        this.dbRepairing = source["dbRepairing"];
 	        this.dbRepairComplete = source["dbRepairComplete"];
+	        this.dbRepairStart = source["dbRepairStart"];
+	        this.dbRepairDone = source["dbRepairDone"];
 	        this.dbNoteLabel = source["dbNoteLabel"];
 	        this.dbNoneFound = source["dbNoneFound"];
 	        this.dbNoBackups = source["dbNoBackups"];
@@ -458,6 +600,43 @@ export namespace i18n {
 	        this.updateChecking = source["updateChecking"];
 	        this.updateTooltip = source["updateTooltip"];
 	        this.operationSuccess = source["operationSuccess"];
+	        this.libraryStatsTitle = source["libraryStatsTitle"];
+	        this.libraryStatsButton = source["libraryStatsButton"];
+	        this.libraryStatsBusy = source["libraryStatsBusy"];
+	        this.missingTracksTitle = source["missingTracksTitle"];
+	        this.missingTracksScan = source["missingTracksScan"];
+	        this.missingTracksScanning = source["missingTracksScanning"];
+	        this.missingTracksNone = source["missingTracksNone"];
+	        this.missingTracksRemove = source["missingTracksRemove"];
+	        this.missingTracksSelectAll = source["missingTracksSelectAll"];
+	        this.missingTracksDeselectAll = source["missingTracksDeselectAll"];
+	        this.playHistoryTitle = source["playHistoryTitle"];
+	        this.playHistoryLoad = source["playHistoryLoad"];
+	        this.playHistoryLoading = source["playHistoryLoading"];
+	        this.playHistoryMostPlayed = source["playHistoryMostPlayed"];
+	        this.playHistoryRecent = source["playHistoryRecent"];
+	        this.playHistoryNeverPlayed = source["playHistoryNeverPlayed"];
+	        this.bpmKeySyncTitle = source["bpmKeySyncTitle"];
+	        this.bpmKeySyncLoad = source["bpmKeySyncLoad"];
+	        this.bpmKeySyncReady = source["bpmKeySyncReady"];
+	        this.bpmKeySyncWrite = source["bpmKeySyncWrite"];
+	        this.bpmKeySyncWriting = source["bpmKeySyncWriting"];
+	        this.coverCompressTitle = source["coverCompressTitle"];
+	        this.coverCompressButton = source["coverCompressButton"];
+	        this.coverCompressCompressing = source["coverCompressCompressing"];
+	        this.coverCompressAllLibrary = source["coverCompressAllLibrary"];
+	        this.coverCompressTip = source["coverCompressTip"];
+	        this.totalTracksLabel = source["totalTracksLabel"];
+	        this.totalDurationLabel = source["totalDurationLabel"];
+	        this.librarySizeLabel = source["librarySizeLabel"];
+	        this.analyzedLabel = source["analyzedLabel"];
+	        this.missingTracksDesc = source["missingTracksDesc"];
+	        this.bpmKeySyncDesc = source["bpmKeySyncDesc"];
+	        this.failedLabel = source["failedLabel"];
+	        this.savedLabel = source["savedLabel"];
+	        this.skippedLabel = source["skippedLabel"];
+	        this.andMoreLabel = source["andMoreLabel"];
+	        this.tracksUnit = source["tracksUnit"];
 	    }
 	}
 

@@ -164,6 +164,50 @@ type Messages struct {
 	UpdateChecking          string `json:"updateChecking"`
 	UpdateTooltip           string `json:"updateTooltip"`
 	OperationSuccess        string `json:"operationSuccess"`
+	// Library Stats
+	LibraryStatsTitle        string `json:"libraryStatsTitle"`
+	LibraryStatsButton       string `json:"libraryStatsButton"`
+	LibraryStatsBusy         string `json:"libraryStatsBusy"`
+	// Missing Tracks
+	MissingTracksTitle       string `json:"missingTracksTitle"`
+	MissingTracksScan        string `json:"missingTracksScan"`
+	MissingTracksScanning    string `json:"missingTracksScanning"`
+	MissingTracksNone        string `json:"missingTracksNone"`
+	MissingTracksRemove      string `json:"missingTracksRemove"`
+	MissingTracksSelectAll   string `json:"missingTracksSelectAll"`
+	MissingTracksDeselectAll string `json:"missingTracksDeselectAll"`
+	// Play History
+	PlayHistoryTitle         string `json:"playHistoryTitle"`
+	PlayHistoryLoad          string `json:"playHistoryLoad"`
+	PlayHistoryLoading       string `json:"playHistoryLoading"`
+	PlayHistoryMostPlayed    string `json:"playHistoryMostPlayed"`
+	PlayHistoryRecent        string `json:"playHistoryRecent"`
+	PlayHistoryNeverPlayed   string `json:"playHistoryNeverPlayed"`
+	// BPM/Key Sync
+	BPMKeySyncTitle          string `json:"bpmKeySyncTitle"`
+	BPMKeySyncLoad           string `json:"bpmKeySyncLoad"`
+	BPMKeySyncReady          string `json:"bpmKeySyncReady"`
+	BPMKeySyncWrite          string `json:"bpmKeySyncWrite"`
+	BPMKeySyncWriting        string `json:"bpmKeySyncWriting"`
+	// Cover Compression
+	CoverCompressTitle       string `json:"coverCompressTitle"`
+	CoverCompressButton      string `json:"coverCompressButton"`
+	CoverCompressCompressing string `json:"coverCompressCompressing"`
+	CoverCompressAllLibrary  string `json:"coverCompressAllLibrary"`
+	CoverCompressTip         string `json:"coverCompressTip"`
+	// Stats card labels
+	TotalTracksLabel  string `json:"totalTracksLabel"`
+	TotalDurationLabel string `json:"totalDurationLabel"`
+	LibrarySizeLabel  string `json:"librarySizeLabel"`
+	AnalyzedLabel     string `json:"analyzedLabel"`
+	MissingTracksDesc string `json:"missingTracksDesc"`
+	BPMKeySyncDesc    string `json:"bpmKeySyncDesc"`
+	// Generic result labels
+	FailedLabel  string `json:"failedLabel"`
+	SavedLabel   string `json:"savedLabel"`
+	SkippedLabel string `json:"skippedLabel"`
+	AndMoreLabel string `json:"andMoreLabel"`
+	TracksUnit   string `json:"tracksUnit"`
 }
 
 var translations = map[Lang]Messages{
@@ -313,6 +357,43 @@ var translations = map[Lang]Messages{
 		UpdateChecking:          "检查中...",
 		UpdateTooltip:           "有新版本可用",
 		OperationSuccess:        "操作完成",
+		LibraryStatsTitle:        "曲库统计",
+		LibraryStatsButton:       "查看统计",
+		LibraryStatsBusy:         "分析中...",
+		MissingTracksTitle:       "缺失曲目",
+		MissingTracksScan:        "扫描缺失文件",
+		MissingTracksScanning:    "扫描中...",
+		MissingTracksNone:        "所有文件均可访问 ✓",
+		MissingTracksRemove:      "从数据库删除",
+		MissingTracksSelectAll:   "全选",
+		MissingTracksDeselectAll: "取消全选",
+		PlayHistoryTitle:         "播放历史",
+		PlayHistoryLoad:          "加载统计",
+		PlayHistoryLoading:       "加载中...",
+		PlayHistoryMostPlayed:    "最多播放",
+		PlayHistoryRecent:        "最近播放",
+		PlayHistoryNeverPlayed:   "从未播放",
+		BPMKeySyncTitle:          "BPM/调号写回",
+		BPMKeySyncLoad:           "加载可写回曲目",
+		BPMKeySyncReady:          "首曲目待写回",
+		BPMKeySyncWrite:          "写回标签",
+		BPMKeySyncWriting:        "写入中...",
+		CoverCompressTitle:       "封面压缩",
+		CoverCompressButton:      "压缩封面至 1 MB 以内",
+		CoverCompressCompressing: "压缩中...",
+		CoverCompressAllLibrary:  "全部曲库",
+		CoverCompressTip:         "将所有歌曲的 ID3 封面压缩至 1 MB 以内，可有效改善 Engine OS 设备（SC6000、Prime 4 等）读取 U 盘时的加载性能，超大封面（常见于 FLAC 文件）是 USB 卡顿的主要原因之一。",
+		TotalTracksLabel:         "曲目总数",
+		TotalDurationLabel:       "总时长",
+		LibrarySizeLabel:         "占用空间",
+		AnalyzedLabel:            "已分析",
+		MissingTracksDesc:        "扫描文件路径已失效的曲目",
+		BPMKeySyncDesc:           "将 Engine DJ 分析出的 BPM 和调号写回音频文件标签（TBPM / TKEY）",
+		FailedLabel:              "失败",
+		SavedLabel:               "节省",
+		SkippedLabel:             "已跳过",
+		AndMoreLabel:             "及其他",
+		TracksUnit:               "首",
 	},
 	JA: {
 		AppTitle:              "Engine Tools",
@@ -460,6 +541,43 @@ var translations = map[Lang]Messages{
 		UpdateChecking:          "確認中...",
 		UpdateTooltip:           "新しいバージョンが利用可能です",
 		OperationSuccess:        "操作完了",
+		LibraryStatsTitle:        "ライブラリ統計",
+		LibraryStatsButton:       "統計を表示",
+		LibraryStatsBusy:         "分析中...",
+		MissingTracksTitle:       "見つからないトラック",
+		MissingTracksScan:        "ファイルをスキャン",
+		MissingTracksScanning:    "スキャン中...",
+		MissingTracksNone:        "すべてのファイルにアクセス可能 ✓",
+		MissingTracksRemove:      "データベースから削除",
+		MissingTracksSelectAll:   "すべて選択",
+		MissingTracksDeselectAll: "選択解除",
+		PlayHistoryTitle:         "再生履歴",
+		PlayHistoryLoad:          "統計を読み込む",
+		PlayHistoryLoading:       "読み込み中...",
+		PlayHistoryMostPlayed:    "再生回数順",
+		PlayHistoryRecent:        "最近再生",
+		PlayHistoryNeverPlayed:   "未再生",
+		BPMKeySyncTitle:          "BPM/キー タグ書き戻し",
+		BPMKeySyncLoad:           "書き戻し対象を読み込む",
+		BPMKeySyncReady:          "曲を書き戻し待ち",
+		BPMKeySyncWrite:          "タグを書き戻す",
+		BPMKeySyncWriting:        "書き込み中...",
+		CoverCompressTitle:       "カバーアート圧縮",
+		CoverCompressButton:      "カバーを 1 MB 以下に圧縮",
+		CoverCompressCompressing: "圧縮中...",
+		CoverCompressAllLibrary:  "ライブラリ全体",
+		CoverCompressTip:         "すべてのトラックのID3カバーを1MB以下に圧縮することで、Engine OSデバイス（SC6000、Prime 4等）がUSBライブラリを読み込む際のパフォーマンスを大幅に改善できます。",
+		TotalTracksLabel:         "トラック総数",
+		TotalDurationLabel:       "合計時間",
+		LibrarySizeLabel:         "使用容量",
+		AnalyzedLabel:            "分析済み",
+		MissingTracksDesc:        "ファイルが見つからないトラックをスキャン",
+		BPMKeySyncDesc:           "Engine DJの分析済みBPMとキーをファイルのID3タグに書き戻す（TBPM / TKEY）",
+		FailedLabel:              "失敗",
+		SavedLabel:               "節約",
+		SkippedLabel:             "スキップ",
+		AndMoreLabel:             "他",
+		TracksUnit:               "曲",
 	},
 	KO: {
 		AppTitle:              "Engine Tools",
@@ -607,6 +725,43 @@ var translations = map[Lang]Messages{
 		UpdateChecking:          "확인 중...",
 		UpdateTooltip:           "새 버전을 사용할 수 있습니다",
 		OperationSuccess:        "작업 완료",
+		LibraryStatsTitle:        "라이브러리 통계",
+		LibraryStatsButton:       "통계 보기",
+		LibraryStatsBusy:         "분석 중...",
+		MissingTracksTitle:       "누락된 트랙",
+		MissingTracksScan:        "누락 파일 스캔",
+		MissingTracksScanning:    "스캔 중...",
+		MissingTracksNone:        "모든 파일 접근 가능 ✓",
+		MissingTracksRemove:      "데이터베이스에서 삭제",
+		MissingTracksSelectAll:   "모두 선택",
+		MissingTracksDeselectAll: "선택 해제",
+		PlayHistoryTitle:         "재생 기록",
+		PlayHistoryLoad:          "통계 불러오기",
+		PlayHistoryLoading:       "불러오는 중...",
+		PlayHistoryMostPlayed:    "많이 재생됨",
+		PlayHistoryRecent:        "최근 재생",
+		PlayHistoryNeverPlayed:   "재생 안 됨",
+		BPMKeySyncTitle:          "BPM/키 태그 동기화",
+		BPMKeySyncLoad:           "동기화 가능 트랙 불러오기",
+		BPMKeySyncReady:          "개 트랙 준비됨",
+		BPMKeySyncWrite:          "태그 쓰기",
+		BPMKeySyncWriting:        "쓰는 중...",
+		CoverCompressTitle:       "커버 이미지 압축",
+		CoverCompressButton:      "커버를 1 MB 이하로 압축",
+		CoverCompressCompressing: "압축 중...",
+		CoverCompressAllLibrary:  "전체 라이브러리",
+		CoverCompressTip:         "모든 트랙의 ID3 커버를 1MB 이하로 압축하면 Engine OS 기기(SC6000, Prime 4 등)가 USB 라이브러리를 읽을 때 성능이 크게 향상됩니다.",
+		TotalTracksLabel:         "트랙 수",
+		TotalDurationLabel:       "총 재생 시간",
+		LibrarySizeLabel:         "사용 용량",
+		AnalyzedLabel:            "분석 완료",
+		MissingTracksDesc:        "파일 경로가 유효하지 않은 트랙 스캔",
+		BPMKeySyncDesc:           "Engine DJ 분석 BPM 및 키를 오디오 파일 태그에 쓰기（TBPM / TKEY）",
+		FailedLabel:              "실패",
+		SavedLabel:               "절약",
+		SkippedLabel:             "건너뜀",
+		AndMoreLabel:             "외",
+		TracksUnit:               "곡",
 	},
 	EN: {
 		AppTitle:              "Engine Tools",
@@ -754,6 +909,43 @@ var translations = map[Lang]Messages{
 		UpdateChecking:          "Checking...",
 		UpdateTooltip:           "New version available",
 		OperationSuccess:        "Operation complete",
+		LibraryStatsTitle:        "Library Stats",
+		LibraryStatsButton:       "Show Stats",
+		LibraryStatsBusy:         "Analyzing...",
+		MissingTracksTitle:       "Missing Tracks",
+		MissingTracksScan:        "Scan Missing Files",
+		MissingTracksScanning:    "Scanning...",
+		MissingTracksNone:        "All files accessible ✓",
+		MissingTracksRemove:      "Remove from Database",
+		MissingTracksSelectAll:   "Select All",
+		MissingTracksDeselectAll: "Deselect All",
+		PlayHistoryTitle:         "Play History",
+		PlayHistoryLoad:          "Load Stats",
+		PlayHistoryLoading:       "Loading...",
+		PlayHistoryMostPlayed:    "Most Played",
+		PlayHistoryRecent:        "Recently Played",
+		PlayHistoryNeverPlayed:   "Never Played",
+		BPMKeySyncTitle:          "BPM / Key Write-back",
+		BPMKeySyncLoad:           "Load Tracks",
+		BPMKeySyncReady:          "tracks ready",
+		BPMKeySyncWrite:          "Write Tags",
+		BPMKeySyncWriting:        "Writing...",
+		CoverCompressTitle:       "Cover Compression",
+		CoverCompressButton:      "Compress Covers to ≤1 MB",
+		CoverCompressCompressing: "Compressing...",
+		CoverCompressAllLibrary:  "Entire Library",
+		CoverCompressTip:         "Compressing all track ID3 covers to under 1 MB significantly improves Engine OS device (SC6000, Prime 4, etc.) USB library load performance. Oversized covers — common in FLAC files — are a leading cause of USB read lag.",
+		TotalTracksLabel:         "Total Tracks",
+		TotalDurationLabel:       "Total Duration",
+		LibrarySizeLabel:         "Library Size",
+		AnalyzedLabel:            "Analyzed",
+		MissingTracksDesc:        "Scan for tracks whose file path is no longer valid",
+		BPMKeySyncDesc:           "Write Engine DJ's analyzed BPM and key back to audio file tags (TBPM / TKEY)",
+		FailedLabel:              "failed",
+		SavedLabel:               "saved",
+		SkippedLabel:             "skipped",
+		AndMoreLabel:             "and",
+		TracksUnit:               "more",
 	},
 }
 
