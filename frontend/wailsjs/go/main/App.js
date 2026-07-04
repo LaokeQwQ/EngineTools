@@ -22,8 +22,8 @@ export function CleanMSIOrphans(arg1) {
   return window['go']['main']['App']['CleanMSIOrphans'](arg1);
 }
 
-export function FixCJKIssues() {
-  return window['go']['main']['App']['FixCJKIssues']();
+export function FixUnicodeIssues() {
+  return window['go']['main']['App']['FixUnicodeIssues']();
 }
 
 export function GetAvailableLanguages() {
@@ -32,6 +32,34 @@ export function GetAvailableLanguages() {
 
 export function GetCacheSize() {
   return window['go']['main']['App']['GetCacheSize']();
+}
+
+export function GetLibraryStats() {
+  return window['go']['main']['App']['GetLibraryStats']();
+}
+
+export function GetPlayStats() {
+  return window['go']['main']['App']['GetPlayStats']();
+}
+
+export function GetSyncableTracks() {
+  return window['go']['main']['App']['GetSyncableTracks']();
+}
+
+export function ScanMissingTracks() {
+  return window['go']['main']['App']['ScanMissingTracks']();
+}
+
+export function RemoveMissingTracks(arg1) {
+  return window['go']['main']['App']['RemoveMissingTracks'](arg1);
+}
+
+export function SyncBPMKeyToTags() {
+  return window['go']['main']['App']['SyncBPMKeyToTags']();
+}
+
+export function CompressCovers(arg1, arg2) {
+  return window['go']['main']['App']['CompressCovers'](arg1, arg2);
 }
 
 export function GetMessages() {
@@ -154,8 +182,8 @@ export function RepairDatabase() {
   return window['go']['main']['App']['RepairDatabase']();
 }
 
-export function RestoreCJKFix() {
-  return window['go']['main']['App']['RestoreCJKFix']();
+export function RestoreUnicodeFix() {
+  return window['go']['main']['App']['RestoreUnicodeFix']();
 }
 
 export function RestoreDatabase(arg1) {

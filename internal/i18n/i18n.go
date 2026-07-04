@@ -105,6 +105,8 @@ type Messages struct {
 	DBRepairButton          string `json:"dbRepairButton"`
 	DBRepairing             string `json:"dbRepairing"`
 	DBRepairComplete        string `json:"dbRepairComplete"`
+	DBRepairStart           string `json:"dbRepairStart"`
+	DBRepairDone            string `json:"dbRepairDone"`
 	DBNoteLabel             string `json:"dbNoteLabel"`
 	DBNoneFound             string `json:"dbNoneFound"`
 	DBNoBackups             string `json:"dbNoBackups"`
@@ -177,7 +179,7 @@ var translations = map[Lang]Messages{
 		ManifestStatusLabel:   "外部 Manifest",
 		ManifestExists:        "已配置",
 		ManifestNotExists:     "未配置",
-		FixButton:             "修复中日韩等特殊字符读取问题",
+		FixButton:             "修复 Unicode 特殊字符读取问题（中日韩/希腊文/拉丁扩展等）",
 		RestoreButton:         "还原修复",
 		OpenRegionSettings:    "前往区域设置",
 		UTF8AlreadyEnabled:   "系统已开启 UTF-8 支持",
@@ -254,6 +256,8 @@ var translations = map[Lang]Messages{
 		DBRepairButton:          "修复数据库",
 		DBRepairing:             "正在修复...",
 		DBRepairComplete:        "修复完成",
+		DBRepairStart:           "正在检查和修复数据库...",
+		DBRepairDone:            "数据库修复完成",
 		DBNoteLabel:             "备注",
 		DBNoneFound:             "未找到",
 		DBNoBackups:             "暂无备份",
@@ -322,7 +326,7 @@ var translations = map[Lang]Messages{
 		ManifestStatusLabel:   "外部 Manifest",
 		ManifestExists:        "設定済み",
 		ManifestNotExists:     "未設定",
-		FixButton:             "中日韓などの特殊文字の読み取り問題を修正",
+		FixButton:             "中日韓・ギリシャ文字・ラテン拡張など Unicode 特殊文字の文字化けを修正",
 		RestoreButton:         "修正を元に戻す",
 		OpenRegionSettings:    "地域設定を開く",
 		UTF8AlreadyEnabled:   "システムの UTF-8 サポートは既に有効です",
@@ -399,6 +403,8 @@ var translations = map[Lang]Messages{
 		DBRepairButton:          "修復",
 		DBRepairing:             "修復中...",
 		DBRepairComplete:        "修復完了",
+		DBRepairStart:           "データベースを修復しています...",
+		DBRepairDone:            "データベース修復完了",
 		DBNoteLabel:             "メモ",
 		DBNoneFound:             "見つかりません",
 		DBNoBackups:             "バックアップなし",
@@ -467,7 +473,7 @@ var translations = map[Lang]Messages{
 		ManifestStatusLabel:   "외부 Manifest",
 		ManifestExists:        "구성됨",
 		ManifestNotExists:     "미구성",
-		FixButton:            "중일한 등 특수 문자 읽기 문제 수정",
+		FixButton:            "중일한·그리스 문자·라틴 확장 등 Unicode 특수 문자 인코딩 문제 수정",
 		RestoreButton:         "수정 되돌리기",
 		OpenRegionSettings:    "지역 설정 열기",
 		UTF8AlreadyEnabled:   "시스템 UTF-8 지원이 이미 활성화되어 있습니다",
@@ -544,6 +550,8 @@ var translations = map[Lang]Messages{
 		DBRepairButton:          "복구",
 		DBRepairing:             "복구 중...",
 		DBRepairComplete:        "복구 완료",
+		DBRepairStart:           "데이터베이스 수리 중...",
+		DBRepairDone:            "데이터베이스 수리 완료",
 		DBNoteLabel:             "메모",
 		DBNoneFound:             "찾을 수 없음",
 		DBNoBackups:             "백업 없음",
@@ -612,7 +620,7 @@ var translations = map[Lang]Messages{
 		ManifestStatusLabel:   "External Manifest",
 		ManifestExists:        "Configured",
 		ManifestNotExists:     "Not Configured",
-		FixButton:             "Fix CJK Character Reading Issues",
+		FixButton:             "Fix Unicode Character Encoding Issues (CJK / Greek / Latin Extended…)",
 		RestoreButton:         "Restore Fix",
 		OpenRegionSettings:    "Open Region Settings",
 		UTF8AlreadyEnabled:   "System UTF-8 support is already enabled",
@@ -689,6 +697,8 @@ var translations = map[Lang]Messages{
 		DBRepairButton:          "Repair",
 		DBRepairing:             "Repairing...",
 		DBRepairComplete:        "Repair Complete",
+		DBRepairStart:           "Repairing database...",
+		DBRepairDone:            "Database repair complete",
 		DBNoteLabel:             "Note",
 		DBNoneFound:             "Not Found",
 		DBNoBackups:             "No Backups",
