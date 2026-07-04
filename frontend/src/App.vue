@@ -417,7 +417,7 @@ async function handleLibraryStats() {
         libraryStats.value = await GetLibraryStats()
     } catch (e) {
         addLog('Error: ' + e)
-        showErrorToast('Library stats failed')
+        showErrorToast(msgs.value.libraryStatsTitle || '曲库统计失败')
     }
     libraryStatsBusy.value = false
 }
@@ -444,7 +444,7 @@ async function handlePlayStats() {
         playStats.value = await GetPlayStats()
     } catch (e) {
         addLog('Error: ' + e)
-        showErrorToast('Play stats failed')
+        showErrorToast(msgs.value.playHistoryTitle || '播放统计失败')
     }
     playStatsBusy.value = false
 }
@@ -459,7 +459,7 @@ async function handleScanMissing() {
         missingScanned.value = true
     } catch (e) {
         addLog('Error: ' + e)
-        showErrorToast('Scan failed')
+        showErrorToast(msgs.value.missingTracksScan || '扫描失败')
     }
     missingBusy.value = false
 }
@@ -489,7 +489,7 @@ async function handleRemoveMissing() {
         await handleScanMissing()
     } catch (e) {
         addLog('Error: ' + e)
-        showErrorToast('Delete failed')
+        showErrorToast(msgs.value.missingTracksRemove || '删除失败')
     }
     missingBusy.value = false
 }
@@ -522,7 +522,7 @@ async function handleSyncBPMKey() {
         }
     } catch (e) {
         addLog('Error: ' + e)
-        showErrorToast('Sync failed')
+        showErrorToast(msgs.value.bpmKeySyncTitle || '写回失败')
     }
     syncBusy.value = false
 }
@@ -530,7 +530,7 @@ async function handleSyncBPMKey() {
 // ---- Cover Art Compression ----
 
 async function handleCompressCovers() {
-    const scope = coverCompressPlaylistId.value < 0 ? '整个 Library' : `播放列表 ${coverCompressPlaylistId.value}`
+    const scope = coverCompressPlaylistId.value < 0 ? (msgs.value.coverCompressAllLibrary || '全部曲库') : `播放列表 ${coverCompressPlaylistId.value}`
     const ok = window.confirm(`将压缩 ${scope} 中所有大于 1 MB 的封面至 1 MB 以内。此操作会修改音频文件的 ID3 标签。\n\n确认继续？`)
     if (!ok) return
     coverCompressBusy.value = true
@@ -548,7 +548,7 @@ async function handleCompressCovers() {
         }
     } catch (e) {
         addLog('Error: ' + e)
-        showErrorToast('Cover compression failed')
+        showErrorToast(msgs.value.coverCompressTitle || '封面压缩失败')
     }
     coverCompressBusy.value = false
 }
@@ -952,7 +952,7 @@ onMounted(async () => {
 
     marqueeInterval = setInterval(() => {
         currentMarquee.value = (currentMarquee.value + 1) % marqueeTexts.value.length
-    }, 4000)
+    }, 5000)
 
     // Auto check for updates 1 second after startup
     setTimeout(() => {
@@ -1188,8 +1188,8 @@ onMounted(async () => {
 
             <!-- Playlist Viewer -->
             <div class="library-section" style="margin-top: 12px;">
-                <div class="library-section-title">Playlist</div>
-                <div v-if="playlists.length === 0 && !playlistLoading" class="library-stats">No playlists found</div>
+                <div class="library-section-title">{{ msgs.tabPlaylist || 'Playlist' }}</div>
+                <div v-if="playlists.length === 0 && !playlistLoading" class="library-stats">{{ msgs.dbNoneFound || 'No playlists found' }}</div>
                 <div v-if="playlistLoading && !selectedPlaylist" class="library-stats">Loading...</div>
                 <div v-if="playlists.length > 0" class="playlist-chips">
                     <span
@@ -1222,22 +1222,22 @@ onMounted(async () => {
 
         <!-- Library Stats -->
         <div class="library-section" style="margin-top:12px;" v-if="dbDetected">
-            <div class="library-section-title">Library Stats</div>
+            <div class="library-section-title">{{ msgs.libraryStatsTitle || 'Library Stats' }}</div>
             <button class="btn btn-secondary no-drag" @click="handleLibraryStats" :disabled="libraryStatsBusy">
                 <span v-if="libraryStatsBusy" class="loading-spinner"></span>
-                {{ libraryStatsBusy ? 'Analyzing...' : 'Show Library Stats' }}
+                {{ libraryStatsBusy ? (msgs.libraryStatsBusy || 'Analyzing...') : (msgs.libraryStatsButton || 'Show Stats') }}
             </button>
             <template v-if="libraryStats">
                 <div class="info-card" style="margin-top:8px;">
-                    <div class="info-row"><span class="info-label">Tracks</span><span class="info-value">{{ libraryStats.totalTracks }}</span></div>
-                    <div class="info-row"><span class="info-label">Total duration</span><span class="info-value">{{ formatDuration(libraryStats.totalDuration) }}</span></div>
-                    <div class="info-row"><span class="info-label">Library size</span><span class="info-value">{{ formatBytes(libraryStats.totalFileBytes) }}</span></div>
-                    <div class="info-row"><span class="info-label">Analyzed</span><span class="info-value">{{ libraryStats.analyzedTracks }}<span class="muted" style="font-size:11px;"> / {{ libraryStats.totalTracks }}</span></span></div>
+                    <div class="info-row"><span class="info-label">{{ msgs.totalTracksLabel || '曲目总数' }}</span><span class="info-value">{{ libraryStats.totalTracks }}</span></div>
+                    <div class="info-row"><span class="info-label">{{ msgs.totalDurationLabel || '总时长' }}</span><span class="info-value">{{ formatDuration(libraryStats.totalDuration) }}</span></div>
+                    <div class="info-row"><span class="info-label">{{ msgs.librarySizeLabel || '占用空间' }}</span><span class="info-value">{{ formatBytes(libraryStats.totalFileBytes) }}</span></div>
+                    <div class="info-row"><span class="info-label">{{ msgs.analyzedLabel || '已分析' }}</span><span class="info-value">{{ libraryStats.analyzedTracks }}<span class="muted" style="font-size:11px;"> / {{ libraryStats.totalTracks }}</span></span></div>
                     <div class="info-row" v-if="libraryStats.missingTracks > 0">
-                        <span class="info-label" style="color:var(--error)">Missing files</span>
+                        <span class="info-label" style="color:var(--error)">{{ msgs.missingTracksTitle || '缺失文件' }}</span>
                         <span class="info-value" style="color:var(--error)">{{ libraryStats.missingTracks }}</span>
                     </div>
-                    <div class="info-row"><span class="info-label">Never played</span><span class="info-value">{{ libraryStats.neverPlayed }}</span></div>
+                    <div class="info-row"><span class="info-label">{{ msgs.playHistoryNeverPlayed || '从未播放' }}</span><span class="info-value">{{ libraryStats.neverPlayed }}</span></div>
                 </div>
                 <div v-if="libraryStats.topGenres.length > 0" class="info-card" style="margin-top:6px;">
                     <div class="info-row" v-for="g in libraryStats.topGenres.slice(0,5)" :key="g.key">
@@ -1254,24 +1254,24 @@ onMounted(async () => {
 
         <!-- Missing Tracks -->
         <div class="library-section" style="margin-top:12px;" v-if="dbDetected">
-            <div class="library-section-title" style="color:var(--error)">Missing Tracks</div>
-            <div class="library-stats">Scan for tracks whose files no longer exist on disk</div>
+            <div class="library-section-title" style="color:var(--error)">{{ msgs.missingTracksTitle || 'Missing Tracks' }}</div>
+            <div class="library-stats">{{ msgs.missingTracksDesc || '扫描文件路径已失效的曲目' }}</div>
             <button class="btn btn-primary no-drag" @click="handleScanMissing" :disabled="missingBusy">
                 <span v-if="missingBusy" class="loading-spinner"></span>
-                {{ missingBusy ? 'Scanning...' : 'Scan Missing Files' }}
+                {{ missingBusy ? (msgs.missingTracksScanning || 'Scanning...') : (msgs.missingTracksScan || 'Scan Missing Files') }}
             </button>
             <template v-if="missingScanned">
                 <div v-if="missingTracks.length === 0" class="status-card status-success" style="margin-top:8px;">
-                    <div class="status-text"><div class="status-detail">No missing tracks ✓</div></div>
+                    <div class="status-text"><div class="status-detail">{{ msgs.missingTracksNone || 'No missing tracks ✓' }}</div></div>
                 </div>
                 <template v-else>
-                    <div class="library-section-title" style="margin-top:8px;color:var(--error)">{{ missingTracks.length }} missing</div>
+                    <div class="library-section-title" style="margin-top:8px;color:var(--error)">{{ missingTracks.length }} {{ msgs.missingTracksTitle || '条缺失' }}</div>
                     <div class="drive-select-row" style="margin-bottom:6px;">
                         <button class="btn btn-secondary no-drag" style="flex:1;font-size:11px;" @click="toggleAllMissing" :disabled="missingBusy">
-                            {{ missingSelected.length === missingTracks.length ? 'Deselect All' : 'Select All' }}
+                            {{ missingSelected.length === missingTracks.length ? (msgs.missingTracksDeselectAll || 'Deselect All') : (msgs.missingTracksSelectAll || 'Select All') }}
                         </button>
                         <button class="btn btn-restore-all no-drag" style="flex:1;font-size:11px;" @click="handleRemoveMissing" :disabled="missingBusy || missingSelected.length === 0">
-                            Remove {{ missingSelected.length > 0 ? '(' + missingSelected.length + ')' : '' }}
+                            {{ msgs.missingTracksRemove || 'Remove' }} {{ missingSelected.length > 0 ? '(' + missingSelected.length + ')' : '' }}
                         </button>
                     </div>
                     <div class="playlist-track-list" style="max-height:200px;overflow-y:auto;">
@@ -1290,16 +1290,16 @@ onMounted(async () => {
 
         <!-- Play Stats -->
         <div class="library-section" style="margin-top:12px;" v-if="dbDetected">
-            <div class="library-section-title">Play History</div>
+            <div class="library-section-title">{{ msgs.playHistoryTitle || 'Play History' }}</div>
             <button class="btn btn-secondary no-drag" @click="handlePlayStats" :disabled="playStatsBusy">
                 <span v-if="playStatsBusy" class="loading-spinner"></span>
-                {{ playStatsBusy ? 'Loading...' : 'Load Play Stats' }}
+                {{ playStatsBusy ? (msgs.playHistoryLoading || 'Loading...') : (msgs.playHistoryLoad || 'Load Stats') }}
             </button>
             <template v-if="playStats">
                 <div class="playlist-chips" style="margin-top:8px;">
-                    <span class="playlist-chip no-drag" :class="{ active: playStatsTab === 'most' }" @click="playStatsTab = 'most'">Most Played</span>
-                    <span class="playlist-chip no-drag" :class="{ active: playStatsTab === 'recent' }" @click="playStatsTab = 'recent'">Recent</span>
-                    <span class="playlist-chip no-drag" :class="{ active: playStatsTab === 'never' }" @click="playStatsTab = 'never'">Never Played</span>
+                    <span class="playlist-chip no-drag" :class="{ active: playStatsTab === 'most' }" @click="playStatsTab = 'most'">{{ msgs.playHistoryMostPlayed || 'Most Played' }}</span>
+                    <span class="playlist-chip no-drag" :class="{ active: playStatsTab === 'recent' }" @click="playStatsTab = 'recent'">{{ msgs.playHistoryRecent || 'Recent' }}</span>
+                    <span class="playlist-chip no-drag" :class="{ active: playStatsTab === 'never' }" @click="playStatsTab = 'never'">{{ msgs.playHistoryNeverPlayed || 'Never Played' }}</span>
                 </div>
                 <div class="playlist-track-list" style="max-height:220px;overflow-y:auto;margin-top:4px;">
                     <template v-if="playStatsTab === 'most'">
@@ -1585,10 +1585,10 @@ onMounted(async () => {
 
         <!-- BPM / Key Write-back -->
         <div class="library-section" style="margin-top: 12px;">
-            <div class="library-section-title">BPM / Key → ID3 Sync</div>
-            <div class="library-stats">Write Engine DJ's analyzed BPM and musical key back into audio file tags (TBPM / TKEY).</div>
+            <div class="library-section-title">{{ msgs.bpmKeySyncTitle || 'BPM / Key → ID3 Sync' }}</div>
+            <div class="library-stats">{{ msgs.bpmKeySyncDesc || '将 Engine DJ 分析出的 BPM 和调号写回音频文件标签（TBPM / TKEY）' }}</div>
             <button class="btn btn-secondary no-drag" @click="handleLoadSyncPreview" :disabled="syncBusy">
-                {{ syncPreviewLoaded ? syncPreviewTracks.length + ' tracks ready' : 'Load Analyzable Tracks' }}
+                {{ syncPreviewLoaded ? syncPreviewTracks.length + ' ' + (msgs.bpmKeySyncReady || 'tracks ready') : (msgs.bpmKeySyncLoad || 'Load Tracks') }}
             </button>
             <template v-if="syncPreviewLoaded">
                 <div class="info-card" style="margin-top:6px;" v-if="syncPreviewTracks.length > 0">
@@ -1597,20 +1597,20 @@ onMounted(async () => {
                         <span class="info-value" style="color:var(--text-secondary);font-size:11px;">{{ t.bpm > 0 ? Math.round(t.bpm) + ' BPM' : '' }}{{ t.camelot ? ' · ' + t.camelot : '' }}</span>
                     </div>
                     <div v-if="syncPreviewTracks.length > 5" class="info-row">
-                        <span class="info-label muted">… and {{ syncPreviewTracks.length - 5 }} more</span>
+                        <span class="info-label muted">… {{ msgs.andMoreLabel || '及其他' }} {{ syncPreviewTracks.length - 5 }} {{ msgs.tracksUnit || '首' }}</span>
                     </div>
                 </div>
                 <button v-if="syncPreviewTracks.length > 0"
                     class="btn btn-primary no-drag" style="margin-top:6px;"
                     @click="handleSyncBPMKey" :disabled="syncBusy">
                     <span v-if="syncBusy" class="loading-spinner"></span>
-                    {{ syncBusy ? 'Writing tags...' : 'Write BPM + Key to ' + syncPreviewTracks.length + ' files' }}
+                    {{ syncBusy ? (msgs.bpmKeySyncWriting || 'Writing...') : (msgs.bpmKeySyncWrite || 'Write Tags') + ' (' + syncPreviewTracks.length + ')' }}
                 </button>
             </template>
             <template v-if="syncResult">
                 <div class="status-card" :class="syncResult.failed > 0 ? 'status-warning' : 'status-success'" style="margin-top:8px;">
                     <div class="status-text">
-                        <div class="status-detail">✓ {{ syncResult.success }} written{{ syncResult.failed > 0 ? '   ✗ ' + syncResult.failed + ' failed' : '' }}</div>
+                        <div class="status-detail">✓ {{ syncResult.success }} {{ msgs.bpmKeySyncWrite || '写回' }}{{ syncResult.failed > 0 ? '   ✗ ' + syncResult.failed + ' ' + (msgs.failedLabel || '失败') : '' }}</div>
                     </div>
                 </div>
             </template>
@@ -1618,12 +1618,11 @@ onMounted(async () => {
 
         <!-- Cover Art Compression -->
         <div class="library-section" style="margin-top: 12px;">
-            <div class="library-section-title">Cover Art Compression</div>
+            <div class="library-section-title">{{ msgs.coverCompressTitle || 'Cover Art Compression' }}</div>
 
             <!-- Tips -->
             <div class="library-stats" style="background:rgba(255,196,0,0.07);border:1px solid rgba(255,196,0,0.25);border-radius:6px;padding:8px 10px;margin-bottom:10px;line-height:1.6;">
-                💡 <strong>为什么需要压缩封面？</strong><br>
-                通过将所有歌曲 ID3 封面图片压缩至 1 MB 以内，可以显著改善 Engine OS 设备（如 SC6000、Prime 4 等）在读取 U 盘数据库时的加载性能。超大封面（常见于 FLAC 文件）是 USB 读取卡顿的主要原因之一。
+                💡 {{ msgs.coverCompressTip || 'Compressing covers to ≤1 MB improves Engine OS USB load performance.' }}
             </div>
 
             <!-- Scope selector -->
@@ -1633,7 +1632,7 @@ onMounted(async () => {
                     @click="coverCompressPlaylistId = -1"
                     :disabled="coverCompressBusy">
                     <span class="drive-letter" style="font-size:11px;">All</span>
-                    <span class="drive-count">entire library</span>
+                    <span class="drive-count">{{ msgs.coverCompressAllLibrary || 'Entire Library' }}</span>
                 </button>
                 <button v-for="pl in playlists" :key="pl.id"
                     class="drive-chip no-drag"
@@ -1648,7 +1647,7 @@ onMounted(async () => {
 
             <button class="btn btn-primary no-drag" @click="handleCompressCovers" :disabled="coverCompressBusy">
                 <span v-if="coverCompressBusy" class="loading-spinner"></span>
-                {{ coverCompressBusy ? 'Compressing...' : 'Compress Covers ≤ 1 MB' }}
+                {{ coverCompressBusy ? (msgs.coverCompressCompressing || 'Compressing...') : (msgs.coverCompressButton || 'Compress Covers ≤ 1 MB') }}
             </button>
 
             <!-- Result -->
@@ -1658,15 +1657,15 @@ onMounted(async () => {
                     style="margin-top:8px;">
                     <div class="status-text">
                         <div class="status-detail">
-                            ✓ {{ coverCompressResult.compressed }} compressed
+                            ✓ {{ coverCompressResult.compressed }} {{ msgs.coverCompressTitle || '已压缩' }}
                             <span v-if="coverCompressResult.savedBytes > 0" style="margin-left:6px;color:var(--accent)">
-                                (saved {{ coverCompressResult.savedBytes > 1048576
+                                ({{ msgs.savedLabel || '节省' }} {{ coverCompressResult.savedBytes > 1048576
                                     ? (coverCompressResult.savedBytes/1048576).toFixed(1)+' MB'
                                     : Math.round(coverCompressResult.savedBytes/1024)+' KB' }})
                             </span>
-                            · {{ coverCompressResult.skipped }} already OK
+                            · {{ coverCompressResult.skipped }} {{ msgs.skippedLabel || '已跳过' }}
                             <span v-if="coverCompressResult.failed > 0" style="color:var(--error);margin-left:4px;">
-                                · ✗ {{ coverCompressResult.failed }} failed
+                                · ✗ {{ coverCompressResult.failed }} {{ msgs.failedLabel || '失败' }}
                             </span>
                         </div>
                     </div>
@@ -1701,3 +1700,23 @@ onMounted(async () => {
         </div>
     </div>
 </template>
+
+<style>
+.marquee-text {
+  font-size: 11px;
+  color: var(--text-secondary);
+  opacity: 0;
+  animation: marqueeFadeIn 0.4s ease forwards;
+  max-width: 260px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  display: inline-block;
+  vertical-align: middle;
+}
+
+@keyframes marqueeFadeIn {
+  from { opacity: 0; transform: translateY(3px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+</style>
