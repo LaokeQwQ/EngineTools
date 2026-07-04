@@ -87,11 +87,16 @@ func (a *App) watchDrives() {
 	last := getLogicalDrives()
 	ticker := time.NewTicker(2 * time.Second)
 	defer ticker.Stop()
-	for range ticker.C {
-		current := getLogicalDrives()
-		if current != last {
-			last = current
-			a.detectStatus()
+	for {
+		select {
+		case <-ticker.C:
+			current := getLogicalDrives()
+			if current != last {
+				last = current
+				a.detectStatus()
+			}
+		case <-a.ctx.Done():
+			return
 		}
 	}
 }
@@ -572,13 +577,13 @@ func (a *App) RepairDatabase() string {
 		}
 	}
 
-	a.log("正在检查和修复数据库...")
+	a.log(msgs.DBRepairStart)
 	report, err := database.RepairDatabase()
 	if err != nil {
 		a.log(fmt.Sprintf("%s: %v", msgs.FixFailed, err))
 		return ""
 	}
-	a.log("数据库修复完成")
+	a.log(msgs.DBRepairDone)
 	a.log(report)
 	return "ok"
 }
@@ -602,7 +607,10 @@ func (a *App) OpenLogsDir() string {
 		a.log("日志目录不存在")
 		return ""
 	}
-	wailsRuntime.BrowserOpenURL(a.ctx, logsDir)
+	if err := process.OpenDirectory(logsDir); err != nil {
+		a.log(fmt.Sprintf("Failed to open logs dir: %v", err))
+		return ""
+	}
 	return "ok"
 }
 
@@ -1061,6 +1069,10 @@ func (a *App) GetAvailableLanguages() []map[string]string {
 	}
 	return result
 }
+
+// shutdown is called by Wails when the application is closing.
+// Context cancellation propagates to the watchDrives goroutine via a.ctx.Done().
+func (a *App) shutdown(ctx context.Context) {}
 
 func checkIsAdmin() bool {
 	var sid *windows.SID

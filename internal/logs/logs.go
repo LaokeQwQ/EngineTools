@@ -73,19 +73,33 @@ func AnalyzeLogs() (*LogStats, error) {
 		return nil, fmt.Errorf("no log files found")
 	}
 
-	sort.Slice(logFiles, func(i, j int) bool {
-		iInfo, _ := os.Stat(logFiles[i])
-		jInfo, _ := os.Stat(logFiles[j])
-		return iInfo.ModTime().After(jInfo.ModTime())
+	type fileWithTime struct {
+		path    string
+		modTime time.Time
+	}
+	var filesWithTime []fileWithTime
+	for _, lf := range logFiles {
+		info, err := os.Stat(lf)
+		if err != nil {
+			continue
+		}
+		filesWithTime = append(filesWithTime, fileWithTime{lf, info.ModTime()})
+	}
+	sort.Slice(filesWithTime, func(i, j int) bool {
+		return filesWithTime[i].modTime.After(filesWithTime[j].modTime)
 	})
+	logFiles = make([]string, len(filesWithTime))
+	for i, ft := range filesWithTime {
+		logFiles[i] = ft.path
+	}
 
 	stats := &LogStats{
-		TotalFiles:    len(logFiles),
 		TopWarnings:   []MessageCount{},
 		TopErrors:     []MessageCount{},
 		RecentEntries: []LogEntry{},
 	}
 
+	stats.TotalFiles = len(logFiles)
 	if len(logFiles) > 0 {
 		stats.LatestLog = filepath.Base(logFiles[0])
 	}
@@ -105,6 +119,7 @@ func AnalyzeLogs() (*LogStats, error) {
 		}
 
 		scanner := bufio.NewScanner(file)
+		scanner.Buffer(make([]byte, 512*1024), 512*1024)
 		for scanner.Scan() {
 			line := scanner.Text()
 			stats.TotalLines++

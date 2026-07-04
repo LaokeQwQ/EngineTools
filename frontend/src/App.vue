@@ -45,6 +45,7 @@ import {
     AnalyzeLogs,
     OpenLogsDir,
     CleanCache,
+    GetCacheSize,
 } from '../wailsjs/go/main/App.js'
 import { EventsOn } from '../wailsjs/runtime/runtime.js'
 
@@ -118,6 +119,11 @@ const logBusy = ref(false)
 
 // Cache cleanup state
 const cacheBusy = ref(false)
+const cacheSize = ref(0)
+
+// Tab lazy-load flags
+const dbTabLoaded = ref(false)
+const toolsTabLoaded = ref(false)
 
 // Anti-piracy easter egg state
 const apDir = ref('')
@@ -142,6 +148,19 @@ function showToast(msg) {
     if (toastTimer) clearTimeout(toastTimer)
     toastTimer = setTimeout(() => { toastVisible.value = false }, 3000)
 }
+
+function showErrorToast(msg) {
+    toastMsg.value = '❌ ' + msg
+    toastVisible.value = true
+    if (toastTimer) clearTimeout(toastTimer)
+    toastTimer = setTimeout(() => { toastVisible.value = false }, 4000)
+}
+
+const cacheSizeText = computed(() => {
+    if (cacheSize.value <= 0) return ''
+    const mb = (cacheSize.value / 1024 / 1024).toFixed(1)
+    return (msgs.value.cacheSizeLabel || 'Cache size') + ': ' + mb + ' MB'
+})
 
 const id3FileName = computed(() => {
     if (!id3File.value) return ''
@@ -314,6 +333,7 @@ async function handleBackup() {
         showToast(msgs.value.dbBackupComplete || 'Backup complete')
     } catch (e) {
         addLog('Error: ' + e)
+        showErrorToast(msgs.value.dbBackupError || 'Backup failed')
     }
     dbBusy.value = false
 }
@@ -326,6 +346,7 @@ async function handleRestoreDB() {
         showToast(msgs.value.dbRestoreComplete || 'Restore complete')
     } catch (e) {
         addLog('Error: ' + e)
+        showErrorToast(msgs.value.dbRestoreConfirmTitle || 'Restore failed')
     }
     dbBusy.value = false
 }
@@ -337,6 +358,7 @@ async function handleOptimize() {
         showToast(msgs.value.dbOptimizeComplete || 'Optimization complete')
     } catch (e) {
         addLog('Error: ' + e)
+        showErrorToast(msgs.value.dbOptimizeButton || 'Optimization failed')
     }
     dbBusy.value = false
 }
@@ -348,20 +370,22 @@ async function handleRepair() {
         showToast(msgs.value.dbRepairComplete || 'Repair complete')
     } catch (e) {
         addLog('Error: ' + e)
+        showErrorToast(msgs.value.dbRepairButton || 'Repair failed')
     }
     dbBusy.value = false
     await detectStatus()
 }
 
 async function handleAnalyzeLogs() {
-    logsBusy.value = true
+    logBusy.value = true
     try {
         logStats.value = await AnalyzeLogs()
     } catch (e) {
         addLog('Error: ' + e)
+        showErrorToast(msgs.value.logAnalysisTitle || 'Log analysis failed')
         logStats.value = null
     }
-    logsBusy.value = false
+    logBusy.value = false
 }
 
 async function handleOpenLogsDir() {
@@ -376,9 +400,11 @@ async function handleClearCache() {
     cacheBusy.value = true
     try {
         await CleanCache()
+        cacheSize.value = 0
         showToast(msgs.value.cacheCleanComplete || 'Cache cleared')
     } catch (e) {
         addLog('Error: ' + e)
+        showErrorToast(msgs.value.cacheCleanTitle || 'Cache clear failed')
     }
     cacheBusy.value = false
 }
@@ -403,8 +429,8 @@ async function handlePickApDir() {
 
 async function handleAntiPiracyV1() {
     if (!apDir.value) return
-    if (!confirm('防偷歌模式 1.0：将清除目录下所有音频文件的ID3信息，确定继续？')) return
-    if (!confirm('再次确认：此操作会清除所有标签信息（已自动备份），是否继续？')) return
+    const ok = window.confirm('⚠️ 防偷歌 v1：将清除目录下所有音频文件的ID3标签（操作前自动备份）。\n\n确认执行？')
+    if (!ok) return
     apBusy.value = true
     try {
         await ID3AntiPiracyV1(apDir.value)
@@ -416,8 +442,8 @@ async function handleAntiPiracyV1() {
 
 async function handleAntiPiracyV2() {
     if (!apDir.value) return
-    if (!confirm('防偷歌模式 2.0：将随机打乱目录下所有音频文件的ID3信息，确定继续？')) return
-    if (!confirm('再次确认：此操作会随机交换所有标签信息（已自动备份），是否继续？')) return
+    const ok = window.confirm('⚠️ 防偷歌 v2：将随机打乱目录下所有音频文件的ID3标签（操作前自动备份）。\n\n确认执行？')
+    if (!ok) return
     apBusy.value = true
     try {
         await ID3AntiPiracyV2(apDir.value)
@@ -635,6 +661,7 @@ async function handleUSBUnlock() {
         await checkUSBDrive()
     } catch (e) {
         addLog('Error: ' + e)
+        showErrorToast(msgs.value.usbUnlockTitle || 'USB unlock failed')
     }
     usbBusy.value = false
 }
@@ -657,6 +684,7 @@ async function handleMIDI2Disable() {
         await checkMIDI2Status()
     } catch (e) {
         addLog('Error: ' + e)
+        showErrorToast(msgs.value.midi2Title || 'MIDI 2.0 disable failed')
     }
     midi2Busy.value = false
 }
@@ -669,20 +697,23 @@ async function handleMIDI2Enable() {
         await checkMIDI2Status()
     } catch (e) {
         addLog('Error: ' + e)
+        showErrorToast(msgs.value.midi2Title || 'MIDI 2.0 enable failed')
     }
     midi2Busy.value = false
 }
 
 async function switchTab(tab) {
     activeTab.value = tab
-    if (tab === 'database') {
-        if (drives.value.length === 0) await loadDrives()
-        if (backups.value.length === 0) await refreshBackups()
-        if (playlists.value.length === 0) await loadPlaylists()
+    if (tab === 'database' && !dbTabLoaded.value) {
+        await loadDrives()
+        await refreshBackups()
+        await loadPlaylists()
+        dbTabLoaded.value = true
     }
-    if (tab === 'tools') {
+    if (tab === 'tools' && !toolsTabLoaded.value) {
         await checkUSBDrive()
         await checkMIDI2Status()
+        toolsTabLoaded.value = true
     }
 }
 
@@ -740,6 +771,7 @@ onMounted(async () => {
     })
 
     await detectStatus()
+    try { cacheSize.value = await GetCacheSize() } catch (_) {}
 
     marqueeInterval = setInterval(() => {
         currentMarquee.value = (currentMarquee.value + 1) % marqueeTexts.value.length
@@ -1205,9 +1237,9 @@ onMounted(async () => {
                 {{ msgs.logAnalysisDescription || 'Analyze Engine DJ log files for errors and warnings' }}
             </div>
             <div class="drive-select-row">
-                <button class="btn btn-primary no-drag" style="flex:1" @click="handleAnalyzeLogs" :disabled="logsBusy">
-                    <span v-if="logsBusy" class="loading-spinner"></span>
-                    {{ logsBusy ? (msgs.logAnalyzing || 'Analyzing...') : (msgs.logAnalyzeButton || 'Analyze Logs') }}
+                <button class="btn btn-primary no-drag" style="flex:1" @click="handleAnalyzeLogs" :disabled="logBusy">
+                    <span v-if="logBusy" class="loading-spinner"></span>
+                    {{ logBusy ? (msgs.logAnalyzing || 'Analyzing...') : (msgs.logAnalyzeButton || 'Analyze Logs') }}
                 </button>
                 <button class="btn btn-secondary no-drag" style="flex:1" @click="handleOpenLogsDir">
                     {{ msgs.logOpenDir || 'Open Log Folder' }}
@@ -1266,6 +1298,7 @@ onMounted(async () => {
             <div class="library-stats">
                 {{ msgs.cacheCleanDescription || 'Clear Engine DJ UI cache to fix display glitches' }}
             </div>
+            <div v-if="cacheSizeText" class="library-stats" style="color: var(--warning)">{{ cacheSizeText }}</div>
             <button class="btn btn-primary no-drag" @click="handleClearCache" :disabled="cacheBusy">
                 <span v-if="cacheBusy" class="loading-spinner"></span>
                 {{ cacheBusy ? (msgs.cacheClearing || 'Clearing...') : (msgs.cacheCleanButton || 'Clear Cache') }}

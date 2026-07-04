@@ -105,6 +105,8 @@ type Messages struct {
 	DBRepairButton          string `json:"dbRepairButton"`
 	DBRepairing             string `json:"dbRepairing"`
 	DBRepairComplete        string `json:"dbRepairComplete"`
+	DBRepairStart           string `json:"dbRepairStart"`
+	DBRepairDone            string `json:"dbRepairDone"`
 	DBNoteLabel             string `json:"dbNoteLabel"`
 	DBNoneFound             string `json:"dbNoneFound"`
 	DBNoBackups             string `json:"dbNoBackups"`
@@ -254,6 +256,8 @@ var translations = map[Lang]Messages{
 		DBRepairButton:          "修复数据库",
 		DBRepairing:             "正在修复...",
 		DBRepairComplete:        "修复完成",
+		DBRepairStart:           "正在检查和修复数据库...",
+		DBRepairDone:            "数据库修复完成",
 		DBNoteLabel:             "备注",
 		DBNoneFound:             "未找到",
 		DBNoBackups:             "暂无备份",
@@ -399,6 +403,8 @@ var translations = map[Lang]Messages{
 		DBRepairButton:          "修復",
 		DBRepairing:             "修復中...",
 		DBRepairComplete:        "修復完了",
+		DBRepairStart:           "データベースを修復しています...",
+		DBRepairDone:            "データベース修復完了",
 		DBNoteLabel:             "メモ",
 		DBNoneFound:             "見つかりません",
 		DBNoBackups:             "バックアップなし",
@@ -544,6 +550,8 @@ var translations = map[Lang]Messages{
 		DBRepairButton:          "복구",
 		DBRepairing:             "복구 중...",
 		DBRepairComplete:        "복구 완료",
+		DBRepairStart:           "데이터베이스 수리 중...",
+		DBRepairDone:            "데이터베이스 수리 완료",
 		DBNoteLabel:             "메모",
 		DBNoneFound:             "찾을 수 없음",
 		DBNoBackups:             "백업 없음",
@@ -689,6 +697,8 @@ var translations = map[Lang]Messages{
 		DBRepairButton:          "Repair",
 		DBRepairing:             "Repairing...",
 		DBRepairComplete:        "Repair Complete",
+		DBRepairStart:           "Repairing database...",
+		DBRepairDone:            "Database repair complete",
 		DBNoteLabel:             "Note",
 		DBNoneFound:             "Not Found",
 		DBNoBackups:             "No Backups",
