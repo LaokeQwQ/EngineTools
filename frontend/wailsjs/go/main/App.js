@@ -70,12 +70,36 @@ export function ID3AntiPiracyRestore(arg1) {
   return window['go']['main']['App']['ID3AntiPiracyRestore'](arg1);
 }
 
+export function ID3AntiPiracyRestorePaths(arg1) {
+  return window['go']['main']['App']['ID3AntiPiracyRestorePaths'](arg1);
+}
+
+export function ID3AntiPiracyRestorePlaylist(arg1) {
+  return window['go']['main']['App']['ID3AntiPiracyRestorePlaylist'](arg1);
+}
+
 export function ID3AntiPiracyV1(arg1) {
   return window['go']['main']['App']['ID3AntiPiracyV1'](arg1);
 }
 
+export function ID3AntiPiracyV1Paths(arg1, arg2) {
+  return window['go']['main']['App']['ID3AntiPiracyV1Paths'](arg1, arg2);
+}
+
+export function ID3AntiPiracyV1Playlist(arg1) {
+  return window['go']['main']['App']['ID3AntiPiracyV1Playlist'](arg1);
+}
+
 export function ID3AntiPiracyV2(arg1) {
   return window['go']['main']['App']['ID3AntiPiracyV2'](arg1);
+}
+
+export function ID3AntiPiracyV2Paths(arg1, arg2) {
+  return window['go']['main']['App']['ID3AntiPiracyV2Paths'](arg1, arg2);
+}
+
+export function ID3AntiPiracyV2Playlist(arg1) {
+  return window['go']['main']['App']['ID3AntiPiracyV2Playlist'](arg1);
 }
 
 export function ID3ClearAll(arg1) {

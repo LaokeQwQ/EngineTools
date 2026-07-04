@@ -42,9 +42,21 @@ export function HandleUTF8AlreadyEnabled():Promise<string>;
 
 export function ID3AntiPiracyRestore(arg1:string):Promise<string>;
 
+export function ID3AntiPiracyRestorePaths(arg1:string):Promise<string>;
+
+export function ID3AntiPiracyRestorePlaylist(arg1:number):Promise<string>;
+
 export function ID3AntiPiracyV1(arg1:string):Promise<string>;
 
+export function ID3AntiPiracyV1Paths(arg1:Array<string>,arg2:string):Promise<string>;
+
+export function ID3AntiPiracyV1Playlist(arg1:number):Promise<string>;
+
 export function ID3AntiPiracyV2(arg1:string):Promise<string>;
+
+export function ID3AntiPiracyV2Paths(arg1:Array<string>,arg2:string):Promise<string>;
+
+export function ID3AntiPiracyV2Playlist(arg1:number):Promise<string>;
 
 export function ID3ClearAll(arg1:string):Promise<string>;
 

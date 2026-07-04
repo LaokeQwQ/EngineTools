@@ -34,6 +34,12 @@ import {
     ID3AntiPiracyV1,
     ID3AntiPiracyV2,
     ID3AntiPiracyRestore,
+    ID3AntiPiracyV1Paths,
+    ID3AntiPiracyV2Paths,
+    ID3AntiPiracyRestorePaths,
+    ID3AntiPiracyV1Playlist,
+    ID3AntiPiracyV2Playlist,
+    ID3AntiPiracyRestorePlaylist,
     ID3PickDir,
     USBUnlockAvailable,
     USBUnlockScan,
@@ -163,6 +169,9 @@ const coverCompressPlaylistId = ref(-1) // -1 = entire library
 
 // Anti-piracy easter egg state (controlled by experimental toggle)
 const apDir = ref('')
+const apFile = ref('')
+const apPlaylistId = ref(-1)
+const apScope = ref('folder') // 'file' | 'folder' | 'playlist'
 const apBusy = ref(false)
 
 // Experimental features state
@@ -671,13 +680,41 @@ async function handlePickApDir() {
     }
 }
 
+async function handlePickApFile() {
+    try {
+        const path = await ID3PickFile()
+        if (path) apFile.value = path
+    } catch (e) {
+        addLog('Error: ' + e)
+    }
+}
+
+function apBackupKey() {
+    if (apScope.value === 'folder') return apDir.value
+    if (apScope.value === 'file') return apFile.value ? apFile.value + '_ap' : 'single'
+    return 'playlist_' + apPlaylistId.value
+}
+
+function apIsReady() {
+    if (apScope.value === 'folder') return !!apDir.value
+    if (apScope.value === 'file') return !!apFile.value
+    return apPlaylistId.value >= 0
+}
+
 async function handleAntiPiracyV1() {
-    if (!apDir.value) return
-    const ok = window.confirm('⚠️ 防偷歌 v1：将清除目录下所有音频文件的ID3标签（操作前自动备份）。\n\n确认执行？')
+    if (!apIsReady()) return
+    const ok = window.confirm('防偷歌 v1：清除所选范围内所有音频文件的ID3标签（操作前自动备份）。确认执行？')
     if (!ok) return
     apBusy.value = true
     try {
-        await ID3AntiPiracyV1(apDir.value)
+        if (apScope.value === 'folder') {
+            await ID3AntiPiracyV1(apDir.value)
+        } else if (apScope.value === 'file') {
+            await ID3AntiPiracyV1Paths([apFile.value], apBackupKey())
+        } else {
+            await ID3AntiPiracyV1Playlist(apPlaylistId.value)
+        }
+        showToast('v1 执行完成')
     } catch (e) {
         addLog('Error: ' + e)
     }
@@ -685,12 +722,19 @@ async function handleAntiPiracyV1() {
 }
 
 async function handleAntiPiracyV2() {
-    if (!apDir.value) return
-    const ok = window.confirm('⚠️ 防偷歌 v2：将随机打乱目录下所有音频文件的ID3标签（操作前自动备份）。\n\n确认执行？')
+    if (!apIsReady()) return
+    const ok = window.confirm('防偷歌 v2：随机打乱所选范围内所有音频文件的ID3标签（操作前自动备份）。确认执行？')
     if (!ok) return
     apBusy.value = true
     try {
-        await ID3AntiPiracyV2(apDir.value)
+        if (apScope.value === 'folder') {
+            await ID3AntiPiracyV2(apDir.value)
+        } else if (apScope.value === 'file') {
+            await ID3AntiPiracyV2Paths([apFile.value], apBackupKey())
+        } else {
+            await ID3AntiPiracyV2Playlist(apPlaylistId.value)
+        }
+        showToast('v2 执行完成')
     } catch (e) {
         addLog('Error: ' + e)
     }
@@ -698,10 +742,17 @@ async function handleAntiPiracyV2() {
 }
 
 async function handleAntiPiracyRestore() {
-    if (!apDir.value) return
+    if (!apIsReady()) return
     apBusy.value = true
     try {
-        await ID3AntiPiracyRestore(apDir.value)
+        if (apScope.value === 'folder') {
+            await ID3AntiPiracyRestore(apDir.value)
+        } else if (apScope.value === 'file') {
+            await ID3AntiPiracyRestorePaths(apBackupKey())
+        } else {
+            await ID3AntiPiracyRestorePlaylist(apPlaylistId.value)
+        }
+        showToast('恢复完成')
     } catch (e) {
         addLog('Error: ' + e)
     }
@@ -1537,22 +1588,47 @@ onMounted(async () => {
         <template v-if="experimentalEnabled">
             <div class="library-section" style="margin-top: 12px; border: 1px dashed var(--warning); border-radius: var(--radius-sm); padding: 12px;">
                 <div class="library-section-title" style="color: var(--warning);">防偷歌模式</div>
-                <div class="library-stats">对指定目录下的所有音频文件批量操作ID3标签，操作前自动备份</div>
-                <button class="btn btn-secondary no-drag" @click="handlePickApDir" :disabled="apBusy">
+                <div class="library-stats" style="margin-bottom:8px;">对所选范围内的音频文件批量操作 ID3 标签，操作前自动备份</div>
+
+                <!-- Scope selector -->
+                <div class="playlist-chips" style="margin-bottom:8px;">
+                    <span class="playlist-chip no-drag" :class="{ active: apScope === 'file' }" @click="apScope = 'file'">单个文件</span>
+                    <span class="playlist-chip no-drag" :class="{ active: apScope === 'folder' }" @click="apScope = 'folder'">文件夹</span>
+                    <span class="playlist-chip no-drag" :class="{ active: apScope === 'playlist' }" @click="apScope = 'playlist'">Playlist</span>
+                </div>
+
+                <!-- File picker -->
+                <button v-if="apScope === 'file'" class="btn btn-secondary no-drag" @click="handlePickApFile" :disabled="apBusy">
+                    {{ apFile ? apFile.split(/[/\\]/).pop() : '选择单个音频文件' }}
+                </button>
+
+                <!-- Folder picker -->
+                <button v-if="apScope === 'folder'" class="btn btn-secondary no-drag" @click="handlePickApDir" :disabled="apBusy">
                     {{ apDir || '选择音乐目录' }}
                 </button>
-                <template v-if="apDir">
+
+                <!-- Playlist selector -->
+                <select v-if="apScope === 'playlist'" class="text-input no-drag"
+                    v-model="apPlaylistId" :disabled="apBusy" style="margin-bottom:4px;">
+                    <option :value="-1" disabled>选择播放列表</option>
+                    <option v-for="pl in playlists" :key="pl.id" :value="pl.id">
+                        {{ pl.title }} ({{ pl.count }})
+                    </option>
+                </select>
+
+                <!-- Action buttons -->
+                <template v-if="apIsReady()">
                     <div class="drive-select-row" style="margin-top: 8px;">
                         <button class="btn btn-restore-all no-drag" style="flex:1" @click="handleAntiPiracyV1" :disabled="apBusy">
                             <span v-if="apBusy" class="loading-spinner"></span>
-                            v1 清除全部标签
+                            v1 清除标签
                         </button>
                         <button class="btn btn-restore-all no-drag" style="flex:1" @click="handleAntiPiracyV2" :disabled="apBusy">
                             <span v-if="apBusy" class="loading-spinner"></span>
-                            v2 随机打乱标签
+                            v2 打乱标签
                         </button>
                     </div>
-                    <button class="btn btn-secondary no-drag" style="margin-top: 6px;" @click="handleAntiPiracyRestore" :disabled="apBusy">
+                    <button class="btn btn-secondary no-drag" style="margin-top: 6px;width:100%;" @click="handleAntiPiracyRestore" :disabled="apBusy">
                         恢复备份
                     </button>
                 </template>

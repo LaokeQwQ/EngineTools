@@ -940,6 +940,94 @@ func (a *App) ID3AntiPiracyRestore(dir string) string {
 	return "ok"
 }
 
+// ID3AntiPiracyV1Paths clears tags for an explicit list of file paths.
+// backupKey identifies the backup (e.g. playlist title or "single").
+func (a *App) ID3AntiPiracyV1Paths(paths []string, backupKey string) string {
+	count, err := id3.AntiPiracyV1Files(paths, backupKey)
+	if err != nil {
+		a.log(fmt.Sprintf("Anti-piracy v1 paths error: %v", err))
+		return ""
+	}
+	a.log(fmt.Sprintf("Anti-piracy v1: cleared %d files", count))
+	return "ok"
+}
+
+// ID3AntiPiracyV2Paths shuffles tags among an explicit list of file paths.
+func (a *App) ID3AntiPiracyV2Paths(paths []string, backupKey string) string {
+	count, err := id3.AntiPiracyV2Files(paths, backupKey)
+	if err != nil {
+		a.log(fmt.Sprintf("Anti-piracy v2 paths error: %v", err))
+		return ""
+	}
+	a.log(fmt.Sprintf("Anti-piracy v2: shuffled %d files", count))
+	return "ok"
+}
+
+// ID3AntiPiracyRestorePaths restores from the backup identified by backupKey.
+func (a *App) ID3AntiPiracyRestorePaths(backupKey string) string {
+	count, err := id3.AntiPiracyRestoreFiles(backupKey)
+	if err != nil {
+		a.log(fmt.Sprintf("Anti-piracy restore paths error: %v", err))
+		return ""
+	}
+	a.log(fmt.Sprintf("Anti-piracy restore: restored %d files", count))
+	return "ok"
+}
+
+// ID3AntiPiracyV1Playlist clears tags for all tracks in the given playlist.
+func (a *App) ID3AntiPiracyV1Playlist(playlistID int) string {
+	tracks, err := database.GetPlaylistTrackPaths(playlistID)
+	if err != nil || len(tracks) == 0 {
+		a.log(fmt.Sprintf("Anti-piracy playlist fetch error: %v", err))
+		return ""
+	}
+	paths := make([]string, len(tracks))
+	for i, t := range tracks {
+		paths[i] = t.Path
+	}
+	key := fmt.Sprintf("playlist_%d", playlistID)
+	count, err := id3.AntiPiracyV1Files(paths, key)
+	if err != nil {
+		a.log(fmt.Sprintf("Anti-piracy v1 playlist error: %v", err))
+		return ""
+	}
+	a.log(fmt.Sprintf("Anti-piracy v1 playlist %d: cleared %d files", playlistID, count))
+	return "ok"
+}
+
+// ID3AntiPiracyV2Playlist shuffles tags among all tracks in the given playlist.
+func (a *App) ID3AntiPiracyV2Playlist(playlistID int) string {
+	tracks, err := database.GetPlaylistTrackPaths(playlistID)
+	if err != nil || len(tracks) == 0 {
+		a.log(fmt.Sprintf("Anti-piracy playlist fetch error: %v", err))
+		return ""
+	}
+	paths := make([]string, len(tracks))
+	for i, t := range tracks {
+		paths[i] = t.Path
+	}
+	key := fmt.Sprintf("playlist_%d", playlistID)
+	count, err := id3.AntiPiracyV2Files(paths, key)
+	if err != nil {
+		a.log(fmt.Sprintf("Anti-piracy v2 playlist error: %v", err))
+		return ""
+	}
+	a.log(fmt.Sprintf("Anti-piracy v2 playlist %d: shuffled %d files", playlistID, count))
+	return "ok"
+}
+
+// ID3AntiPiracyRestorePlaylist restores from the playlist backup.
+func (a *App) ID3AntiPiracyRestorePlaylist(playlistID int) string {
+	key := fmt.Sprintf("playlist_%d", playlistID)
+	count, err := id3.AntiPiracyRestoreFiles(key)
+	if err != nil {
+		a.log(fmt.Sprintf("Anti-piracy restore playlist error: %v", err))
+		return ""
+	}
+	a.log(fmt.Sprintf("Anti-piracy restore playlist %d: restored %d files", playlistID, count))
+	return "ok"
+}
+
 func (a *App) ID3PickDir() string {
 	dir, err := wailsRuntime.OpenDirectoryDialog(a.ctx, wailsRuntime.OpenDialogOptions{
 		Title: "Select Music Directory",
