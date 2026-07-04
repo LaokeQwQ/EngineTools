@@ -34,6 +34,30 @@ export function GetCacheSize() {
   return window['go']['main']['App']['GetCacheSize']();
 }
 
+export function GetLibraryStats() {
+  return window['go']['main']['App']['GetLibraryStats']();
+}
+
+export function GetPlayStats() {
+  return window['go']['main']['App']['GetPlayStats']();
+}
+
+export function GetSyncableTracks() {
+  return window['go']['main']['App']['GetSyncableTracks']();
+}
+
+export function ScanMissingTracks() {
+  return window['go']['main']['App']['ScanMissingTracks']();
+}
+
+export function RemoveMissingTracks(arg1) {
+  return window['go']['main']['App']['RemoveMissingTracks'](arg1);
+}
+
+export function SyncBPMKeyToTags() {
+  return window['go']['main']['App']['SyncBPMKeyToTags']();
+}
+
 export function GetMessages() {
   return window['go']['main']['App']['GetMessages']();
 }

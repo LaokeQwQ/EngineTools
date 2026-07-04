@@ -24,6 +24,18 @@ export function GetAvailableLanguages():Promise<Array<Record<string, string>>>;
 
 export function GetCacheSize():Promise<number>;
 
+export function GetLibraryStats():Promise<database.LibraryStats|null>;
+
+export function GetPlayStats():Promise<database.PlayStats|null>;
+
+export function GetSyncableTracks():Promise<Array<database.SyncableTrack>>;
+
+export function ScanMissingTracks():Promise<Array<database.MissingTrack>>;
+
+export function RemoveMissingTracks(arg1:Array<number>):Promise<string>;
+
+export function SyncBPMKeyToTags():Promise<Record<string, any>>;
+
 export function GetMessages():Promise<i18n.Messages>;
 
 export function GetPlaylistTracks(arg1:number):Promise<Array<database.TrackInfo>>;

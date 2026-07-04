@@ -46,6 +46,12 @@ import {
     OpenLogsDir,
     CleanCache,
     GetCacheSize,
+    GetLibraryStats,
+    GetPlayStats,
+    ScanMissingTracks,
+    RemoveMissingTracks,
+    GetSyncableTracks,
+    SyncBPMKeyToTags,
 } from '../wailsjs/go/main/App.js'
 import { EventsOn } from '../wailsjs/runtime/runtime.js'
 
@@ -124,6 +130,27 @@ const cacheSize = ref(0)
 // Tab lazy-load flags
 const dbTabLoaded = ref(false)
 const toolsTabLoaded = ref(false)
+
+// Library stats state
+const libraryStats = ref(null)
+const libraryStatsBusy = ref(false)
+
+// Play stats state
+const playStats = ref(null)
+const playStatsBusy = ref(false)
+const playStatsTab = ref('most') // 'most' | 'recent' | 'never'
+
+// Missing tracks state
+const missingTracks = ref([])
+const missingSelected = ref([])
+const missingBusy = ref(false)
+const missingScanned = ref(false)
+
+// BPM/Key sync state
+const syncBusy = ref(false)
+const syncResult = ref(null)
+const syncPreviewTracks = ref([])
+const syncPreviewLoaded = ref(false)
 
 // Anti-piracy easter egg state
 const apDir = ref('')
@@ -374,6 +401,124 @@ async function handleRepair() {
     }
     dbBusy.value = false
     await detectStatus()
+}
+
+// ---- Library Stats ----
+
+async function handleLibraryStats() {
+    libraryStatsBusy.value = true
+    try {
+        libraryStats.value = await GetLibraryStats()
+    } catch (e) {
+        addLog('Error: ' + e)
+        showErrorToast('Library stats failed')
+    }
+    libraryStatsBusy.value = false
+}
+
+function formatDuration(seconds) {
+    if (!seconds) return '0h 0m'
+    const h = Math.floor(seconds / 3600)
+    const m = Math.floor((seconds % 3600) / 60)
+    return `${h}h ${m}m`
+}
+
+function formatBytes(bytes) {
+    if (!bytes) return '0 MB'
+    const gb = bytes / (1024 * 1024 * 1024)
+    if (gb >= 1) return gb.toFixed(1) + ' GB'
+    return (bytes / (1024 * 1024)).toFixed(0) + ' MB'
+}
+
+// ---- Play Stats ----
+
+async function handlePlayStats() {
+    playStatsBusy.value = true
+    try {
+        playStats.value = await GetPlayStats()
+    } catch (e) {
+        addLog('Error: ' + e)
+        showErrorToast('Play stats failed')
+    }
+    playStatsBusy.value = false
+}
+
+// ---- Missing Tracks ----
+
+async function handleScanMissing() {
+    missingBusy.value = true
+    missingSelected.value = []
+    try {
+        missingTracks.value = await ScanMissingTracks()
+        missingScanned.value = true
+    } catch (e) {
+        addLog('Error: ' + e)
+        showErrorToast('Scan failed')
+    }
+    missingBusy.value = false
+}
+
+function toggleMissingTrack(id) {
+    const idx = missingSelected.value.indexOf(id)
+    if (idx === -1) missingSelected.value.push(id)
+    else missingSelected.value.splice(idx, 1)
+}
+
+function toggleAllMissing() {
+    if (missingSelected.value.length === missingTracks.value.length) {
+        missingSelected.value = []
+    } else {
+        missingSelected.value = missingTracks.value.map(t => t.id)
+    }
+}
+
+async function handleRemoveMissing() {
+    if (missingSelected.value.length === 0) return
+    const ok = window.confirm(`确认从数据库删除 ${missingSelected.value.length} 条缺失记录？此操作不可撤销。`)
+    if (!ok) return
+    missingBusy.value = true
+    try {
+        await RemoveMissingTracks(missingSelected.value)
+        showToast(`已删除 ${missingSelected.value.length} 条记录`)
+        await handleScanMissing()
+    } catch (e) {
+        addLog('Error: ' + e)
+        showErrorToast('Delete failed')
+    }
+    missingBusy.value = false
+}
+
+// ---- BPM/Key Sync ----
+
+async function handleLoadSyncPreview() {
+    syncPreviewLoaded.value = false
+    try {
+        syncPreviewTracks.value = await GetSyncableTracks()
+        syncPreviewLoaded.value = true
+    } catch (e) {
+        addLog('Error: ' + e)
+    }
+}
+
+async function handleSyncBPMKey() {
+    if (!syncPreviewLoaded.value) return
+    const ok = window.confirm(`将向 ${syncPreviewTracks.value.length} 个文件写回 BPM 和 Key 标签。确认继续？`)
+    if (!ok) return
+    syncBusy.value = true
+    syncResult.value = null
+    try {
+        syncResult.value = await SyncBPMKeyToTags()
+        if (syncResult.value.success > 0) {
+            showToast(`写回完成：${syncResult.value.success} 成功`)
+        }
+        if (syncResult.value.failed > 0) {
+            showErrorToast(`${syncResult.value.failed} 个文件写入失败`)
+        }
+    } catch (e) {
+        addLog('Error: ' + e)
+        showErrorToast('Sync failed')
+    }
+    syncBusy.value = false
 }
 
 async function handleAnalyzeLogs() {
@@ -1036,11 +1181,125 @@ onMounted(async () => {
                             <div class="playlist-track-artist">{{ t.artist }}</div>
                         </div>
                         <span class="playlist-track-bpm" v-if="t.bpm">{{ Math.round(t.bpm) }}</span>
+                        <span class="playlist-track-bpm" v-if="t.camelot" style="color:var(--accent);font-size:10px;">{{ t.camelot }}</span>
                         <span class="playlist-track-time">{{ formatTime(t.length) }}</span>
                     </div>
                 </div>
             </div>
         </template>
+
+        <!-- Library Stats -->
+        <div class="library-section" style="margin-top:12px;" v-if="dbDetected">
+            <div class="library-section-title">Library Stats</div>
+            <button class="btn btn-secondary no-drag" @click="handleLibraryStats" :disabled="libraryStatsBusy">
+                <span v-if="libraryStatsBusy" class="loading-spinner"></span>
+                {{ libraryStatsBusy ? 'Analyzing...' : 'Show Library Stats' }}
+            </button>
+            <template v-if="libraryStats">
+                <div class="info-card" style="margin-top:8px;">
+                    <div class="info-row"><span class="info-label">Tracks</span><span class="info-value">{{ libraryStats.totalTracks }}</span></div>
+                    <div class="info-row"><span class="info-label">Total duration</span><span class="info-value">{{ formatDuration(libraryStats.totalDuration) }}</span></div>
+                    <div class="info-row"><span class="info-label">Library size</span><span class="info-value">{{ formatBytes(libraryStats.totalFileBytes) }}</span></div>
+                    <div class="info-row"><span class="info-label">Analyzed</span><span class="info-value">{{ libraryStats.analyzedTracks }}<span class="muted" style="font-size:11px;"> / {{ libraryStats.totalTracks }}</span></span></div>
+                    <div class="info-row" v-if="libraryStats.missingTracks > 0">
+                        <span class="info-label" style="color:var(--error)">Missing files</span>
+                        <span class="info-value" style="color:var(--error)">{{ libraryStats.missingTracks }}</span>
+                    </div>
+                    <div class="info-row"><span class="info-label">Never played</span><span class="info-value">{{ libraryStats.neverPlayed }}</span></div>
+                </div>
+                <div v-if="libraryStats.topGenres.length > 0" class="info-card" style="margin-top:6px;">
+                    <div class="info-row" v-for="g in libraryStats.topGenres.slice(0,5)" :key="g.key">
+                        <span class="info-label">{{ g.key }}</span><span class="info-value muted">{{ g.count }}</span>
+                    </div>
+                </div>
+                <div v-if="libraryStats.fileTypes.length > 0" class="info-card" style="margin-top:6px;">
+                    <div class="info-row" v-for="f in libraryStats.fileTypes" :key="f.key">
+                        <span class="info-label">{{ f.key }}</span><span class="info-value muted">{{ f.count }}</span>
+                    </div>
+                </div>
+            </template>
+        </div>
+
+        <!-- Missing Tracks -->
+        <div class="library-section" style="margin-top:12px;" v-if="dbDetected">
+            <div class="library-section-title" style="color:var(--error)">Missing Tracks</div>
+            <div class="library-stats">Scan for tracks whose files no longer exist on disk</div>
+            <button class="btn btn-primary no-drag" @click="handleScanMissing" :disabled="missingBusy">
+                <span v-if="missingBusy" class="loading-spinner"></span>
+                {{ missingBusy ? 'Scanning...' : 'Scan Missing Files' }}
+            </button>
+            <template v-if="missingScanned">
+                <div v-if="missingTracks.length === 0" class="status-card status-success" style="margin-top:8px;">
+                    <div class="status-text"><div class="status-detail">No missing tracks ✓</div></div>
+                </div>
+                <template v-else>
+                    <div class="library-section-title" style="margin-top:8px;color:var(--error)">{{ missingTracks.length }} missing</div>
+                    <div class="drive-select-row" style="margin-bottom:6px;">
+                        <button class="btn btn-secondary no-drag" style="flex:1;font-size:11px;" @click="toggleAllMissing" :disabled="missingBusy">
+                            {{ missingSelected.length === missingTracks.length ? 'Deselect All' : 'Select All' }}
+                        </button>
+                        <button class="btn btn-restore-all no-drag" style="flex:1;font-size:11px;" @click="handleRemoveMissing" :disabled="missingBusy || missingSelected.length === 0">
+                            Remove {{ missingSelected.length > 0 ? '(' + missingSelected.length + ')' : '' }}
+                        </button>
+                    </div>
+                    <div class="playlist-track-list" style="max-height:200px;overflow-y:auto;">
+                        <div v-for="t in missingTracks" :key="t.id" class="playlist-track-row no-drag" @click="toggleMissingTrack(t.id)"
+                            :style="missingSelected.includes(t.id) ? 'background:rgba(255,80,80,0.1);' : ''">
+                            <input type="checkbox" :checked="missingSelected.includes(t.id)" @click.stop="toggleMissingTrack(t.id)" style="flex-shrink:0;" />
+                            <div class="playlist-track-info">
+                                <div class="playlist-track-title" style="color:var(--error)">{{ t.title || t.filename }}</div>
+                                <div class="playlist-track-artist">{{ t.artist }}</div>
+                            </div>
+                        </div>
+                    </div>
+                </template>
+            </template>
+        </div>
+
+        <!-- Play Stats -->
+        <div class="library-section" style="margin-top:12px;" v-if="dbDetected">
+            <div class="library-section-title">Play History</div>
+            <button class="btn btn-secondary no-drag" @click="handlePlayStats" :disabled="playStatsBusy">
+                <span v-if="playStatsBusy" class="loading-spinner"></span>
+                {{ playStatsBusy ? 'Loading...' : 'Load Play Stats' }}
+            </button>
+            <template v-if="playStats">
+                <div class="playlist-chips" style="margin-top:8px;">
+                    <span class="playlist-chip no-drag" :class="{ active: playStatsTab === 'most' }" @click="playStatsTab = 'most'">Most Played</span>
+                    <span class="playlist-chip no-drag" :class="{ active: playStatsTab === 'recent' }" @click="playStatsTab = 'recent'">Recent</span>
+                    <span class="playlist-chip no-drag" :class="{ active: playStatsTab === 'never' }" @click="playStatsTab = 'never'">Never Played</span>
+                </div>
+                <div class="playlist-track-list" style="max-height:220px;overflow-y:auto;margin-top:4px;">
+                    <template v-if="playStatsTab === 'most'">
+                        <div v-for="t in playStats.mostPlayed" :key="t.id" class="playlist-track-row">
+                            <div class="playlist-track-info">
+                                <div class="playlist-track-title">{{ t.title }}</div>
+                                <div class="playlist-track-artist">{{ t.artist }}</div>
+                            </div>
+                            <span class="playlist-track-bpm" style="color:var(--accent)">×{{ t.playCount }}</span>
+                        </div>
+                    </template>
+                    <template v-if="playStatsTab === 'recent'">
+                        <div v-for="t in playStats.recentPlayed" :key="t.id" class="playlist-track-row">
+                            <div class="playlist-track-info">
+                                <div class="playlist-track-title">{{ t.title }}</div>
+                                <div class="playlist-track-artist">{{ t.artist }}</div>
+                            </div>
+                            <span class="playlist-track-time" style="font-size:10px;">{{ t.lastPlayed.slice(0,10) }}</span>
+                        </div>
+                    </template>
+                    <template v-if="playStatsTab === 'never'">
+                        <div v-for="t in playStats.neverPlayed" :key="t.id" class="playlist-track-row">
+                            <div class="playlist-track-info">
+                                <div class="playlist-track-title">{{ t.title }}</div>
+                                <div class="playlist-track-artist">{{ t.artist }}</div>
+                            </div>
+                            <span class="playlist-track-bpm" style="color:var(--text-secondary)">{{ t.bpm > 0 ? Math.round(t.bpm) : '' }}</span>
+                        </div>
+                    </template>
+                </div>
+            </template>
+        </div>
     </div>
 
     <!-- TOOLS TAB -->
@@ -1291,6 +1550,39 @@ onMounted(async () => {
                 </div>
             </div>
         </template>
+
+        <!-- BPM / Key Write-back -->
+        <div class="library-section" style="margin-top: 12px;">
+            <div class="library-section-title">BPM / Key → ID3 Sync</div>
+            <div class="library-stats">Write Engine DJ's analyzed BPM and musical key back into audio file tags (TBPM / TKEY).</div>
+            <button class="btn btn-secondary no-drag" @click="handleLoadSyncPreview" :disabled="syncBusy">
+                {{ syncPreviewLoaded ? syncPreviewTracks.length + ' tracks ready' : 'Load Analyzable Tracks' }}
+            </button>
+            <template v-if="syncPreviewLoaded">
+                <div class="info-card" style="margin-top:6px;" v-if="syncPreviewTracks.length > 0">
+                    <div class="info-row" v-for="t in syncPreviewTracks.slice(0,5)" :key="t.id">
+                        <span class="info-label" style="max-width:60%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">{{ t.artist ? t.artist + ' – ' + t.title : t.title }}</span>
+                        <span class="info-value" style="color:var(--text-secondary);font-size:11px;">{{ t.bpm > 0 ? Math.round(t.bpm) + ' BPM' : '' }}{{ t.camelot ? ' · ' + t.camelot : '' }}</span>
+                    </div>
+                    <div v-if="syncPreviewTracks.length > 5" class="info-row">
+                        <span class="info-label muted">… and {{ syncPreviewTracks.length - 5 }} more</span>
+                    </div>
+                </div>
+                <button v-if="syncPreviewTracks.length > 0"
+                    class="btn btn-primary no-drag" style="margin-top:6px;"
+                    @click="handleSyncBPMKey" :disabled="syncBusy">
+                    <span v-if="syncBusy" class="loading-spinner"></span>
+                    {{ syncBusy ? 'Writing tags...' : 'Write BPM + Key to ' + syncPreviewTracks.length + ' files' }}
+                </button>
+            </template>
+            <template v-if="syncResult">
+                <div class="status-card" :class="syncResult.failed > 0 ? 'status-warning' : 'status-success'" style="margin-top:8px;">
+                    <div class="status-text">
+                        <div class="status-detail">✓ {{ syncResult.success }} written{{ syncResult.failed > 0 ? '   ✗ ' + syncResult.failed + ' failed' : '' }}</div>
+                    </div>
+                </div>
+            </template>
+        </div>
 
         <!-- Cache Cleanup -->
         <div class="library-section" style="margin-top: 12px;">

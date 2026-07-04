@@ -1074,6 +1074,128 @@ func (a *App) GetAvailableLanguages() []map[string]string {
 // Context cancellation propagates to the watchDrives goroutine via a.ctx.Done().
 func (a *App) shutdown(ctx context.Context) {}
 
+// ---- Library Stats & Play History ----
+
+// GetLibraryStats returns aggregate statistics about the Engine Library.
+func (a *App) GetLibraryStats() *database.LibraryStats {
+	stats, err := database.GetLibraryStats()
+	if err != nil {
+		a.log(fmt.Sprintf("GetLibraryStats error: %v", err))
+		return nil
+	}
+	return stats
+}
+
+// GetPlayStats returns play-history statistics (most played, recently played, never played).
+func (a *App) GetPlayStats() *database.PlayStats {
+	stats, err := database.GetPlayStats()
+	if err != nil {
+		a.log(fmt.Sprintf("GetPlayStats error: %v", err))
+		return nil
+	}
+	return stats
+}
+
+// ---- Missing Track Scanner ----
+
+// ScanMissingTracks returns all tracks where the file is no longer available.
+func (a *App) ScanMissingTracks() []database.MissingTrack {
+	tracks, err := database.FindMissingTracks()
+	if err != nil {
+		a.log(fmt.Sprintf("ScanMissingTracks error: %v", err))
+		return []database.MissingTrack{}
+	}
+	a.log(fmt.Sprintf("缺失曲目扫描完成：找到 %d 首", len(tracks)))
+	return tracks
+}
+
+// RemoveMissingTracks deletes the given track IDs from the library (only if unavailable).
+func (a *App) RemoveMissingTracks(ids []int) string {
+	msgs := i18n.Get(a.lang)
+
+	if a.InstallPath != "" {
+		running, _ := process.FindRunningExesInDir(a.InstallPath)
+		if len(running) > 0 {
+			a.log(msgs.KillingProcesses)
+			for _, p := range running {
+				_ = process.KillProcess(p.PID)
+			}
+			time.Sleep(2 * time.Second)
+		}
+	}
+
+	n, err := database.RemoveMissingTracks(ids)
+	if err != nil {
+		a.log(fmt.Sprintf("RemoveMissingTracks error: %v", err))
+		return ""
+	}
+	a.log(fmt.Sprintf("已从数据库删除 %d 条缺失曲目记录", n))
+	return "ok"
+}
+
+// ---- BPM / Key Sync ----
+
+// GetSyncableTracks returns all analyzed tracks with BPM/Key data ready for write-back.
+func (a *App) GetSyncableTracks() []database.SyncableTrack {
+	tracks, err := database.GetSyncableTracks()
+	if err != nil {
+		a.log(fmt.Sprintf("GetSyncableTracks error: %v", err))
+		return []database.SyncableTrack{}
+	}
+	return tracks
+}
+
+// SyncBPMKeyToTags writes Engine DJ's BPM and musical key analysis back into
+// each track file's ID3/RIFF tags. Only available, analyzed tracks are processed.
+// Returns a JSON-serialisable summary of successes and failures.
+func (a *App) SyncBPMKeyToTags() map[string]interface{} {
+	a.log("正在获取分析数据...")
+	tracks, err := database.GetSyncableTracks()
+	if err != nil {
+		a.log(fmt.Sprintf("SyncBPMKeyToTags: fetch error: %v", err))
+		return map[string]interface{}{"error": err.Error()}
+	}
+
+	total := len(tracks)
+	success := 0
+	failed := 0
+	var errors []string
+
+	for i, t := range tracks {
+		// Emit progress every 10 tracks
+		if i%10 == 0 {
+			a.setProgress(float64(i) / float64(total))
+		}
+
+		bpmStr := ""
+		if t.BPM > 0 {
+			bpmStr = fmt.Sprintf("%.2f", t.BPM)
+		}
+		keyStr := t.KeyName // e.g. "Am", "C"
+
+		if err := id3.WriteBPMKey(t.Path, bpmStr, keyStr); err != nil {
+			failed++
+			errors = append(errors, fmt.Sprintf("%s: %v", filepath.Base(t.Path), err))
+		} else {
+			success++
+		}
+	}
+
+	a.setProgress(1.0)
+	a.log(fmt.Sprintf("BPM/Key 写回完成：成功 %d，失败 %d（共 %d）", success, failed, total))
+
+	errList := errors
+	if errList == nil {
+		errList = []string{}
+	}
+	return map[string]interface{}{
+		"total":   total,
+		"success": success,
+		"failed":  failed,
+		"errors":  errList,
+	}
+}
+
 func checkIsAdmin() bool {
 	var sid *windows.SID
 	err := windows.AllocateAndInitializeSid(
