@@ -58,6 +58,10 @@ export function SyncBPMKeyToTags() {
   return window['go']['main']['App']['SyncBPMKeyToTags']();
 }
 
+export function CompressCovers(arg1, arg2) {
+  return window['go']['main']['App']['CompressCovers'](arg1, arg2);
+}
+
 export function GetMessages() {
   return window['go']['main']['App']['GetMessages']();
 }

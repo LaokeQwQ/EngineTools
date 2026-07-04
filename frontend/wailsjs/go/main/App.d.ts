@@ -36,6 +36,8 @@ export function RemoveMissingTracks(arg1:Array<number>):Promise<string>;
 
 export function SyncBPMKeyToTags():Promise<Record<string, any>>;
 
+export function CompressCovers(arg1:number, arg2:number):Promise<Record<string, any>>;
+
 export function GetMessages():Promise<i18n.Messages>;
 
 export function GetPlaylistTracks(arg1:number):Promise<Array<database.TrackInfo>>;

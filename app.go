@@ -1074,6 +1074,91 @@ func (a *App) GetAvailableLanguages() []map[string]string {
 // Context cancellation propagates to the watchDrives goroutine via a.ctx.Done().
 func (a *App) shutdown(ctx context.Context) {}
 
+// ---- Cover Art Compression ----
+
+// CompressCovers compresses embedded cover art in all tracks (playlistID=-1)
+// or in a specific playlist. Covers larger than maxKB kilobytes are
+// re-encoded as JPEG at progressively lower quality until they fit.
+// Returns a JSON-serialisable summary of the operation.
+func (a *App) CompressCovers(playlistID int, maxKB int) map[string]interface{} {
+	const defaultMaxKB = 1024
+	if maxKB <= 0 {
+		maxKB = defaultMaxKB
+	}
+	maxBytes := int64(maxKB) * 1024
+
+	// Fetch track paths
+	var tracks []database.TrackPath
+	var err error
+	if playlistID < 0 {
+		a.log(fmt.Sprintf("封面压缩：加载全库曲目..."))
+		tracks, err = database.GetAllTrackPaths()
+	} else {
+		a.log(fmt.Sprintf("封面压缩：加载播放列表 %d 的曲目...", playlistID))
+		tracks, err = database.GetPlaylistTrackPaths(playlistID)
+	}
+	if err != nil {
+		a.log(fmt.Sprintf("CompressCovers fetch error: %v", err))
+		return map[string]interface{}{"error": err.Error()}
+	}
+
+	total := len(tracks)
+	compressed := 0
+	skipped := 0
+	failed := 0
+	var savedBytes int64
+	var errors []string
+
+	a.log(fmt.Sprintf("封面压缩：共 %d 首曲目，目标 ≤%d KB", total, maxKB))
+	a.setProgress(0)
+
+	for i, t := range tracks {
+		if i%20 == 0 {
+			a.setProgress(float64(i) / float64(total))
+		}
+
+		res, err := id3.CompressCover(t.Path, maxBytes)
+		if err != nil {
+			failed++
+			errors = append(errors, fmt.Sprintf("%s: %v", filepath.Base(t.Path), err))
+			continue
+		}
+		if res.Skipped {
+			skipped++
+		} else {
+			compressed++
+			savedBytes += res.OriginalSize - res.FinalSize
+		}
+	}
+
+	a.setProgress(1.0)
+	a.log(fmt.Sprintf("封面压缩完成：压缩 %d，跳过 %d，失败 %d（节省 %s）",
+		compressed, skipped, failed, formatSavedBytes(savedBytes)))
+
+	errList := errors
+	if errList == nil {
+		errList = []string{}
+	}
+	return map[string]interface{}{
+		"total":      total,
+		"compressed": compressed,
+		"skipped":    skipped,
+		"failed":     failed,
+		"savedBytes": savedBytes,
+		"errors":     errList,
+	}
+}
+
+func formatSavedBytes(b int64) string {
+	if b < 1024 {
+		return fmt.Sprintf("%d B", b)
+	}
+	if b < 1024*1024 {
+		return fmt.Sprintf("%.1f KB", float64(b)/1024)
+	}
+	return fmt.Sprintf("%.1f MB", float64(b)/1024/1024)
+}
+
 // ---- Library Stats & Play History ----
 
 // GetLibraryStats returns aggregate statistics about the Engine Library.

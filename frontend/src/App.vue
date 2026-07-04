@@ -52,6 +52,7 @@ import {
     RemoveMissingTracks,
     GetSyncableTracks,
     SyncBPMKeyToTags,
+    CompressCovers,
 } from '../wailsjs/go/main/App.js'
 import { EventsOn } from '../wailsjs/runtime/runtime.js'
 
@@ -151,6 +152,11 @@ const syncBusy = ref(false)
 const syncResult = ref(null)
 const syncPreviewTracks = ref([])
 const syncPreviewLoaded = ref(false)
+
+// Cover compression state
+const coverCompressBusy = ref(false)
+const coverCompressResult = ref(null)
+const coverCompressPlaylistId = ref(-1) // -1 = entire library
 
 // Anti-piracy easter egg state
 const apDir = ref('')
@@ -519,6 +525,32 @@ async function handleSyncBPMKey() {
         showErrorToast('Sync failed')
     }
     syncBusy.value = false
+}
+
+// ---- Cover Art Compression ----
+
+async function handleCompressCovers() {
+    const scope = coverCompressPlaylistId.value < 0 ? '整个 Library' : `播放列表 ${coverCompressPlaylistId.value}`
+    const ok = window.confirm(`将压缩 ${scope} 中所有大于 1 MB 的封面至 1 MB 以内。此操作会修改音频文件的 ID3 标签。\n\n确认继续？`)
+    if (!ok) return
+    coverCompressBusy.value = true
+    coverCompressResult.value = null
+    try {
+        coverCompressResult.value = await CompressCovers(coverCompressPlaylistId.value, 1024)
+        const r = coverCompressResult.value
+        if (r.compressed > 0) {
+            const saved = r.savedBytes > 1048576
+                ? (r.savedBytes / 1048576).toFixed(1) + ' MB'
+                : Math.round(r.savedBytes / 1024) + ' KB'
+            showToast(`压缩完成：${r.compressed} 首，节省 ${saved}`)
+        } else {
+            showToast('所有封面已在 1 MB 以内，无需压缩')
+        }
+    } catch (e) {
+        addLog('Error: ' + e)
+        showErrorToast('Cover compression failed')
+    }
+    coverCompressBusy.value = false
 }
 
 async function handleAnalyzeLogs() {
@@ -1579,6 +1611,64 @@ onMounted(async () => {
                 <div class="status-card" :class="syncResult.failed > 0 ? 'status-warning' : 'status-success'" style="margin-top:8px;">
                     <div class="status-text">
                         <div class="status-detail">✓ {{ syncResult.success }} written{{ syncResult.failed > 0 ? '   ✗ ' + syncResult.failed + ' failed' : '' }}</div>
+                    </div>
+                </div>
+            </template>
+        </div>
+
+        <!-- Cover Art Compression -->
+        <div class="library-section" style="margin-top: 12px;">
+            <div class="library-section-title">Cover Art Compression</div>
+
+            <!-- Tips -->
+            <div class="library-stats" style="background:rgba(255,196,0,0.07);border:1px solid rgba(255,196,0,0.25);border-radius:6px;padding:8px 10px;margin-bottom:10px;line-height:1.6;">
+                💡 <strong>为什么需要压缩封面？</strong><br>
+                通过将所有歌曲 ID3 封面图片压缩至 1 MB 以内，可以显著改善 Engine OS 设备（如 SC6000、Prime 4 等）在读取 U 盘数据库时的加载性能。超大封面（常见于 FLAC 文件）是 USB 读取卡顿的主要原因之一。
+            </div>
+
+            <!-- Scope selector -->
+            <div class="drive-select-row" style="margin-bottom:8px;">
+                <button class="drive-chip no-drag"
+                    :class="{ active: coverCompressPlaylistId === -1 }"
+                    @click="coverCompressPlaylistId = -1"
+                    :disabled="coverCompressBusy">
+                    <span class="drive-letter" style="font-size:11px;">All</span>
+                    <span class="drive-count">entire library</span>
+                </button>
+                <button v-for="pl in playlists" :key="pl.id"
+                    class="drive-chip no-drag"
+                    :class="{ active: coverCompressPlaylistId === pl.id }"
+                    @click="coverCompressPlaylistId = pl.id"
+                    :disabled="coverCompressBusy"
+                    style="margin-left:4px;">
+                    <span class="drive-letter" style="font-size:11px;max-width:80px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">{{ pl.title }}</span>
+                    <span class="drive-count">{{ pl.count }}</span>
+                </button>
+            </div>
+
+            <button class="btn btn-primary no-drag" @click="handleCompressCovers" :disabled="coverCompressBusy">
+                <span v-if="coverCompressBusy" class="loading-spinner"></span>
+                {{ coverCompressBusy ? 'Compressing...' : 'Compress Covers ≤ 1 MB' }}
+            </button>
+
+            <!-- Result -->
+            <template v-if="coverCompressResult">
+                <div class="status-card"
+                    :class="coverCompressResult.failed > 0 ? 'status-warning' : 'status-success'"
+                    style="margin-top:8px;">
+                    <div class="status-text">
+                        <div class="status-detail">
+                            ✓ {{ coverCompressResult.compressed }} compressed
+                            <span v-if="coverCompressResult.savedBytes > 0" style="margin-left:6px;color:var(--accent)">
+                                (saved {{ coverCompressResult.savedBytes > 1048576
+                                    ? (coverCompressResult.savedBytes/1048576).toFixed(1)+' MB'
+                                    : Math.round(coverCompressResult.savedBytes/1024)+' KB' }})
+                            </span>
+                            · {{ coverCompressResult.skipped }} already OK
+                            <span v-if="coverCompressResult.failed > 0" style="color:var(--error);margin-left:4px;">
+                                · ✗ {{ coverCompressResult.failed }} failed
+                            </span>
+                        </div>
                     </div>
                 </div>
             </template>
