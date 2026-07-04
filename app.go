@@ -87,11 +87,16 @@ func (a *App) watchDrives() {
 	last := getLogicalDrives()
 	ticker := time.NewTicker(2 * time.Second)
 	defer ticker.Stop()
-	for range ticker.C {
-		current := getLogicalDrives()
-		if current != last {
-			last = current
-			a.detectStatus()
+	for {
+		select {
+		case <-ticker.C:
+			current := getLogicalDrives()
+			if current != last {
+				last = current
+				a.detectStatus()
+			}
+		case <-a.ctx.Done():
+			return
 		}
 	}
 }
@@ -258,7 +263,7 @@ func (a *App) Refresh() StatusInfo {
 	return a.GetStatus()
 }
 
-func (a *App) FixCJKIssues() string {
+func (a *App) FixUnicodeIssues() string {
 	msgs := i18n.Get(a.lang)
 
 	if a.InstallPath == "" {
@@ -357,9 +362,9 @@ func (a *App) FixCJKIssues() string {
 	return "ok"
 }
 
-// RestoreCJKFix reverts the CJK fix: removes the .manifest files and resets
+// RestoreUnicodeFix reverts the Unicode fix: removes the .manifest files and resets
 // the PreferExternalManifest registry value.
-func (a *App) RestoreCJKFix() string {
+func (a *App) RestoreUnicodeFix() string {
 	msgs := i18n.Get(a.lang)
 
 	result, err := wailsRuntime.MessageDialog(a.ctx, wailsRuntime.MessageDialogOptions{
@@ -572,13 +577,13 @@ func (a *App) RepairDatabase() string {
 		}
 	}
 
-	a.log("正在检查和修复数据库...")
+	a.log(msgs.DBRepairStart)
 	report, err := database.RepairDatabase()
 	if err != nil {
 		a.log(fmt.Sprintf("%s: %v", msgs.FixFailed, err))
 		return ""
 	}
-	a.log("数据库修复完成")
+	a.log(msgs.DBRepairDone)
 	a.log(report)
 	return "ok"
 }
@@ -602,7 +607,10 @@ func (a *App) OpenLogsDir() string {
 		a.log("日志目录不存在")
 		return ""
 	}
-	wailsRuntime.BrowserOpenURL(a.ctx, logsDir)
+	if err := process.OpenDirectory(logsDir); err != nil {
+		a.log(fmt.Sprintf("Failed to open logs dir: %v", err))
+		return ""
+	}
 	return "ok"
 }
 
@@ -1060,6 +1068,217 @@ func (a *App) GetAvailableLanguages() []map[string]string {
 		}
 	}
 	return result
+}
+
+// shutdown is called by Wails when the application is closing.
+// Context cancellation propagates to the watchDrives goroutine via a.ctx.Done().
+func (a *App) shutdown(ctx context.Context) {}
+
+// ---- Cover Art Compression ----
+
+// CompressCovers compresses embedded cover art in all tracks (playlistID=-1)
+// or in a specific playlist. Covers larger than maxKB kilobytes are
+// re-encoded as JPEG at progressively lower quality until they fit.
+// Returns a JSON-serialisable summary of the operation.
+func (a *App) CompressCovers(playlistID int, maxKB int) map[string]interface{} {
+	const defaultMaxKB = 1024
+	if maxKB <= 0 {
+		maxKB = defaultMaxKB
+	}
+	maxBytes := int64(maxKB) * 1024
+
+	// Fetch track paths
+	var tracks []database.TrackPath
+	var err error
+	if playlistID < 0 {
+		a.log(fmt.Sprintf("封面压缩：加载全库曲目..."))
+		tracks, err = database.GetAllTrackPaths()
+	} else {
+		a.log(fmt.Sprintf("封面压缩：加载播放列表 %d 的曲目...", playlistID))
+		tracks, err = database.GetPlaylistTrackPaths(playlistID)
+	}
+	if err != nil {
+		a.log(fmt.Sprintf("CompressCovers fetch error: %v", err))
+		return map[string]interface{}{"error": err.Error()}
+	}
+
+	total := len(tracks)
+	compressed := 0
+	skipped := 0
+	failed := 0
+	var savedBytes int64
+	var errors []string
+
+	a.log(fmt.Sprintf("封面压缩：共 %d 首曲目，目标 ≤%d KB", total, maxKB))
+	a.setProgress(0)
+
+	for i, t := range tracks {
+		if i%20 == 0 {
+			a.setProgress(float64(i) / float64(total))
+		}
+
+		res, err := id3.CompressCover(t.Path, maxBytes)
+		if err != nil {
+			failed++
+			errors = append(errors, fmt.Sprintf("%s: %v", filepath.Base(t.Path), err))
+			continue
+		}
+		if res.Skipped {
+			skipped++
+		} else {
+			compressed++
+			savedBytes += res.OriginalSize - res.FinalSize
+		}
+	}
+
+	a.setProgress(1.0)
+	a.log(fmt.Sprintf("封面压缩完成：压缩 %d，跳过 %d，失败 %d（节省 %s）",
+		compressed, skipped, failed, formatSavedBytes(savedBytes)))
+
+	errList := errors
+	if errList == nil {
+		errList = []string{}
+	}
+	return map[string]interface{}{
+		"total":      total,
+		"compressed": compressed,
+		"skipped":    skipped,
+		"failed":     failed,
+		"savedBytes": savedBytes,
+		"errors":     errList,
+	}
+}
+
+func formatSavedBytes(b int64) string {
+	if b < 1024 {
+		return fmt.Sprintf("%d B", b)
+	}
+	if b < 1024*1024 {
+		return fmt.Sprintf("%.1f KB", float64(b)/1024)
+	}
+	return fmt.Sprintf("%.1f MB", float64(b)/1024/1024)
+}
+
+// ---- Library Stats & Play History ----
+
+// GetLibraryStats returns aggregate statistics about the Engine Library.
+func (a *App) GetLibraryStats() *database.LibraryStats {
+	stats, err := database.GetLibraryStats()
+	if err != nil {
+		a.log(fmt.Sprintf("GetLibraryStats error: %v", err))
+		return nil
+	}
+	return stats
+}
+
+// GetPlayStats returns play-history statistics (most played, recently played, never played).
+func (a *App) GetPlayStats() *database.PlayStats {
+	stats, err := database.GetPlayStats()
+	if err != nil {
+		a.log(fmt.Sprintf("GetPlayStats error: %v", err))
+		return nil
+	}
+	return stats
+}
+
+// ---- Missing Track Scanner ----
+
+// ScanMissingTracks returns all tracks where the file is no longer available.
+func (a *App) ScanMissingTracks() []database.MissingTrack {
+	tracks, err := database.FindMissingTracks()
+	if err != nil {
+		a.log(fmt.Sprintf("ScanMissingTracks error: %v", err))
+		return []database.MissingTrack{}
+	}
+	a.log(fmt.Sprintf("缺失曲目扫描完成：找到 %d 首", len(tracks)))
+	return tracks
+}
+
+// RemoveMissingTracks deletes the given track IDs from the library (only if unavailable).
+func (a *App) RemoveMissingTracks(ids []int) string {
+	msgs := i18n.Get(a.lang)
+
+	if a.InstallPath != "" {
+		running, _ := process.FindRunningExesInDir(a.InstallPath)
+		if len(running) > 0 {
+			a.log(msgs.KillingProcesses)
+			for _, p := range running {
+				_ = process.KillProcess(p.PID)
+			}
+			time.Sleep(2 * time.Second)
+		}
+	}
+
+	n, err := database.RemoveMissingTracks(ids)
+	if err != nil {
+		a.log(fmt.Sprintf("RemoveMissingTracks error: %v", err))
+		return ""
+	}
+	a.log(fmt.Sprintf("已从数据库删除 %d 条缺失曲目记录", n))
+	return "ok"
+}
+
+// ---- BPM / Key Sync ----
+
+// GetSyncableTracks returns all analyzed tracks with BPM/Key data ready for write-back.
+func (a *App) GetSyncableTracks() []database.SyncableTrack {
+	tracks, err := database.GetSyncableTracks()
+	if err != nil {
+		a.log(fmt.Sprintf("GetSyncableTracks error: %v", err))
+		return []database.SyncableTrack{}
+	}
+	return tracks
+}
+
+// SyncBPMKeyToTags writes Engine DJ's BPM and musical key analysis back into
+// each track file's ID3/RIFF tags. Only available, analyzed tracks are processed.
+// Returns a JSON-serialisable summary of successes and failures.
+func (a *App) SyncBPMKeyToTags() map[string]interface{} {
+	a.log("正在获取分析数据...")
+	tracks, err := database.GetSyncableTracks()
+	if err != nil {
+		a.log(fmt.Sprintf("SyncBPMKeyToTags: fetch error: %v", err))
+		return map[string]interface{}{"error": err.Error()}
+	}
+
+	total := len(tracks)
+	success := 0
+	failed := 0
+	var errors []string
+
+	for i, t := range tracks {
+		// Emit progress every 10 tracks
+		if i%10 == 0 {
+			a.setProgress(float64(i) / float64(total))
+		}
+
+		bpmStr := ""
+		if t.BPM > 0 {
+			bpmStr = fmt.Sprintf("%.2f", t.BPM)
+		}
+		keyStr := t.KeyName // e.g. "Am", "C"
+
+		if err := id3.WriteBPMKey(t.Path, bpmStr, keyStr); err != nil {
+			failed++
+			errors = append(errors, fmt.Sprintf("%s: %v", filepath.Base(t.Path), err))
+		} else {
+			success++
+		}
+	}
+
+	a.setProgress(1.0)
+	a.log(fmt.Sprintf("BPM/Key 写回完成：成功 %d，失败 %d（共 %d）", success, failed, total))
+
+	errList := errors
+	if errList == nil {
+		errList = []string{}
+	}
+	return map[string]interface{}{
+		"total":   total,
+		"success": success,
+		"failed":  failed,
+		"errors":  errList,
+	}
 }
 
 func checkIsAdmin() bool {

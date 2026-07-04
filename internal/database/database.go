@@ -10,6 +10,7 @@ import (
 	"time"
 
 	_ "github.com/mattn/go-sqlite3"
+	"golang.org/x/sys/windows"
 )
 
 // dbRelPaths are the standard relative locations of m.db on an external drive.
@@ -83,11 +84,22 @@ func FindInDrive(drive string) (string, error) {
 
 // ListDrives returns all mounted drive letters (e.g. "C:", "D:").
 func ListDrives() []string {
+	mask, err := windows.GetLogicalDrives()
+	if err != nil {
+		// fallback to stat-based detection
+		var drives []string
+		for c := 'A'; c <= 'Z'; c++ {
+			root := string(c) + ":\\"
+			if _, err := os.Stat(root); err == nil {
+				drives = append(drives, string(c)+":")
+			}
+		}
+		return drives
+	}
 	var drives []string
-	for c := 'A'; c <= 'Z'; c++ {
-		root := string(c) + `:\`
-		if _, err := os.Stat(root); err == nil {
-			drives = append(drives, string(c)+":")
+	for i := 0; i < 26; i++ {
+		if mask&(1<<uint(i)) != 0 {
+			drives = append(drives, string(rune('A'+i))+":")
 		}
 	}
 	return drives
@@ -249,7 +261,7 @@ func OptimizeDatabase() error {
 
 // CountTracks returns the number of tracks in the given database.
 func CountTracks(dbPath string) int {
-	db, err := sql.Open("sqlite3", dbPath+"?mode=ro")
+	db, err := sql.Open("sqlite3", "file:"+dbPath+"?mode=ro&cache=shared")
 	if err != nil {
 		return 0
 	}

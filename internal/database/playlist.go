@@ -22,6 +22,8 @@ type TrackInfo struct {
 	Length   int     `json:"length"`
 	Filename string  `json:"filename"`
 	Key      int     `json:"key"`
+	KeyName  string  `json:"keyName"`
+	Camelot  string  `json:"camelot"`
 	Rating   int     `json:"rating"`
 }
 
@@ -31,7 +33,7 @@ func ListPlaylists() ([]PlaylistInfo, error) {
 		return nil, err
 	}
 
-	db, err := sql.Open("sqlite3", dbPath+"?mode=ro")
+	db, err := sql.Open("sqlite3", "file:"+dbPath+"?mode=ro&cache=shared")
 	if err != nil {
 		return nil, fmt.Errorf("failed to open database: %w", err)
 	}
@@ -69,7 +71,7 @@ func GetPlaylistTracks(playlistID int) ([]TrackInfo, error) {
 		return nil, err
 	}
 
-	db, err := sql.Open("sqlite3", dbPath+"?mode=ro")
+	db, err := sql.Open("sqlite3", "file:"+dbPath+"?mode=ro&cache=shared")
 	if err != nil {
 		return nil, fmt.Errorf("failed to open database: %w", err)
 	}
@@ -95,6 +97,8 @@ func GetPlaylistTracks(playlistID int) ([]TrackInfo, error) {
 		if err := rows.Scan(&t.ID, &t.Title, &t.Artist, &t.Album, &t.Genre, &t.BPM, &t.Length, &t.Filename, &t.Key, &t.Rating); err != nil {
 			continue
 		}
+		t.KeyName = KeyName(t.Key)
+		t.Camelot = KeyCamelot(t.Key)
 		tracks = append(tracks, t)
 	}
 
