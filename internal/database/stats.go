@@ -196,11 +196,12 @@ func GetPlayStats() (*PlayStats, error) {
 		return list
 	}
 
-	// Most played
+	// Played tracks sorted by recency (playedIndicator = global ordering counter,
+	// NOT a per-track play count — Engine DJ does not record per-track counts)
 	if rows, err := db.Query(`
 		SELECT id, COALESCE(title,''), COALESCE(artist,''),
 			COALESCE(bpmAnalyzed, bpm, 0), COALESCE(key, 0),
-			COALESCE(playedIndicator, 0), COALESCE(timeLastPlayed, '')
+			0, COALESCE(timeLastPlayed, '')
 		FROM Track
 		WHERE isAvailable = 1 AND playedIndicator > 0
 		ORDER BY playedIndicator DESC

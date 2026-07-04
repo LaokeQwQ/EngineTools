@@ -208,6 +208,27 @@ type Messages struct {
 	SkippedLabel string `json:"skippedLabel"`
 	AndMoreLabel string `json:"andMoreLabel"`
 	TracksUnit   string `json:"tracksUnit"`
+	// Settings tab
+	TabSettings                 string `json:"tabSettings"`
+	SettingsLanguageLabel       string `json:"settingsLanguageLabel"`
+	SettingsExperimentalLabel   string `json:"settingsExperimentalLabel"`
+	SettingsExperimentalDesc    string `json:"settingsExperimentalDesc"`
+	SettingsExperimentalConfirmTitle   string `json:"settingsExperimentalConfirmTitle"`
+	SettingsExperimentalConfirmMsg     string `json:"settingsExperimentalConfirmMsg"`
+	SettingsExperimentalConfirmBtn     string `json:"settingsExperimentalConfirmBtn"`
+	SettingsAboutTitle          string `json:"settingsAboutTitle"`
+	SettingsAboutDesc           string `json:"settingsAboutDesc"`
+	SettingsContributors        string `json:"settingsContributors"`
+	// ID3 editor
+	ID3DropZoneHint    string `json:"id3DropZoneHint"`
+	NoCoverLabel       string `json:"noCoverLabel"`
+	ChangeCoverLabel   string `json:"changeCoverLabel"`
+	RemoveCoverLabel   string `json:"removeCoverLabel"`
+	ID3TitlePlaceholder  string `json:"id3TitlePlaceholder"`
+	ID3ArtistPlaceholder string `json:"id3ArtistPlaceholder"`
+	ID3AlbumPlaceholder  string `json:"id3AlbumPlaceholder"`
+	ID3YearPlaceholder   string `json:"id3YearPlaceholder"`
+	ID3GenrePlaceholder  string `json:"id3GenrePlaceholder"`
 }
 
 var translations = map[Lang]Messages{
@@ -394,6 +415,25 @@ var translations = map[Lang]Messages{
 		SkippedLabel:             "已跳过",
 		AndMoreLabel:             "及其他",
 		TracksUnit:               "首",
+		TabSettings:                 "设置",
+		SettingsLanguageLabel:       "显示语言",
+		SettingsExperimentalLabel:   "开启实验性功能",
+		SettingsExperimentalDesc:    "解锁隐藏的开发者功能，请谨慎使用。",
+		SettingsExperimentalConfirmTitle: "开启实验性功能",
+		SettingsExperimentalConfirmMsg:   "实验性功能包含对音频文件的批量修改操作，操作不当可能导致标签数据损坏。\n\n请确认您已备份所有重要音乐文件，并了解相关风险。\n\n启用记录将以追加方式写入本地审计文件。",
+		SettingsExperimentalConfirmBtn:   "我已了解风险，确认开启",
+		SettingsAboutTitle:          "关于",
+		SettingsAboutDesc:           "非官方个人工具 · 与 inMusic / Engine DJ 品牌无关",
+		SettingsContributors:        "贡献者",
+		ID3DropZoneHint:    "将音频文件拖入此处，或点击选择",
+		NoCoverLabel:       "无封面",
+		ChangeCoverLabel:   "更换",
+		RemoveCoverLabel:   "删除",
+		ID3TitlePlaceholder:  "标题",
+		ID3ArtistPlaceholder: "艺术家",
+		ID3AlbumPlaceholder:  "专辑",
+		ID3YearPlaceholder:   "年份",
+		ID3GenrePlaceholder:  "流派",
 	},
 	JA: {
 		AppTitle:              "Engine Tools",
@@ -578,6 +618,25 @@ var translations = map[Lang]Messages{
 		SkippedLabel:             "スキップ",
 		AndMoreLabel:             "他",
 		TracksUnit:               "曲",
+		TabSettings:                 "設定",
+		SettingsLanguageLabel:       "表示言語",
+		SettingsExperimentalLabel:   "実験的機能を有効にする",
+		SettingsExperimentalDesc:    "隠された開発者向け機能を解放します。慎重に扱ってください。",
+		SettingsExperimentalConfirmTitle: "実験的機能の有効化",
+		SettingsExperimentalConfirmMsg:   "実験的機能には音楽ファイルへの一括変更操作が含まれます。誤った使用はタグデータの破損を引き起こす可能性があります。\n\n重要な音楽ファイルをバックアップしていることを確認してください。\n\n有効化の記録はローカル監査ファイルに追記されます。",
+		SettingsExperimentalConfirmBtn:   "リスクを理解した上で有効にする",
+		SettingsAboutTitle:          "このアプリについて",
+		SettingsAboutDesc:           "非公式の個人ツール・inMusic / Engine DJ ブランドとは無関係",
+		SettingsContributors:        "コントリビューター",
+		ID3DropZoneHint:    "音声ファイルをドロップ、またはクリックして選択",
+		NoCoverLabel:       "カバーなし",
+		ChangeCoverLabel:   "変更",
+		RemoveCoverLabel:   "削除",
+		ID3TitlePlaceholder:  "タイトル",
+		ID3ArtistPlaceholder: "アーティスト",
+		ID3AlbumPlaceholder:  "アルバム",
+		ID3YearPlaceholder:   "年",
+		ID3GenrePlaceholder:  "ジャンル",
 	},
 	KO: {
 		AppTitle:              "Engine Tools",
@@ -762,6 +821,25 @@ var translations = map[Lang]Messages{
 		SkippedLabel:             "건너뜀",
 		AndMoreLabel:             "외",
 		TracksUnit:               "곡",
+		TabSettings:                 "설정",
+		SettingsLanguageLabel:       "표시 언어",
+		SettingsExperimentalLabel:   "실험적 기능 활성화",
+		SettingsExperimentalDesc:    "숨겨진 개발자 기능을 활성화합니다. 신중하게 사용하세요.",
+		SettingsExperimentalConfirmTitle: "실험적 기능 활성화",
+		SettingsExperimentalConfirmMsg:   "실험적 기능에는 음악 파일의 일괄 수정 작업이 포함됩니다. 잘못 사용하면 태그 데이터가 손상될 수 있습니다.\n\n중요한 음악 파일을 백업했는지 확인하세요.\n\n활성화 기록은 로컬 감사 파일에 추가됩니다.",
+		SettingsExperimentalConfirmBtn:   "위험을 이해하고 활성화",
+		SettingsAboutTitle:          "앱 정보",
+		SettingsAboutDesc:           "비공식 개인 도구 · inMusic / Engine DJ 브랜드와 무관",
+		SettingsContributors:        "기여자",
+		ID3DropZoneHint:    "오디오 파일을 드롭하거나 클릭하여 선택",
+		NoCoverLabel:       "커버 없음",
+		ChangeCoverLabel:   "변경",
+		RemoveCoverLabel:   "삭제",
+		ID3TitlePlaceholder:  "제목",
+		ID3ArtistPlaceholder: "아티스트",
+		ID3AlbumPlaceholder:  "앨범",
+		ID3YearPlaceholder:   "연도",
+		ID3GenrePlaceholder:  "장르",
 	},
 	EN: {
 		AppTitle:              "Engine Tools",
@@ -946,6 +1024,25 @@ var translations = map[Lang]Messages{
 		SkippedLabel:             "skipped",
 		AndMoreLabel:             "and",
 		TracksUnit:               "more",
+		TabSettings:                 "Settings",
+		SettingsLanguageLabel:       "Display Language",
+		SettingsExperimentalLabel:   "Enable Experimental Features",
+		SettingsExperimentalDesc:    "Unlock hidden developer features. Handle with care.",
+		SettingsExperimentalConfirmTitle: "Enable Experimental Features",
+		SettingsExperimentalConfirmMsg:   "Experimental features may modify your audio files and library data.\n\nPlease ensure you have backed up your important files before proceeding.\n\nAn activation record will be appended to a local audit file.",
+		SettingsExperimentalConfirmBtn:   "I understand the risks, enable",
+		SettingsAboutTitle:          "About",
+		SettingsAboutDesc:           "Unofficial personal tool · Not affiliated with inMusic / Engine DJ",
+		SettingsContributors:        "Contributors",
+		ID3DropZoneHint:    "Drop audio file here, or click to select",
+		NoCoverLabel:       "No Cover",
+		ChangeCoverLabel:   "Change",
+		RemoveCoverLabel:   "Remove",
+		ID3TitlePlaceholder:  "Title",
+		ID3ArtistPlaceholder: "Artist",
+		ID3AlbumPlaceholder:  "Album",
+		ID3YearPlaceholder:   "Year",
+		ID3GenrePlaceholder:  "Genre",
 	},
 }
 
