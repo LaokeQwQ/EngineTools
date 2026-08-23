@@ -1,0 +1,8 @@
+{
+  "name": "enginetools-proxy",
+  "version-string": "2.0.0",
+  "description": "Engine DJ translation proxy (version.dll) built on upstream MinHook",
+  "dependencies": [
+    { "name": "minhook" }
+  ]
+}
