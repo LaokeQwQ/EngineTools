@@ -1,0 +1,11 @@
+* text=auto
+*.go text eol=lf
+*.js text eol=lf
+*.vue text eol=lf
+*.md text eol=lf
+*.py text eol=lf
+*.ps1 text eol=crlf
+*.bat text eol=crlf
+*.exe binary
+*.dll binary
+*.xlsx binary

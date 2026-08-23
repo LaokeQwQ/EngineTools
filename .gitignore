@@ -17,3 +17,27 @@ frontend/dist
 *~
 .DS_Store
 vendor/
+
+# Local AI-assistant settings (never commit credentials)
+.claude/settings.local.json
+
+# Local backups of vendor binaries
+backups/
+
+# Logs and generated debug extracts
+*.log
+debug_*.txt
+translation_check.txt
+
+# Deployment transaction journal / results
+deploy_result.txt
+
+# Python bytecode cache
+__pycache__/
+*.pyc
+
+# Local Go build/module caches used for cross-compilation
+.gocache/
+
+# Local DSH editor tooling state
+.dsh_better_edit/
