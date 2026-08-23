@@ -1,0 +1,53 @@
+# CI for the experimental translation tooling (proxy DLL, binary patcher,
+# deployment transaction). These jobs never download or patch Engine DJ
+# binaries -- everything runs against synthetic fixtures and temp dirs.
+name: "Experimental tools"
+
+on:
+  push:
+    branches: [master, "agents/**"]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  proxy-windows:
+    name: Proxy build & tests (windows)
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v5
+      - name: Configure (MinHook fetched pinned upstream)
+        run: cmake -S proxy -B proxy/build -DBUILD_TESTING=ON
+      - name: Build x64 Release
+        run: cmake --build proxy/build --config Release
+      - name: ctest
+        run: ctest --test-dir proxy/build -C Release --output-on-failure
+
+  deploy-pester-windows:
+    name: Deploy transaction tests (windows)
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v5
+      - name: Ensure Pester v5
+        shell: pwsh
+        run: |
+          if (-not (Get-Module -ListAvailable Pester | Where-Object { $_.Version -ge [version]'5.0.0' })) {
+            Install-Module Pester -MinimumVersion 5.0 -Force -Scope CurrentUser
+          }
+      - name: Invoke-Pester
+        shell: pwsh
+        run: Invoke-Pester ./tests/DeployProxy.Tests.ps1 -Output Detailed -CI
+
+  patcher-python:
+    name: Patcher tests (python)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install requirements
+        run: pip install -r scripts/requirements.txt
+      - name: pytest (synthetic fixtures only)
+        run: python -m pytest scripts/tests -v

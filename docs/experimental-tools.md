@@ -22,4 +22,18 @@ binary patching. They are **not** part of the release build.
 - XLSX workbooks are deliberately **not** blanket-ignored: they are the source
   data for translations and may be committed intentionally once reviewed.
 - Everything else stays untracked until its hardening task lands; nothing is
+
+## Release gate
+
+The experimental tools stay **experimental** and out of releases until ALL
+of the following hold:
+
+1. The `Experimental tools` CI workflow passes: proxy x64 build + ctest,
+   Pester deployment-transaction suite, and the Python patcher suite.
+2. The supported Engine DJ source hashes are explicitly recorded in
+   `scripts/source_allowlist.json` (the patcher refuses unknown sources).
+3. A clean-machine smoke test has deployed and restored the proxy against a
+   real Engine DJ installation using the journaled transaction.
+4. Any generated binaries (`version.dll`, patched EXEs) are signed and
+   published separately from the signed Wails application.
   deleted from the working tree by hygiene tasks.
