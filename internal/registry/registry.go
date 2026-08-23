@@ -8,6 +8,7 @@ import (
 	"syscall"
 	"unsafe"
 
+	"golang.org/x/sys/windows"
 	"golang.org/x/sys/windows/registry"
 )
 
@@ -58,9 +59,9 @@ func FindEngineDJVersionFromPath(installPath string) string {
 }
 
 var (
-	versionDLL            = syscall.NewLazyDLL("version.dll")
+	versionDLL                  = syscall.NewLazyDLL("version.dll")
 	procGetFileVersionInfoSizeW = versionDLL.NewProc("GetFileVersionInfoSizeW")
-	procGetFileVersionInfoW      = versionDLL.NewProc("GetFileVersionInfoW")
+	procGetFileVersionInfoW     = versionDLL.NewProc("GetFileVersionInfoW")
 	procVerQueryValueW          = versionDLL.NewProc("VerQueryValueW")
 )
 
@@ -342,31 +343,25 @@ func GetPreferExternalManifest() (bool, error) {
 }
 
 func GetWindowsVersion() string {
+	major, minor, build := windows.RtlGetNtVersionNumbers()
+	productType := windows.RtlGetVersion().ProductType
+	family := classifyWindowsVersion(major, minor, build, productType)
+
+	// ProductName is intentionally not used here. It can remain "Windows 10"
+	// after an in-place upgrade to Windows 11. Registry values only enrich the
+	// display; the native kernel version above determines the Windows family.
 	k, err := registry.OpenKey(
 		registry.LOCAL_MACHINE,
 		`SOFTWARE\Microsoft\Windows NT\CurrentVersion`,
 		registry.READ,
 	)
 	if err != nil {
-		return "Unknown"
+		return formatWindowsVersion(family, "", build, 0)
 	}
 	defer k.Close()
 
-	productName, _, err := k.GetStringValue("ProductName")
-	if err != nil {
-		return "Unknown"
-	}
-
 	displayVersion, _, _ := k.GetStringValue("DisplayVersion")
-	currentBuild, _, _ := k.GetStringValue("CurrentBuildNumber")
+	ubr, _, _ := k.GetIntegerValue("UBR")
 
-	result := productName
-	if displayVersion != "" {
-		result += " " + displayVersion
-	}
-	if currentBuild != "" {
-		result += " (Build " + currentBuild + ")"
-	}
-
-	return result
+	return formatWindowsVersion(family, displayVersion, build, ubr)
 }
