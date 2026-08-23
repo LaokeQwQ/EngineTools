@@ -1,0 +1,13 @@
+{
+  "schema": 1,
+  "comment": [
+    "Accepted source executables for the binary patcher.",
+    "sha256 is the SHA-256 of Engine DJ.exe.original; generate with:",
+    "  sha256sum 'backups/Engine DJ.exe.original'",
+    "file_version (optional) must match the PE FileVersion resource.",
+    "rdata (optional) pins {"raw_offset", "raw_size"} of the .rdata",
+    "section; the patcher refuses any image whose parsed section table",
+    "disagrees with these values."
+  ],
+  "sources": []
+}
