@@ -19,6 +19,7 @@
 #include <cstdio>
 #include <cstring>
 
+#include "hook_install.h"
 #include "lookup.h"
 
 // ============================================================
@@ -114,7 +115,7 @@ static StrFn g_pFromLatin1 = nullptr;
 static void hkFromLatin1(void* r, const char* s, int64_t n) {
   if (s != nullptr && n > 0) {
     const auto cn = etproxy::lookup_bounded(s, n);
-    if (cn.has_value()) {
+    if (cn.has_value() && g_pFromUtf8 != nullptr) {
       log_match("fromLatin1", s, n, cn->data(),
                 static_cast<int64_t>(cn->size()));
       g_pFromUtf8(r, cn->data(), static_cast<int64_t>(cn->size()));
@@ -201,79 +202,83 @@ static void hkQStringCtor(void* r, const uint16_t* s, int64_t n) {
 }
 
 // ============================================================
-// Hook installer (per-hook enable; made transactional in a later change)
+// Hook installation: one all-or-nothing transaction (hook_install.h).
 // ============================================================
-static bool try_hook(HMODULE mod, const char* mangled, void* hook,
-                     void** orig, const char* label) {
-  void* addr = reinterpret_cast<void*>(GetProcAddress(mod, mangled));
-  if (addr == nullptr) {
-    log_write("  %s: export not found\n", label);
-    return false;
-  }
-
-  const MH_STATUS create = MH_CreateHook(addr, hook, orig);
-  if (create != MH_OK || *orig == nullptr) {
-    log_write("  %s: create failed (%d)\n", label, static_cast<int>(create));
-    return false;
-  }
-
-  const MH_STATUS enable = MH_EnableHook(addr);
-  if (enable != MH_OK) {
-    log_write("  %s: enable failed (%d)\n", label, static_cast<int>(enable));
-    return false;
-  }
-  log_write("  %s: hooked at %p\n", label, addr);
-  return true;
+static bool mh_create(void* target, void* detour, void** original_out) {
+  if (MH_CreateHook(target, detour, original_out) != MH_OK) return false;
+  return *original_out != nullptr;
 }
+
+static bool mh_enable(void* target) {
+  return MH_EnableHook(target) == MH_OK;
+}
+
+// Must tolerate targets that were never created or never enabled; clears
+// the trampoline pointer so no stale caller can use it.
+static void mh_rollback_one(void* target, void** original_out) {
+  MH_DisableHook(target);
+  MH_RemoveHook(target);
+  *original_out = nullptr;
+}
+
+static bool g_hooks_ready = false;
+
+static const etproxy::HookSpec kHookSpecs[] = {
+    // 1) fromUtf8(const char*, qsizetype)
+    {"fromUtf8(ptr,sz)", "?fromUtf8@QString@@SA?AV1@PEBD_J@Z",
+     reinterpret_cast<void*>(&hkFromUtf8),
+     reinterpret_cast<void**>(&g_pFromUtf8), -1},
+    // 2) fromLatin1(const char*, qsizetype) -- routes hits through the
+    // fromUtf8 trampoline, so its dependency gates on entry 0.
+    {"fromLatin1(ptr,sz)", "?fromLatin1@QString@@SA?AV1@PEBD_J@Z",
+     reinterpret_cast<void*>(&hkFromLatin1),
+     reinterpret_cast<void**>(&g_pFromLatin1), 0},
+    // 3) fromUtf8(QByteArrayView)
+    {"fromUtf8(BAV)", "?fromUtf8@QString@@SA?AV1@VQByteArrayView@@@Z",
+     reinterpret_cast<void*>(&hkFromUtf8BAV),
+     reinterpret_cast<void**>(&g_pFromUtf8BAV), -1},
+    // 4) fromUtf16(const char16_t*, qsizetype)
+    {"fromUtf16", "?fromUtf16@QString@@SA?AV1@PEB_S_J@Z",
+     reinterpret_cast<void*>(&hkFromUtf16),
+     reinterpret_cast<void**>(&g_pFromUtf16), -1},
+    // 5) QString(const QChar*, qsizetype) ctor
+    {"QString(QChar*,sz)", "??0QString@@QEAA@PEB_S_J@Z",
+     reinterpret_cast<void*>(&hkQStringCtor),
+     reinterpret_cast<void**>(&g_pQStringCtor), -1},
+};
 
 static bool install_hooks() {
   HMODULE qt6 = GetModuleHandleW(L"Qt6Core.dll");
-  log_write("Qt6Core: %p\n", reinterpret_cast<void*>(qt6));
+  log_write("Qt6Core: %p
+", reinterpret_cast<void*>(qt6));
   if (qt6 == nullptr) {
-    log_write("FAIL: no Qt6Core\n");
+    log_write("FAIL: no Qt6Core
+");
     return false;
   }
-
   if (MH_Initialize() != MH_OK) {
-    log_write("FAIL: MH_Initialize\n");
+    log_write("FAIL: MH_Initialize
+");
     return false;
   }
 
-  int ok = 0;
+  const etproxy::InstallResult r = etproxy::install_hooks_transactional(
+      qt6, kHookSpecs, sizeof(kHookSpecs) / sizeof(kHookSpecs[0]),
+      [](HMODULE mod, const char* mangled) {
+        return reinterpret_cast<void*>(GetProcAddress(mod, mangled));
+      },
+      &mh_create, &mh_enable, &mh_rollback_one,
+      [](const etproxy::InstallResult& res) {
+        log_write("FAIL: install aborted (%d at index %d)
+",
+                  static_cast<int>(res.error), res.failed_index);
+      });
 
-  // 1) fromUtf8(const char*, qsizetype)
-  if (try_hook(qt6, "?fromUtf8@QString@@SA?AV1@PEBD_J@Z",
-               reinterpret_cast<void*>(&hkFromUtf8),
-               reinterpret_cast<void**>(&g_pFromUtf8), "fromUtf8(ptr,sz)"))
-    ok++;
-
-  // 2) fromLatin1(const char*, qsizetype) -- routes hits through the
-  // fromUtf8 original, so it must come after hook #1 succeeded.
-  if (try_hook(qt6, "?fromLatin1@QString@@SA?AV1@PEBD_J@Z",
-               reinterpret_cast<void*>(&hkFromLatin1),
-               reinterpret_cast<void**>(&g_pFromLatin1), "fromLatin1(ptr,sz)"))
-    ok++;
-
-  // 3) fromUtf8(QByteArrayView)
-  if (try_hook(qt6, "?fromUtf8@QString@@SA?AV1@VQByteArrayView@@@Z",
-               reinterpret_cast<void*>(&hkFromUtf8BAV),
-               reinterpret_cast<void**>(&g_pFromUtf8BAV), "fromUtf8(BAV)"))
-    ok++;
-
-  // 4) fromUtf16(const char16_t*, qsizetype)
-  if (try_hook(qt6, "?fromUtf16@QString@@SA?AV1@PEB_S_J@Z",
-               reinterpret_cast<void*>(&hkFromUtf16),
-               reinterpret_cast<void**>(&g_pFromUtf16), "fromUtf16"))
-    ok++;
-
-  // 5) QString(const QChar*, qsizetype) ctor
-  if (try_hook(qt6, "??0QString@@QEAA@PEB_S_J@Z",
-               reinterpret_cast<void*>(&hkQStringCtor),
-               reinterpret_cast<void**>(&g_pQStringCtor), "QString(QChar*,sz)"))
-    ok++;
-
-  log_write("Hooks: %d/5 installed\n", ok);
-  return ok > 0;
+  // Publish readiness only after every enable succeeded.
+  g_hooks_ready = r.ok;
+  log_write("Hooks: %s
+", r.ok ? "installed" : "aborted");
+  return r.ok;
 }
 
 static DWORD WINAPI InitThread(LPVOID) {
@@ -294,6 +299,11 @@ extern "C" BOOL WINAPI DllMain(HINSTANCE hDll, DWORD reason, LPVOID) {
     CreateThread(nullptr, 0, InitThread, nullptr, 0, nullptr);
   }
   if (reason == DLL_PROCESS_DETACH) {
+    if (g_hooks_ready) {
+      MH_DisableHook(MH_ALL_HOOKS);
+      MH_Uninitialize();
+      g_hooks_ready = false;
+    }
     log_write("=== unloaded (%d calls, %d translated) ===\n", g_hook_calls,
               g_trans_count);
     if (g_log != nullptr) fclose(g_log);
