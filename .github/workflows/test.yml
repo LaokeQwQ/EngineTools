@@ -1,0 +1,77 @@
+# Desktop verification: Go tests/builds, the elevated helper, Wails
+# binding freshness, the frontend suite, and installer smoke assertions.
+name: "Desktop tests"
+
+on:
+  push:
+    branches: [master, "agents/**"]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  windows:
+    name: Windows desktop
+    runs-on: windows-latest
+    defaults:
+      run:
+        shell: pwsh
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-go@v6
+        with:
+          go-version: "1.26"
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install frontend dependencies
+        run: npm --prefix frontend ci
+      - name: Frontend unit tests
+        run: npm --prefix frontend test
+
+      - name: Frontend production build
+        run: npm --prefix frontend run build
+
+      - name: Go tests
+        run: go test ./...
+
+      - name: Go build
+        run: go build ./...
+
+      - name: Build elevated helper
+        run: ./build/windows/build-helper.ps1
+
+      - name: Source guards
+        shell: bash
+        run: |
+          # MIDI 2.0 must stay fully removed.
+          if grep -rnE 'MIDI2|midi2|Midi2\.|internal/midi' app.go internal frontend/src frontend/wailsjs; then
+            echo "::error::MIDI 2.0 references reappeared"; exit 1
+          fi
+          # The main manifest must never request elevation again.
+          if ! grep -q 'asInvoker' build/windows/wails.exe.manifest; then
+            echo "::error::main manifest lost asInvoker"; exit 1
+          fi
+
+      - name: Wails bindings are fresh
+        run: |
+          go install github.com/wailsapp/wails/v2/cmd/wails@latest
+          wails generate module
+          git diff --exit-code -- frontend/wailsjs || (
+            echo "::error::bindings drifted; run wails generate module" && exit 1)
+
+      - name: Installer build and smoke assertions
+        shell: bash
+        run: |
+          choco install nsis -y --no-progress >/dev/null
+          makensis build/windows/installer/project.nsi
+          ls build/bin/*installer*.exe
+          # main EXE must be present, helper packaged next to it
+          grep -q 'EngineTools.Helper.exe' build/windows/installer/project.nsi
+          ! grep -q 'requireAdministrator' build/windows/wails.exe.manifest

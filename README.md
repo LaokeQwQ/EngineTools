@@ -1,5 +1,12 @@
 # Engine Tools
 
+## Privilege model (v1.9+)
+
+- The app now starts **without** requesting administrator rights.
+- Protected actions (manifest fix, MSI cleanup, stopping Engine processes, USB release) ask for UAC only when used, through a one-shot signed helper.
+- MIDI 2.0 management was removed; your current MIDI service state is left untouched.
+- New database backups are tracked in an index with hash verification; older filename-based backups in the backup folder remain on disk and can be restored manually.
+
 **[中文](README_zh.md)** | English | **[日本語](README_ja.md)** | **[한국어](README_ko.md)**
 
 Fix CJK (Chinese/Japanese/Korean) and other special character display issues in Engine DJ by applying per-application UTF-8 manifest configuration.
