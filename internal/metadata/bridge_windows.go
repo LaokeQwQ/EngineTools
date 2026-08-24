@@ -158,6 +158,7 @@ func (b nativeBridge) Read(path string) (Document, error) {
 	if err := json.Unmarshal(data, &doc); err != nil {
 		return Document{}, E("format_invalid", err)
 	}
+	doc.TagVersion = DetectTagVersion(path)
 	return doc, nil
 }
 
