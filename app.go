@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"strings"
 	"time"
 
 	wailsRuntime "github.com/wailsapp/wails/v2/pkg/runtime"
@@ -26,35 +25,37 @@ import (
 )
 
 type App struct {
-	ctx                 context.Context
-	lang                i18n.Lang
-	Logs                []string
-	InstallPath         string
-	EngineVersion       string
-	WindowsVersion      string
-	UTF8Enabled         bool
-	ManifestConfigured  bool
-	IsAdmin             bool
-	StemsPath           string
-	StemsDetected       bool
-	DBPath              string
-	DBDetected          bool
-	Progress            float64
+	ctx                context.Context
+	lang               i18n.Lang
+	Logs               []string
+	InstallPath        string
+	EngineVersion      string
+	WindowsVersion     string
+	UTF8Enabled        bool
+	ManifestConfigured bool
+	IsAdmin            bool
+	StemsPath          string
+	StemsDetected      bool
+	DBPath             string
+	DBDetected         bool
+	Progress           float64
+
+	privilege privilegeClient
 }
 
 type StatusInfo struct {
-	InstallPath        string         `json:"installPath"`
-	EngineVersion      string         `json:"engineVersion"`
-	WindowsVersion     string         `json:"windowsVersion"`
-	UTF8Enabled        bool           `json:"utf8Enabled"`
-	ACPValue           string         `json:"acpValue"`
-	ManifestConfigured bool           `json:"manifestConfigured"`
-	IsAdmin            bool           `json:"isAdmin"`
-	StemsDetected      bool           `json:"stemsDetected"`
-	DBDetected         bool           `json:"dbDetected"`
-	DBPath             string         `json:"dbPath"`
-	ProcessRunning     bool           `json:"processRunning"`
-	RunningProcesses   []ProcessItem  `json:"runningProcesses"`
+	InstallPath        string        `json:"installPath"`
+	EngineVersion      string        `json:"engineVersion"`
+	WindowsVersion     string        `json:"windowsVersion"`
+	UTF8Enabled        bool          `json:"utf8Enabled"`
+	ACPValue           string        `json:"acpValue"`
+	ManifestConfigured bool          `json:"manifestConfigured"`
+	IsAdmin            bool          `json:"isAdmin"`
+	StemsDetected      bool          `json:"stemsDetected"`
+	DBDetected         bool          `json:"dbDetected"`
+	DBPath             string        `json:"dbPath"`
+	ProcessRunning     bool          `json:"processRunning"`
+	RunningProcesses   []ProcessItem `json:"runningProcesses"`
 }
 
 type ProcessItem struct {
@@ -264,203 +265,6 @@ func (a *App) Refresh() StatusInfo {
 	return a.GetStatus()
 }
 
-func (a *App) FixUnicodeIssues() string {
-	msgs := i18n.Get(a.lang)
-
-	if a.InstallPath == "" {
-		a.log(msgs.InstallPathNotFound)
-		return msgs.InstallPathNotFound
-	}
-
-	a.setProgress(0)
-	a.log(msgs.Checking + "...")
-
-	running, err := process.FindRunningExesInDir(a.InstallPath)
-	if err != nil {
-		a.log(fmt.Sprintf("Error checking processes: %v", err))
-	}
-
-	if len(running) > 0 {
-		var names []string
-		for _, p := range running {
-			names = append(names, fmt.Sprintf("%s (PID: %d)", p.Name, p.PID))
-		}
-
-		confirmMsg := fmt.Sprintf(msgs.ProcessRunningMessage, strings.Join(names, "\n"))
-		result, err := wailsRuntime.MessageDialog(a.ctx, wailsRuntime.MessageDialogOptions{
-			Type:    wailsRuntime.QuestionDialog,
-			Title:   msgs.ProcessRunningTitle,
-			Message: confirmMsg,
-			Buttons: []string{"Yes", "No"},
-		})
-
-		if err != nil || result != "Yes" {
-			a.log("User cancelled process termination")
-			return "cancelled"
-		}
-
-		a.log(msgs.KillingProcesses)
-		for _, p := range running {
-			if err := process.KillProcess(p.PID); err != nil {
-				a.log(fmt.Sprintf("Failed to kill %s: %v", p.Name, err))
-			} else {
-				a.log(fmt.Sprintf("Killed %s (PID: %d)", p.Name, p.PID))
-			}
-		}
-
-		time.Sleep(2 * time.Second)
-	}
-	a.setProgress(0.3)
-
-	exes, err := manifest.ListExes(a.InstallPath)
-	if err != nil || len(exes) == 0 {
-		a.log(msgs.ExeNotFound)
-		return msgs.ExeNotFound
-	}
-
-	a.log(msgs.WritingManifest)
-	count, err := manifest.WriteManifest(a.InstallPath)
-	if err != nil {
-		a.log(fmt.Sprintf("%s: %v", msgs.ManifestWriteError, err))
-		return msgs.ManifestWriteError
-	}
-	a.log(fmt.Sprintf("%s (%d)", msgs.ManifestWritten, count))
-
-	if a.StemsDetected && a.StemsPath != "" {
-		stemsCount, err := manifest.WriteManifest(a.StemsPath)
-		if err != nil {
-			a.log(fmt.Sprintf("%s: %v", msgs.ManifestWriteError, err))
-		} else {
-			a.log(fmt.Sprintf("%s: STEM (%d)", msgs.ManifestWritten, stemsCount))
-		}
-	}
-	a.setProgress(0.6)
-
-	a.log(msgs.WritingRegistry)
-	if err := registry.SetPreferExternalManifest(); err != nil {
-		a.log(fmt.Sprintf("%s: %v", msgs.RegistryWriteError, err))
-		return msgs.RegistryWriteError
-	}
-	a.log(msgs.RegistryWritten)
-	a.setProgress(0.8)
-
-	a.log(msgs.RefreshingSystem)
-	process.RefreshSystemSettings()
-	a.log(msgs.SystemRefreshed)
-	a.setProgress(1.0)
-
-	a.log(msgs.FixCompleteTip)
-	a.ManifestConfigured = true
-
-	wailsRuntime.EventsEmit(a.ctx, "statusUpdate", a.GetStatus())
-
-	_, _ = wailsRuntime.MessageDialog(a.ctx, wailsRuntime.MessageDialogOptions{
-		Type:    wailsRuntime.InfoDialog,
-		Title:   msgs.FixComplete,
-		Message: msgs.FixCompleteTip,
-	})
-
-	return "ok"
-}
-
-// RestoreUnicodeFix reverts the Unicode fix: removes the .manifest files and resets
-// the PreferExternalManifest registry value.
-func (a *App) RestoreUnicodeFix() string {
-	msgs := i18n.Get(a.lang)
-
-	result, err := wailsRuntime.MessageDialog(a.ctx, wailsRuntime.MessageDialogOptions{
-		Type:    wailsRuntime.QuestionDialog,
-		Title:   msgs.RestoreConfirmTitle,
-		Message: msgs.RestoreConfirmMessage,
-		Buttons: []string{"Yes", "No"},
-	})
-	if err != nil || result != "Yes" {
-		a.log("User cancelled restore")
-		return "cancelled"
-	}
-
-	a.setProgress(0)
-	a.log(msgs.Checking + "...")
-
-	if a.InstallPath != "" {
-		running, _ := process.FindRunningExesInDir(a.InstallPath)
-		if len(running) > 0 {
-			var names []string
-			for _, p := range running {
-				names = append(names, fmt.Sprintf("%s (PID: %d)", p.Name, p.PID))
-			}
-			confirmMsg := fmt.Sprintf(msgs.ProcessRunningMessage, strings.Join(names, "\n"))
-			res, err := wailsRuntime.MessageDialog(a.ctx, wailsRuntime.MessageDialogOptions{
-				Type:    wailsRuntime.QuestionDialog,
-				Title:   msgs.ProcessRunningTitle,
-				Message: confirmMsg,
-				Buttons: []string{"Yes", "No"},
-			})
-			if err != nil || res != "Yes" {
-				a.log("User cancelled process termination")
-				return "cancelled"
-			}
-			a.log(msgs.KillingProcesses)
-			for _, p := range running {
-				if err := process.KillProcess(p.PID); err != nil {
-					a.log(fmt.Sprintf("Failed to kill %s: %v", p.Name, err))
-				} else {
-					a.log(fmt.Sprintf("Killed %s (PID: %d)", p.Name, p.PID))
-				}
-			}
-			time.Sleep(2 * time.Second)
-		}
-	}
-	a.setProgress(0.3)
-
-	a.log(msgs.DeletingManifests)
-	if a.InstallPath != "" {
-		count, err := manifest.DeleteManifests(a.InstallPath)
-		if err != nil {
-			a.log(fmt.Sprintf("%s: %v", msgs.FixFailed, err))
-		} else {
-			a.log(fmt.Sprintf("%s (%d)", msgs.ManifestsDeleted, count))
-		}
-	}
-	if a.StemsDetected && a.StemsPath != "" {
-		stemsCount, err := manifest.DeleteManifests(a.StemsPath)
-		if err != nil {
-			a.log(fmt.Sprintf("%s: %v", msgs.FixFailed, err))
-		} else {
-			a.log(fmt.Sprintf("%s: STEM (%d)", msgs.ManifestsDeleted, stemsCount))
-		}
-	}
-	a.setProgress(0.6)
-
-	a.log(msgs.DeletingRegistry)
-	if err := registry.DeletePreferExternalManifest(); err != nil {
-		a.log(fmt.Sprintf("%s: %v", msgs.RegistryWriteError, err))
-		return msgs.FixFailed
-	}
-	a.log(msgs.RegistryDeleted)
-	a.setProgress(0.8)
-
-	a.log(msgs.RefreshingSystem)
-	process.RefreshSystemSettings()
-	a.log(msgs.SystemRefreshed)
-	a.setProgress(1.0)
-
-	a.log(msgs.RestoreCompleteTip)
-	a.ManifestConfigured = false
-
-	wailsRuntime.EventsEmit(a.ctx, "statusUpdate", a.GetStatus())
-
-	_, _ = wailsRuntime.MessageDialog(a.ctx, wailsRuntime.MessageDialogOptions{
-		Type:    wailsRuntime.InfoDialog,
-		Title:   msgs.RestoreComplete,
-		Message: msgs.RestoreCompleteTip,
-	})
-
-	return "ok"
-}
-
-// BackupDatabase copies the Engine Library m.db into the backup folder, with an
-// optional note.
 func (a *App) BackupDatabase(note string) string {
 	msgs := i18n.Get(a.lang)
 	a.log(msgs.DBBackingUp)
@@ -685,35 +489,6 @@ func (a *App) ScanMSIOrphans() []msi.OrphanedMSI {
 }
 
 // CleanMSIOrphans removes the given MSI products via msizap.
-func (a *App) CleanMSIOrphans(productCodes []string) string {
-	msgs := i18n.Get(a.lang)
-
-	result, err := wailsRuntime.MessageDialog(a.ctx, wailsRuntime.MessageDialogOptions{
-		Type:    wailsRuntime.QuestionDialog,
-		Title:   msgs.MSIConfirmTitle,
-		Message: msgs.MSIConfirmMessage,
-		Buttons: []string{"Yes", "No"},
-	})
-	if err != nil || result != "Yes" {
-		a.log("User cancelled MSI cleanup")
-		return "cancelled"
-	}
-
-	a.log(msgs.MSICleaning)
-	failed := 0
-	for _, code := range productCodes {
-		if err := msi.CleanOrphan(code); err != nil {
-			a.log(fmt.Sprintf("%s: %s - %v", msgs.MSICleanError, code, err))
-			failed++
-		}
-	}
-	if failed > 0 {
-		return msgs.MSICleanError
-	}
-	a.log(msgs.MSICleanComplete)
-	return "ok"
-}
-
 func (a *App) HandleUTF8AlreadyEnabled() string {
 	msgs := i18n.Get(a.lang)
 
@@ -1062,34 +837,6 @@ func (a *App) USBUnlockScan(drive string) []unlock.HandleInfo {
 }
 
 // USBUnlockKill terminates blocking processes on the given drive.
-func (a *App) USBUnlockKill(drive string) string {
-	procs, err := unlock.FindBlockingProcesses(drive)
-	if err != nil {
-		a.log(fmt.Sprintf("USB unlock error: %v", err))
-		return err.Error()
-	}
-	if len(procs) == 0 {
-		a.log("No blocking processes to kill")
-		return "ok"
-	}
-
-	pids := make([]uint32, len(procs))
-	for i, p := range procs {
-		pids[i] = p.PID
-	}
-
-	killed, errs := unlock.KillProcesses(pids)
-	a.log(fmt.Sprintf("Killed %d process(es)", killed))
-	for _, e := range errs {
-		a.log(fmt.Sprintf("  %s", e))
-	}
-	return "ok"
-}
-
-// ---- MIDI 2.0 Toggle ----
-
-// MIDI2Status returns "disabled" if MIDI 2.0 is currently disabled, "enabled" otherwise,
-// or "unavailable" if MIDI 2.0 services don't exist on this system.
 func (a *App) MIDI2Status() string {
 	disabled, err := midi.IsMIDI2Disabled()
 	if err != nil {
