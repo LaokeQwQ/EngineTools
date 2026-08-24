@@ -1,0 +1,11 @@
+{
+  "format": "mp3",
+  "tagVersion": "id3v1",
+  "title": "Fixture Track",
+  "artists": ["Fixture Artist"],
+  "album": "Golden Album",
+  "track": { "value": 3 },
+  "date": "2026",
+  "genres": [],
+  "comment": ""
+}

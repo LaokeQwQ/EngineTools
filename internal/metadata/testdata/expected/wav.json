@@ -1,0 +1,10 @@
+{
+  "format": "wav",
+  "tagVersion": "id3v23",
+  "title": "Fixture Track",
+  "artists": ["Fixture Artist"],
+  "album": "Golden Album",
+  "track": { "value": 3, "total": 12 },
+  "date": "2026-08-16",
+  "genres": ["Test"]
+}
