@@ -150,17 +150,8 @@ export function LogExperimentalEnabled() {
   return window['go']['main']['App']['LogExperimentalEnabled']();
 }
 
-export function MIDI2Disable() {
-  return window['go']['main']['App']['MIDI2Disable']();
-}
 
-export function MIDI2Enable() {
-  return window['go']['main']['App']['MIDI2Enable']();
-}
 
-export function MIDI2Status() {
-  return window['go']['main']['App']['MIDI2Status']();
-}
 
 export function OpenDBDir() {
   return window['go']['main']['App']['OpenDBDir']();

@@ -131,15 +131,6 @@ type Messages struct {
 	USBUnlockButton         string `json:"usbUnlockButton"`
 	USBScanButton           string `json:"usbScanButton"`
 	USBNoDevice             string `json:"usbNoDevice"`
-	MIDI2Title              string `json:"midi2Title"`
-	MIDI2Description        string `json:"midi2Description"`
-	MIDI2Enabled            string `json:"midi2Enabled"`
-	MIDI2Disabled           string `json:"midi2Disabled"`
-	MIDI2Unavailable        string `json:"midi2Unavailable"`
-	MIDI2DisableButton      string `json:"midi2DisableButton"`
-	MIDI2EnableButton       string `json:"midi2EnableButton"`
-	MIDI2Disabling          string `json:"midi2Disabling"`
-	MIDI2Enabling           string `json:"midi2Enabling"`
 	StemsEngineLabel        string `json:"stemsEngineLabel"`
 	LogAnalysisTitle        string `json:"logAnalysisTitle"`
 	LogAnalysisDescription  string `json:"logAnalysisDescription"`
@@ -347,15 +338,6 @@ var translations = map[Lang]Messages{
 		USBUnlockButton:         "解锁",
 		USBScanButton:           "扫描占用进程",
 		USBNoDevice:             "未检测到带有 Engine Library 的 U盘",
-		MIDI2Title:              "MIDI 2.0 控制",
-		MIDI2Description:        "禁用 Windows 11 的 MIDI 2.0 功能，同时保留 MIDI 1.0 服务",
-		MIDI2Enabled:            "MIDI 2.0 当前已启用",
-		MIDI2Disabled:           "MIDI 2.0 当前已禁用",
-		MIDI2Unavailable:        "此系统未找到 MIDI 2.0 服务",
-		MIDI2DisableButton:      "禁用 MIDI 2.0",
-		MIDI2EnableButton:       "启用 MIDI 2.0",
-		MIDI2Disabling:          "正在禁用...",
-		MIDI2Enabling:           "正在启用...",
 		StemsEngineLabel:        "STEM 分离引擎",
 		LogAnalysisTitle:        "日志分析",
 		LogAnalyzeButton:       "分析日志",
@@ -550,15 +532,6 @@ var translations = map[Lang]Messages{
 		USBUnlockButton:         "ロック解除",
 		USBScanButton:           "ブロックプロセスをスキャン",
 		USBNoDevice:             "Engine Library を含む USB デバイスが検出されません",
-		MIDI2Title:              "MIDI 2.0 制御",
-		MIDI2Description:        "Windows 11 の MIDI 2.0 機能を無効にし、MIDI 1.0 サービスを保持",
-		MIDI2Enabled:            "MIDI 2.0 は現在有効です",
-		MIDI2Disabled:           "MIDI 2.0 は現在無効です",
-		MIDI2Unavailable:        "このシステムに MIDI 2.0 サービスが見つかりません",
-		MIDI2DisableButton:      "MIDI 2.0 を無効にする",
-		MIDI2EnableButton:       "MIDI 2.0 を有効にする",
-		MIDI2Disabling:          "無効化中...",
-		MIDI2Enabling:           "有効化中...",
 		StemsEngineLabel:        "STEM 分離エンジン",
 		LogAnalysisTitle:        "ログ分析",
 		LogAnalyzeButton:       "ログを分析",
@@ -753,15 +726,6 @@ var translations = map[Lang]Messages{
 		USBUnlockButton:         "잠금 해제",
 		USBScanButton:           "차단 프로세스 스캔",
 		USBNoDevice:             "Engine Library가 포함된 USB 장치가 감지되지 않음",
-		MIDI2Title:              "MIDI 2.0 제어",
-		MIDI2Description:        "Windows 11의 MIDI 2.0 기능을 비활성화하고 MIDI 1.0 서비스를 유지",
-		MIDI2Enabled:            "MIDI 2.0이 현재 활성화되어 있습니다",
-		MIDI2Disabled:           "MIDI 2.0이 현재 비활성화되어 있습니다",
-		MIDI2Unavailable:        "이 시스템에서 MIDI 2.0 서비스를 찾을 수 없습니다",
-		MIDI2DisableButton:      "MIDI 2.0 비활성화",
-		MIDI2EnableButton:       "MIDI 2.0 활성화",
-		MIDI2Disabling:          "비활성화 중...",
-		MIDI2Enabling:           "활성화 중...",
 		StemsEngineLabel:        "STEM 분리 엔진",
 		LogAnalysisTitle:        "로그 분석",
 		LogAnalyzeButton:       "로그 분석",
@@ -956,15 +920,6 @@ var translations = map[Lang]Messages{
 		USBUnlockButton:         "Unlock",
 		USBScanButton:           "Scan blocking processes",
 		USBNoDevice:             "No USB with Engine Library detected",
-		MIDI2Title:              "MIDI 2.0 Control",
-		MIDI2Description:        "Disable Windows 11 MIDI 2.0 features while preserving MIDI 1.0 service",
-		MIDI2Enabled:            "MIDI 2.0 is currently enabled",
-		MIDI2Disabled:           "MIDI 2.0 is currently disabled",
-		MIDI2Unavailable:        "MIDI 2.0 services not found on this system",
-		MIDI2DisableButton:      "Disable MIDI 2.0",
-		MIDI2EnableButton:       "Enable MIDI 2.0",
-		MIDI2Disabling:          "Disabling...",
-		MIDI2Enabling:           "Enabling...",
 		StemsEngineLabel:        "STEM Separation Engine",
 		LogAnalysisTitle:        "Log Analysis",
 		LogAnalyzeButton:       "Analyze Logs",

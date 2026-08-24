@@ -3,14 +3,13 @@ package main
 import (
 	"EngineTools/internal/database"
 	"EngineTools/internal/id3"
-	"EngineTools/internal/midi"
 	"EngineTools/internal/unlock"
 	"fmt"
 	wailsRuntime "github.com/wailsapp/wails/v2/pkg/runtime"
 	"path/filepath"
 )
 
-// Metadata surface: ID3 tools, anti-piracy helpers, MIDI switches, USB scan.
+// Metadata surface: ID3 tools, anti-piracy helpers, USB scan.
 
 func (a *App) ID3PickFile() string {
 	path, err := wailsRuntime.OpenFileDialog(a.ctx, wailsRuntime.OpenDialogOptions{
@@ -246,40 +245,3 @@ func (a *App) USBUnlockScan(drive string) []unlock.HandleInfo {
 
 // USBUnlockKill terminates blocking processes on the given drive.
 
-func (a *App) MIDI2Status() string {
-	disabled, err := midi.IsMIDI2Disabled()
-	if err != nil {
-		return "unavailable"
-	}
-	if disabled {
-		return "disabled"
-	}
-	return "enabled"
-}
-
-// MIDI2Disable sets all MIDI 2.0 service registry entries to disabled (Start=4).
-// Does NOT touch the classic MIDI 1.0 service.
-
-func (a *App) MIDI2Disable() string {
-	count, err := midi.DisableMIDI2()
-	if err != nil {
-		a.log(fmt.Sprintf("MIDI 2.0 disable error: %v", err))
-		return err.Error()
-	}
-	a.log(fmt.Sprintf("MIDI 2.0 disabled (%d services)", count))
-	return "ok"
-}
-
-// MIDI2Enable restores all MIDI 2.0 service registry entries to demand-start (Start=3).
-
-func (a *App) MIDI2Enable() string {
-	count, err := midi.EnableMIDI2()
-	if err != nil {
-		a.log(fmt.Sprintf("MIDI 2.0 enable error: %v", err))
-		return err.Error()
-	}
-	a.log(fmt.Sprintf("MIDI 2.0 re-enabled (%d services)", count))
-	return "ok"
-}
-
-// CheckForUpdates checks for new releases (Forgejo priority, GitHub fallback)

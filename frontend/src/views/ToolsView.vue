@@ -1,5 +1,5 @@
 <script setup>
-defineProps(['activeTab', 'apBusy', 'apDir', 'apFile', 'apIsReady', 'apPlaylistId', 'apScope', 'cacheBusy', 'cacheSizeText', 'coverCompressBusy', 'coverCompressPlaylistId', 'coverCompressResult', 'editingTrack', 'experimentalEnabled', 'files', 'id3Album', 'id3Artist', 'id3Busy', 'id3Cover', 'id3DragOver', 'id3File', 'id3FileName', 'id3Genre', 'id3Title', 'id3Year', 'info', 'loading', 'logBusy', 'logStats', 'midi2Busy', 'midi2Status', 'msgs', 'msiBusy', 'msiOrphans', 'msiScanned', 'msiSelected', 'playlists', 'status', 'syncBusy', 'syncPreviewLoaded', 'syncPreviewTracks', 'syncResult', 'toggleMSI', 'usbBlockers', 'usbBusy', 'usbDrive'])
+defineProps(['activeTab', 'apBusy', 'apDir', 'apFile', 'apIsReady', 'apPlaylistId', 'apScope', 'cacheBusy', 'cacheSizeText', 'coverCompressBusy', 'coverCompressPlaylistId', 'coverCompressResult', 'editingTrack', 'experimentalEnabled', 'files', 'id3Album', 'id3Artist', 'id3Busy', 'id3Cover', 'id3DragOver', 'id3File', 'id3FileName', 'id3Genre', 'id3Title', 'id3Year', 'info', 'loading', 'logBusy', 'logStats', 'msgs', 'msiBusy', 'msiOrphans', 'msiScanned', 'msiSelected', 'playlists', 'status', 'syncBusy', 'syncPreviewLoaded', 'syncPreviewTracks', 'syncResult', 'toggleMSI', 'usbBlockers', 'usbBusy', 'usbDrive'])
 defineEmits(['update:id3Title', 'update:id3Artist', 'update:id3Album', 'update:id3Year', 'update:id3Genre', 'update:apPlaylistId', 'update:coverCompressPlaylistId'])
 </script>
 <template>
@@ -175,58 +175,6 @@ defineEmits(['update:id3Title', 'update:id3Artist', 'update:id3Album', 'update:i
             </div>
         </div>
 
-        <!-- MIDI 2.0 Toggle -->
-        <div class="library-section" style="margin-top: 12px;">
-            <div class="library-section-title">{{ msgs.midi2Title || 'MIDI 2.0 Control' }}</div>
-            <div class="library-stats">
-                {{ msgs.midi2Description || 'Disable Windows 11 MIDI 2.0 features while preserving MIDI 1.0 service' }}
-            </div>
-            <div v-if="midi2Status === 'enabled'" class="status-card status-warning" style="margin-bottom: 8px;">
-                <div class="status-text">
-                    <div class="status-detail">{{ msgs.midi2Enabled || 'MIDI 2.0 is currently enabled' }}</div>
-                </div>
-            </div>
-            <div v-if="midi2Status === 'disabled'" class="status-card status-success" style="margin-bottom: 8px;">
-                <div class="status-text">
-                    <div class="status-detail">{{ msgs.midi2Disabled || 'MIDI 2.0 is currently disabled' }}</div>
-                </div>
-            </div>
-            <div v-if="midi2Status === 'unavailable'" class="status-card status-error" style="margin-bottom: 8px;">
-                <div class="status-text">
-                    <div class="status-detail">{{ msgs.midi2Unavailable || 'MIDI 2.0 services not found on this system' }}</div>
-                </div>
-            </div>
-            <div class="drive-select-row">
-                <button
-                    v-if="midi2Status === 'enabled'"
-                    class="btn btn-primary no-drag"
-                    style="flex:1"
-                    @click="handleMIDI2Disable"
-                    :disabled="midi2Busy"
-                >
-                    <span v-if="midi2Busy" class="loading-spinner"></span>
-                    {{ midi2Busy ? (msgs.midi2Disabling || 'Disabling...') : (msgs.midi2DisableButton || 'Disable MIDI 2.0') }}
-                </button>
-                <button
-                    v-if="midi2Status === 'disabled'"
-                    class="btn btn-secondary no-drag"
-                    style="flex:1"
-                    @click="handleMIDI2Enable"
-                    :disabled="midi2Busy"
-                >
-                    <span v-if="midi2Busy" class="loading-spinner"></span>
-                    {{ midi2Busy ? (msgs.midi2Enabling || 'Enabling...') : (msgs.midi2EnableButton || 'Enable MIDI 2.0') }}
-                </button>
-                <button
-                    v-if="midi2Status === 'unavailable'"
-                    class="btn btn-secondary no-drag"
-                    style="flex:1"
-                    disabled
-                >
-                    Not Available
-                </button>
-            </div>
-        </div>
 
         <!-- Log Analysis -->
         <div class="library-section" style="margin-top: 12px;">

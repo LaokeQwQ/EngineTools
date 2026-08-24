@@ -82,11 +82,8 @@ export function ListPlaylists():Promise<Array<database.PlaylistInfo>>;
 
 export function LogExperimentalEnabled():Promise<string>;
 
-export function MIDI2Disable():Promise<string>;
 
-export function MIDI2Enable():Promise<string>;
 
-export function MIDI2Status():Promise<string>;
 
 export function OpenDBDir():Promise<string>;
 

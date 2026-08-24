@@ -136,8 +136,6 @@
     :loading="loading"
     :logBusy="logBusy"
     :logStats="logStats"
-    :midi2Busy="midi2Busy"
-    :midi2Status="midi2Status"
     :msgs="msgs"
     :msiBusy="msiBusy"
     :msiOrphans="msiOrphans"
