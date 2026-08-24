@@ -87,6 +87,8 @@ Section
     SetOutPath $INSTDIR
 
     !insertmacro wails.files
+    ; One-shot elevated helper ships next to the main executable.
+    File /oname=EngineTools.Helper.exe "..\..\build\bin\EngineTools.Helper.exe"
 
     CreateShortcut "$SMPROGRAMS\${INFO_PRODUCTNAME}.lnk" "$INSTDIR\${PRODUCT_EXECUTABLE}"
     CreateShortCut "$DESKTOP\${INFO_PRODUCTNAME}.lnk" "$INSTDIR\${PRODUCT_EXECUTABLE}"
@@ -108,6 +110,7 @@ Section "uninstall"
     Delete "$DESKTOP\${INFO_PRODUCTNAME}.lnk"
 
     !insertmacro wails.unassociateFiles
+    Delete "$INSTDIR\EngineTools.Helper.exe"
     !insertmacro wails.unassociateCustomProtocols
 
     !insertmacro wails.deleteUninstaller
