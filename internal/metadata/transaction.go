@@ -72,6 +72,9 @@ func (s *Service) Apply(ctx context.Context, path string, patch Patch) (WriteRes
 		return WriteResult{}, err
 	}
 
+	if s.Snapshots == nil {
+		return WriteResult{}, E("snapshot_store_missing", errors.New("no snapshot store"))
+	}
 	// Full-file recovery snapshot.
 	snap, err := s.Snapshots.Save(path, Snapshot{
 		FileID:        fmt.Sprintf("%x-%x", idBefore.Size, idBefore.MtimeNano),

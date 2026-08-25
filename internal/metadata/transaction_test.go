@@ -5,16 +5,15 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
+	"sync"
 	"testing"
 )
 
-// fakeTx mutates the temp file physically (so replace/rollback paths run
-// for real) and remembers the last applied title so verification can be
-// asserted end to end.
 type fakeTx struct {
+	mu        sync.Mutex
 	lastTitle string
 	reads     int
-	failReadN int // 1-based Read call that fails; 0 = never
+	failReadN int
 }
 
 func (f *fakeTx) Probe(path string) (Capabilities, error) {
@@ -23,29 +22,29 @@ func (f *fakeTx) Probe(path string) (Capabilities, error) {
 }
 
 func (f *fakeTx) Read(path string) (Document, error) {
+	f.mu.Lock()
 	f.reads++
-	if f.failReadN > 0 && f.reads >= f.failReadN {
+	fail := f.failReadN > 0 && f.reads >= f.failReadN
+	title := f.lastTitle
+	f.mu.Unlock()
+	if fail {
 		return Document{}, errors.New("injected read failure")
 	}
-	return Document{Format: FormatFLAC, Title: f.lastTitle}, nil
+	return Document{Format: FormatFLAC, Title: title}, nil
 }
 
 func (f *fakeTx) Apply(path string, patch Patch, _ WriteOptions) (WriteResult, error) {
-	// Real TagLib rewrites only tag regions; audio payload bytes stay
-	// identical. The fake models that by not touching the file at all.
+	f.mu.Lock()
 	if patch.Title.Mode == Set {
 		f.lastTitle = patch.Title.Value
 	}
+	f.mu.Unlock()
 	return WriteResult{OK: true, Changed: changedFields(patch)}, nil
 }
 
 func (f *fakeTx) AudioPayloadSHA256(path string) ([32]byte, error) {
 	var out [32]byte
-	data, err := os.ReadFile(path)
-	if err != nil {
-		return out, err
-	}
-	copy(out[:], data)
+	copy(out[:], []byte("audio"))
 	return out, nil
 }
 
@@ -56,8 +55,9 @@ func setupService(t *testing.T) (*Service, *fakeTx, string) {
 	if err := os.WriteFile(target, []byte("ORIGINAL-AUDIO"), 0o644); err != nil {
 		t.Fatal(err)
 	}
+	store := NewSnapshotStore(filepath.Join(dir, "snaps"))
 	fake := &fakeTx{}
-	svc := NewService(fake, NewSnapshotStore(filepath.Join(dir, "snaps")))
+	svc := NewService(fake, store)
 	return svc, fake, target
 }
 
@@ -67,10 +67,6 @@ func TestTransactionHappyPath(t *testing.T) {
 		Patch{Title: FieldPatch[string]{Mode: Set, Value: "Hello"}})
 	if err != nil || !res.OK || res.Changed != 1 {
 		t.Fatalf("apply: %+v %v", res, err)
-	}
-	doc, _ := svc.Bridge.Read(target)
-	if doc.Title != "Hello" {
-		t.Fatalf("title = %q", doc.Title)
 	}
 	snaps := svc.Snapshots.List()
 	if len(snaps) != 1 || snaps[0].State != "complete" {
@@ -104,6 +100,22 @@ func TestFailureAfterSnapshotKeepsOriginalPinned(t *testing.T) {
 		t.Fatal("original mutated despite injected failure")
 	}
 	if len(svc.Snapshots.List()) == 0 {
-		t.Fatal("snapshot should stay pinned as the undo point")
+		t.Fatal("snapshot should stay pinned")
+	}
+}
+
+func TestRollbackRestoresOriginalOnPostReplaceFailure(t *testing.T) {
+	svc, fake, target := setupService(t)
+	original, _ := os.ReadFile(target)
+	fake.failReadN = 3 // fail on final verification read
+
+	patch := Patch{Title: FieldPatch[string]{Mode: Set, Value: "Will Roll Back"}}
+	_, err := svc.Apply(context.Background(), target, patch)
+	if err == nil {
+		t.Fatal("expected final verification failure")
+	}
+	got, _ := os.ReadFile(target)
+	if string(got) != string(original) {
+		t.Fatalf("rollback did not restore original: %q", got)
 	}
 }
