@@ -1518,7 +1518,9 @@ int et_tag_apply(const wchar_t* path,
         std::string j = "{\"ok\":" + std::string(dispatched ? "true" : "false") +
                         ",\"changed\":" + std::to_string(outcome.changed) + "}";
         if (json) fill_buffer(json, j);
-        if (!dispatched || !outcome.ok)
+        if (!dispatched)
+            return fail(error, ET_ERR_PATCH, "patch_invalid", "patch was rejected by the container adapter");
+        if (!outcome.ok)
             return fail(error, ET_ERR_APPLY, "apply_failed", "TagLib rejected metadata or could not save the file");
         return ET_OK;
     } catch (const std::exception& e) {

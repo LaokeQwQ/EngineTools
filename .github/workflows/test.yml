@@ -59,12 +59,23 @@ jobs:
             echo "::error::main manifest lost asInvoker"; exit 1
           fi
 
+      - name: Generate Wails bindings
+        run: |
+          go install github.com/wailsapp/wails/v2/cmd/wails@v2.12.0
+          wails generate module
+
+      - name: Upload generated bindings for drift repair
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: generated-wailsjs
+          if-no-files-found: error
+          path: frontend/wailsjs
+
       - name: Wails bindings are fresh
         run: |
-          go install github.com/wailsapp/wails/v2/cmd/wails@latest
-          wails generate module
           git diff --exit-code -- frontend/wailsjs || (
-            echo "::error::bindings drifted; run wails generate module" && exit 1)
+            echo "::error::bindings drifted; download the generated-wailsjs artifact" && exit 1)
 
       # The real installer is produced by the windows-release job, which builds
       # the native DLLs first. This job only asserts the packaging contract.
