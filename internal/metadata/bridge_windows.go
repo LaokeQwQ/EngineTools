@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"path/filepath"
 	"unsafe"
 
 	"golang.org/x/sys/windows"
@@ -16,28 +17,42 @@ import (
 // loaded lazily so a missing build degrades into a typed error instead of
 // failing process startup.
 type nativeBridge struct {
-	dllPath string // empty = default search path
+	dll       *windows.LazyDLL
+	procProbe *windows.LazyProc
+	procRead  *windows.LazyProc
+	procApply *windows.LazyProc
+	procHash  *windows.LazyProc
+	procFree  *windows.LazyProc
 }
 
 func NewNativeBridge(dllPath string) (Bridge, error) {
 	if dllPath == "" {
-		if _, err := os.Stat("enginetools_tag.dll"); err != nil {
-			return nil, E("bridge_dll_missing", fmt.Errorf("enginetools_tag.dll not found beside the application"))
-		}
-	} else if _, err := os.Stat(dllPath); err != nil {
+		dllPath = "enginetools_tag.dll"
+	}
+	if _, err := os.Stat(dllPath); err != nil {
 		return nil, E("bridge_dll_missing", err)
 	}
-	return nativeBridge{dllPath: dllPath}, nil
+	dll := windows.NewLazyDLL(dllPath)
+	// Load eagerly with the DLL's own directory on the dependency search path.
+	// enginetools_tag.dll depends on tag.dll, which build-taglib.ps1 installs
+	// beside it; the default LoadLibrary search would otherwise miss that pair
+	// when the Go test binary lives in a temp directory.
+	if dir := filepath.Dir(dllPath); dir != "" && dir != "." {
+		_ = windows.SetDllDirectory(dir)
+		defer windows.SetDllDirectory("")
+	}
+	if err := dll.Load(); err != nil {
+		return nil, E("bridge_dll_missing", err)
+	}
+	return nativeBridge{
+		dll:       dll,
+		procProbe: dll.NewProc("et_tag_probe"),
+		procRead:  dll.NewProc("et_tag_read"),
+		procApply: dll.NewProc("et_tag_apply"),
+		procHash:  dll.NewProc("et_audio_payload_sha256"),
+		procFree:  dll.NewProc("et_buffer_free"),
+	}, nil
 }
-
-var (
-	taglibDLL     = windows.NewLazySystemDLL("enginetools_tag.dll")
-	procProbe     = taglibDLL.NewProc("et_tag_probe")
-	procRead      = taglibDLL.NewProc("et_tag_read")
-	procApply     = taglibDLL.NewProc("et_tag_apply")
-	procPayload   = taglibDLL.NewProc("et_audio_payload_sha256")
-	procBufferFre = taglibDLL.NewProc("et_buffer_free")
-)
 
 type etBuffer struct {
 	Data *byte
@@ -56,11 +71,13 @@ func (b etBuffer) bytes() ([]byte, error) {
 	return unsafe.Slice(b.Data, b.Len), nil
 }
 
-func freeBuf(p *etBuffer) {
+func freeBuf(p *etBuffer, proc *windows.LazyProc) {
 	if p == nil {
 		return
 	}
-	procBufferFre.Call(uintptr(unsafe.Pointer(p)))
+	if proc != nil {
+		proc.Call(uintptr(unsafe.Pointer(p)))
+	}
 }
 
 func utf16Ptr(path string) (*uint16, error) {
@@ -95,6 +112,8 @@ func mapNativeCode(code string) string {
 		return "patch_invalid"
 	case "apply_failed":
 		return "apply_failed"
+	case "payload_strip_failed":
+		return "io_failed"
 	case "io_failed":
 		return "io_failed"
 	default:
@@ -102,8 +121,8 @@ func mapNativeCode(code string) string {
 	}
 }
 
-func (nativeBridge) Probe(path string) (Capabilities, error) {
-	if err := taglibDLL.Load(); err != nil {
+func (b nativeBridge) Probe(path string) (Capabilities, error) {
+	if err := b.dll.Load(); err != nil {
 		return Capabilities{}, E("bridge_dll_missing", err)
 	}
 	pathW, err := utf16Ptr(path)
@@ -111,8 +130,8 @@ func (nativeBridge) Probe(path string) (Capabilities, error) {
 		return Capabilities{}, err
 	}
 	var jsonBuf, errBuf etBuffer
-	defer func() { freeBuf(&jsonBuf); freeBuf(&errBuf) }()
-	status, _, _ := procProbe.Call(
+	defer func() { freeBuf(&jsonBuf, b.procFree); freeBuf(&errBuf, b.procFree) }()
+	status, _, _ := b.procProbe.Call(
 		uintptr(unsafe.Pointer(pathW)),
 		uintptr(unsafe.Pointer(&jsonBuf)),
 		uintptr(unsafe.Pointer(&errBuf)))
@@ -142,8 +161,11 @@ func (b nativeBridge) Read(path string) (Document, error) {
 		return Document{}, err
 	}
 	var jsonBuf, errBuf etBuffer
-	defer func() { freeBuf(&jsonBuf); freeBuf(&errBuf) }()
-	status, _, _ := procRead.Call(
+	defer func() { freeBuf(&jsonBuf, b.procFree); freeBuf(&errBuf, b.procFree) }()
+	if err := b.dll.Load(); err != nil {
+		return Document{}, E("bridge_dll_missing", err)
+	}
+	status, _, _ := b.procRead.Call(
 		uintptr(unsafe.Pointer(pathW)),
 		uintptr(unsafe.Pointer(&jsonBuf)),
 		uintptr(unsafe.Pointer(&errBuf)))
@@ -172,8 +194,11 @@ func (b nativeBridge) Apply(path string, patch Patch, _ WriteOptions) (WriteResu
 		return WriteResult{}, err
 	}
 	var jsonBuf, errBuf etBuffer
-	defer func() { freeBuf(&jsonBuf); freeBuf(&errBuf) }()
-	status, _, _ := procApply.Call(
+	defer func() { freeBuf(&jsonBuf, b.procFree); freeBuf(&errBuf, b.procFree) }()
+	if err := b.dll.Load(); err != nil {
+		return WriteResult{}, E("bridge_dll_missing", err)
+	}
+	status, _, _ := b.procApply.Call(
 		uintptr(unsafe.Pointer(pathW)),
 		uintptr(unsafe.Pointer(&patchJSON[0])),
 		uintptr(len(patchJSON)),
@@ -200,8 +225,11 @@ func (b nativeBridge) AudioPayloadSHA256(path string) ([32]byte, error) {
 		return out, err
 	}
 	var errBuf etBuffer
-	defer freeBuf(&errBuf)
-	status, _, _ := procPayload.Call(
+	defer freeBuf(&errBuf, b.procFree)
+	if err := b.dll.Load(); err != nil {
+		return out, E("bridge_dll_missing", err)
+	}
+	status, _, _ := b.procHash.Call(
 		uintptr(unsafe.Pointer(pathW)),
 		uintptr(unsafe.Pointer(&out[0])),
 		uintptr(unsafe.Pointer(&errBuf)))

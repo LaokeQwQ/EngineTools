@@ -27,8 +27,8 @@ const (
 // FieldPatch expresses one of three intents for one field. A Set with an
 // empty value and an Unchanged that carries a value are both rejected.
 type FieldPatch[T any] struct {
-	Mode  PatchMode "json:\"mode\""
-	Value T         "json:\"value,omitempty\""
+	Mode  PatchMode `json:"mode"`
+	Value T         `json:"value,omitempty"`
 }
 
 // isEmpty reports the zero value for the instantiated type so Validate can
@@ -44,6 +44,8 @@ func isEmpty[T any](v T) bool {
 	case NumberPair:
 		return x == NumberPair{}
 	case []string:
+		return len(x) == 0
+	case []Picture:
 		return len(x) == 0
 	case nil:
 		return true
@@ -61,7 +63,7 @@ func (p FieldPatch[T]) Validate() error {
 		return nil
 	case Clear:
 		return nil
-	case Unchanged:
+	case "", Unchanged:
 		if !isEmpty(p.Value) {
 			return Ef("unchanged_has_value", "unchanged patch carries a value")
 		}
@@ -71,71 +73,97 @@ func (p FieldPatch[T]) Validate() error {
 	}
 }
 
+// validateUnchangedValue applies the zero-mode compatibility rule used by
+// Patch: an omitted mode is Unchanged, and therefore cannot carry a value.
+// Field-specific Set validation remains below because rating=0 is valid while
+// most generic zero values are not.
+func validateUnchangedValue[T any](p FieldPatch[T]) error {
+	if p.Mode != "" && p.Mode != Unchanged {
+		return nil
+	}
+	if !isEmpty(p.Value) {
+		return Ef("unchanged_has_value", "unchanged patch carries a value")
+	}
+	return nil
+}
+
 // NumberPair is a track or disc position with optional total.
 type NumberPair struct {
-	Value int "json:\"value\""
-	Total int "json:\"total,omitempty\""
+	Value int `json:"value"`
+	Total int `json:"total,omitempty"`
 }
 
 var isrcPattern = regexp.MustCompile("^[A-Z]{2}[A-Z0-9]{3}[0-9]{7}$")
 
 // Picture is one embedded image with its stable identity.
 type Picture struct {
-	ID     string "json:\"id\""
-	Type   int    "json:\"type\"" // ID3v2 APIC picture type (0..21)
-	MIME   string "json:\"mime\""
-	Data   []byte "json:\"-\""
-	Width  int    "json:\"width,omitempty\""
-	Height int    "json:\"height,omitempty\""
+	ID          string `json:"id"`
+	Type        int    `json:"type"` // ID3v2 APIC picture type (0..20)
+	MIME        string `json:"mime"`
+	Description string `json:"description,omitempty"`
+	// Data uses the standard JSON []byte base64 representation. Read-only
+	// bridge responses may omit it, while picture replacement patches must
+	// carry the complete payload so non-target images are not lost.
+	Data          []byte `json:"data,omitempty"`
+	Thumbnail     []byte `json:"thumbnail,omitempty"`
+	ThumbnailMIME string `json:"thumbnailMime,omitempty"`
+	Bytes         int64  `json:"bytes,omitempty"`
+	Width         int    `json:"width,omitempty"`
+	Height        int    `json:"height,omitempty"`
 }
 
 // Warning records something the bridge preserved or had to adapt, surfaced
 // to the UI without failing the write.
 type Warning struct {
-	Code       string "json:\"code\""
-	MessageKey string "json:\"messageKey\""
+	Code       string `json:"code"`
+	MessageKey string `json:"messageKey"`
 }
 
 // Document is the canonical readable metadata across all formats.
 type Document struct {
-	Format       Format
-	TagVersion   string
-	Title        string
-	Artists      []string
-	AlbumArtists []string
-	Album        string
-	Track        NumberPair
-	Disc         NumberPair
-	Date         string
-	Genres       []string
-	Composers    []string
-	Comment      string
-	BPM          float64
-	Key          string
-	Rating       int
-	ISRC         string
-	Lyrics       string
-	Pictures     []Picture
-	Warnings     []Warning
+	Format       Format        `json:"format"`
+	TagVersion   string        `json:"tagVersion"`
+	Title        string        `json:"title"`
+	Artists      []string      `json:"artists"`
+	AlbumArtists []string      `json:"albumArtists"`
+	Album        string        `json:"album"`
+	Track        NumberPair    `json:"track"`
+	Disc         NumberPair    `json:"disc"`
+	Date         string        `json:"date"`
+	Genres       []string      `json:"genres"`
+	Composers    []string      `json:"composers"`
+	Comment      string        `json:"comment"`
+	BPM          float64       `json:"bpm"`
+	Key          string        `json:"key"`
+	Rating       int           `json:"rating"`
+	ISRC         string        `json:"isrc"`
+	Lyrics       string        `json:"lyrics"`
+	Pictures     []Picture     `json:"pictures"`
+	Warnings     []Warning     `json:"warnings"`
+	Capabilities *Capabilities `json:"capabilities,omitempty"`
 }
 
 // Patch carries the caller intent for every editable field of one file.
 type Patch struct {
-	Title        FieldPatch[string]     "json:\"title\""
-	Artists      FieldPatch[[]string]   "json:\"artists\""
-	Album        FieldPatch[string]     "json:\"album\""
-	AlbumArtists FieldPatch[[]string]   "json:\"albumArtists\""
-	Track        FieldPatch[NumberPair] "json:\"track\""
-	Disc         FieldPatch[NumberPair] "json:\"disc\""
-	Date         FieldPatch[string]     "json:\"date\""
-	Genres       FieldPatch[[]string]   "json:\"genres\""
-	Composers    FieldPatch[[]string]   "json:\"composers\""
-	Comment      FieldPatch[string]     "json:\"comment\""
-	BPM          FieldPatch[float64]    "json:\"bpm\""
-	Key          FieldPatch[string]     "json:\"key\""
-	Rating       FieldPatch[int]        "json:\"rating\""
-	ISRC         FieldPatch[string]     "json:\"isrc\""
-	Lyrics       FieldPatch[string]     "json:\"lyrics\""
+	Title        FieldPatch[string]     `json:"title"`
+	Artists      FieldPatch[[]string]   `json:"artists"`
+	Album        FieldPatch[string]     `json:"album"`
+	AlbumArtists FieldPatch[[]string]   `json:"albumArtists"`
+	Track        FieldPatch[NumberPair] `json:"track"`
+	Disc         FieldPatch[NumberPair] `json:"disc"`
+	Date         FieldPatch[string]     `json:"date"`
+	Genres       FieldPatch[[]string]   `json:"genres"`
+	Composers    FieldPatch[[]string]   `json:"composers"`
+	Comment      FieldPatch[string]     `json:"comment"`
+	BPM          FieldPatch[float64]    `json:"bpm"`
+	Key          FieldPatch[string]     `json:"key"`
+	Rating       FieldPatch[int]        `json:"rating"`
+	ISRC         FieldPatch[string]     `json:"isrc"`
+	Lyrics       FieldPatch[string]     `json:"lyrics"`
+	// Wails v2 cannot resolve the nested generic FieldPatch[[]Picture] when
+	// generating bindings. Keep the wire type intact but bypass its broken
+	// constructor conversion; frontend callers send plain JSON objects.
+	Pictures FieldPatch[[]Picture] `json:"pictures" ts_type:"any" ts_transform:"__VALUE__"`
 }
 
 // validateNumberPair enforces positive values and value<=total when a
@@ -143,6 +171,9 @@ type Patch struct {
 func validateNumberPair(field string, p NumberPair) error {
 	if p.Value < 1 {
 		return Ef(field+"_invalid", "%s value must be >= 1", field)
+	}
+	if p.Total < 0 {
+		return Ef(field+"_invalid", "%s total must be >= 0", field)
 	}
 	if p.Total > 0 && p.Value > p.Total {
 		return Ef(field+"_out_of_range", "%s value %d exceeds total %d", field, p.Value, p.Total)
@@ -154,15 +185,34 @@ func validateNumberPair(field string, p NumberPair) error {
 // cross-field range/format rules, returning ALL violations together. An
 // omitted (zero) Mode behaves exactly like Unchanged so JSON payloads can
 // simply skip untouched fields.
-func (p Patch) validate() []error {
+func (p Patch) validate(requirePicturePayload bool) []error {
 	var errs []error
 	check := func(err error) {
 		if err != nil {
 			errs = append(errs, err)
 		}
 	}
+	checkMode := func(field string, mode PatchMode) {
+		if mode != "" && mode != Unchanged && mode != Set && mode != Clear {
+			check(Ef("patch_mode_invalid", "%s has unknown patch mode %q", field, mode))
+		}
+	}
 	touchedString := []FieldPatch[string]{p.Title, p.Album, p.Date, p.Comment, p.Key, p.Lyrics}
+	for _, item := range []struct {
+		name string
+		mode PatchMode
+	}{
+		{"title", p.Title.Mode}, {"album", p.Album.Mode}, {"date", p.Date.Mode},
+		{"comment", p.Comment.Mode}, {"key", p.Key.Mode}, {"lyrics", p.Lyrics.Mode},
+		{"isrc", p.ISRC.Mode}, {"bpm", p.BPM.Mode}, {"rating", p.Rating.Mode},
+		{"artists", p.Artists.Mode}, {"albumArtists", p.AlbumArtists.Mode},
+		{"genres", p.Genres.Mode}, {"composers", p.Composers.Mode},
+		{"track", p.Track.Mode}, {"disc", p.Disc.Mode}, {"pictures", p.Pictures.Mode},
+	} {
+		checkMode(item.name, item.mode)
+	}
 	for _, fe := range touchedString {
+		check(validateUnchangedValue(fe))
 		if fe.Mode == Unchanged || fe.Mode == "" {
 			continue
 		}
@@ -170,6 +220,7 @@ func (p Patch) validate() []error {
 	}
 	touchedSlice := []FieldPatch[[]string]{p.Artists, p.AlbumArtists, p.Genres, p.Composers}
 	for _, fe := range touchedSlice {
+		check(validateUnchangedValue(fe))
 		if fe.Mode == Unchanged || fe.Mode == "" {
 			continue
 		}
@@ -183,7 +234,13 @@ func (p Patch) validate() []error {
 		{"disc", p.Disc},
 	}
 	for _, pair := range pairs {
+		check(validateUnchangedValue(pair.patch))
 		if pair.patch.Mode == Unchanged || pair.patch.Mode == "" {
+			continue
+		}
+		// clear has no value to range-check. A set with the zero pair is
+		// reported as the field-specific *_invalid error below.
+		if pair.patch.Mode == Clear {
 			continue
 		}
 		if err := pair.patch.Validate(); err != nil && CodeOf(err) != "empty_set" {
@@ -191,6 +248,29 @@ func (p Patch) validate() []error {
 			continue
 		}
 		check(validateNumberPair(pair.name, pair.patch.Value))
+	}
+	check(validateUnchangedValue(p.BPM))
+	check(validateUnchangedValue(p.Rating))
+	check(validateUnchangedValue(p.ISRC))
+	if p.Pictures.Mode != Unchanged && p.Pictures.Mode != "" {
+		check(validateUnchangedValue(p.Pictures))
+		if err := p.Pictures.Validate(); err != nil {
+			// Keep the generic tri-state error, but do not duplicate the
+			// structural empty-set error for a set with no pictures.
+			check(err)
+		} else if p.Pictures.Mode == Set {
+			// A single-file write carries the complete payload into the
+			// transaction. Batch preview cannot require bytes yet because it
+			// only has descriptors; those are hydrated per file by Apply.
+			if requirePicturePayload {
+				check(ValidatePictureSet(p.Pictures.Value))
+			} else {
+				check(ValidatePictures(p.Pictures.Value))
+			}
+		}
+	}
+	if p.Pictures.Mode == Unchanged || p.Pictures.Mode == "" {
+		check(validateUnchangedValue(p.Pictures))
 	}
 	if p.BPM.Mode == Set {
 		v := p.BPM.Value
@@ -212,7 +292,18 @@ func (p Patch) validate() []error {
 
 // Validate returns the first cross-field violation, if any.
 func (p Patch) Validate() error {
-	errList := p.validate()
+	errList := p.validate(true)
+	if len(errList) > 0 {
+		return errList[0]
+	}
+	return nil
+}
+
+// ValidateForBatch checks the tri-state and descriptor shape without requiring
+// picture bytes. BatchService hydrates each file's existing pictures by ID and
+// then calls Service.Apply, which performs the full payload validation.
+func (p Patch) ValidateForBatch() error {
+	errList := p.validate(false)
 	if len(errList) > 0 {
 		return errList[0]
 	}
@@ -222,12 +313,12 @@ func (p Patch) Validate() error {
 // Capabilities declares what one format supports so the UI can disable
 // controls before the user types into them.
 type Capabilities struct {
-	Format       Format
-	Readable     map[string]bool
-	Writable     map[string]bool
-	MaxPictures  int
-	PictureMIMEs []string
-	TagVersions  []string
+	Format       Format          `json:"format"`
+	Readable     map[string]bool `json:"readable"`
+	Writable     map[string]bool `json:"writable"`
+	MaxPictures  int             `json:"maxPictures"`
+	PictureMIMEs []string        `json:"pictureMIMEs"`
+	TagVersions  []string        `json:"tagVersions"`
 }
 
 var validPictureMIMEs = []string{"image/jpeg", "image/png"}
@@ -240,18 +331,18 @@ var formatCapabilities = map[Format]Capabilities{
 		Writable: without("rating"), MaxPictures: 16, PictureMIMEs: validPictureMIMEs,
 		TagVersions: []string{"vorbis"}},
 	FormatWAV: {Format: FormatWAV,
-		Readable:    only("title", "artist", "album", "track", "date", "comment", "genre"),
-		Writable:    only("title", "artist", "album", "track", "date", "comment", "genre"),
+		Readable:    only("title", "artists", "album", "track", "date", "comment", "genres"),
+		Writable:    only("title", "artists", "album", "track", "date", "comment", "genres"),
 		MaxPictures: 0, TagVersions: []string{"id3v23"}},
 	FormatAIFF: {Format: FormatAIFF,
-		Readable:    only("title", "artist", "album", "track", "date", "comment", "genre"),
-		Writable:    only("title", "artist", "album", "track", "date", "comment", "genre"),
+		Readable:    only("title", "artists", "album", "track", "date", "comment", "genres"),
+		Writable:    only("title", "artists", "album", "track", "date", "comment", "genres"),
 		MaxPictures: 0, TagVersions: []string{"id3v23"}},
 }
 
 func allFields() map[string]bool {
-	fields := []string{"title", "artist", "album", "albumArtist", "track", "disc",
-		"date", "genre", "composer", "comment", "bpm", "key", "rating", "isrc",
+	fields := []string{"title", "artists", "album", "albumArtists", "track", "disc",
+		"date", "genres", "composers", "comment", "bpm", "key", "rating", "isrc",
 		"lyrics", "pictures"}
 	m := make(map[string]bool, len(fields))
 	for _, f := range fields {
@@ -279,7 +370,10 @@ func only(fields ...string) map[string]bool {
 // CapabilitiesFor returns the capability table for a known format.
 func CapabilitiesFor(f Format) (Capabilities, bool) {
 	c, ok := formatCapabilities[f]
-	return c, ok
+	if !ok {
+		return Capabilities{}, false
+	}
+	return cloneCapabilities(c), true
 }
 
 // ValidatePictures checks every embedded image: APIC type range, MIME
@@ -287,8 +381,11 @@ func CapabilitiesFor(f Format) (Capabilities, bool) {
 func ValidatePictures(pics []Picture) error {
 	seen := make(map[string]bool, len(pics))
 	for _, pic := range pics {
-		if pic.Type < 0 || pic.Type > 21 {
-			return Ef("picture_type_invalid", "picture %q type %d outside [0,21]", pic.ID, pic.Type)
+		if pic.ID == "" {
+			return Ef("picture_id_invalid", "picture id must not be empty")
+		}
+		if pic.Type < 0 || pic.Type > 20 {
+			return Ef("picture_type_invalid", "picture %q type %d outside [0,20]", pic.ID, pic.Type)
 		}
 		ok := false
 		for _, m := range validPictureMIMEs {

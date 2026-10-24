@@ -119,3 +119,42 @@ func TestRollbackRestoresOriginalOnPostReplaceFailure(t *testing.T) {
 		t.Fatalf("rollback did not restore original: %q", got)
 	}
 }
+
+func TestHydratePicturePatchUsesCurrentPayloadByID(t *testing.T) {
+	full := makeTestJPEG(8, 8)
+	current := []Picture{{ID: "apic-0", Type: 3, MIME: "image/jpeg", Data: full, Bytes: int64(len(full))}}
+	patch := Patch{Pictures: FieldPatch[[]Picture]{Mode: Set, Value: []Picture{{
+		ID: "apic-0", Type: 3, MIME: "image/jpeg", Bytes: int64(len(full)),
+	}}}}
+	hydrated := hydratePicturePatch(patch, current)
+	if string(hydrated.Pictures.Value[0].Data) != string(full) {
+		t.Fatal("picture payload was not hydrated")
+	}
+	if len(patch.Pictures.Value[0].Data) != 0 {
+		t.Fatal("hydration mutated caller patch")
+	}
+}
+
+func TestTransactionDetectsEqualSizeTimestampReplacement(t *testing.T) {
+	svc, _, target := setupService(t)
+	originalInfo, err := os.Stat(target)
+	if err != nil {
+		t.Fatal(err)
+	}
+	svc.HookAfterSnapshot = func() error {
+		content, readErr := os.ReadFile(target)
+		if readErr != nil {
+			return readErr
+		}
+		content[0] ^= 0x01
+		if writeErr := os.WriteFile(target, content, 0o644); writeErr != nil {
+			return writeErr
+		}
+		return os.Chtimes(target, originalInfo.ModTime(), originalInfo.ModTime())
+	}
+	_, err = svc.Apply(context.Background(), target,
+		Patch{Title: FieldPatch[string]{Mode: Set, Value: "external"}})
+	if CodeOf(err) != "external_change" {
+		t.Fatalf("equal-size/timestamp replacement was not detected: %v", err)
+	}
+}

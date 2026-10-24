@@ -3,8 +3,9 @@ package main
 import (
 	"EngineTools/internal/database"
 	"EngineTools/internal/i18n"
-	"EngineTools/internal/id3"
+	"EngineTools/internal/metadata"
 	"EngineTools/internal/process"
+	"context"
 	"fmt"
 	wailsRuntime "github.com/wailsapp/wails/v2/pkg/runtime"
 	"golang.org/x/sys/windows"
@@ -185,17 +186,17 @@ func (a *App) CompressCovers(playlistID int, maxKB int) map[string]interface{} {
 			a.setProgress(float64(i) / float64(total))
 		}
 
-		res, err := id3.CompressCover(t.Path, maxBytes)
+		result, err := a.compressCover(t.Path, maxBytes)
 		if err != nil {
 			failed++
 			errors = append(errors, fmt.Sprintf("%s: %v", filepath.Base(t.Path), err))
 			continue
 		}
-		if res.Skipped {
+		if !result.Changed {
 			skipped++
 		} else {
 			compressed++
-			savedBytes += res.OriginalSize - res.FinalSize
+			savedBytes += result.OriginalSize - result.FinalSize
 		}
 	}
 
@@ -326,13 +327,16 @@ func (a *App) SyncBPMKeyToTags() map[string]interface{} {
 			a.setProgress(float64(i) / float64(total))
 		}
 
-		bpmStr := ""
-		if t.BPM > 0 {
-			bpmStr = fmt.Sprintf("%.2f", t.BPM)
-		}
 		keyStr := t.KeyName // e.g. "Am", "C"
 
-		if err := id3.WriteBPMKey(t.Path, bpmStr, keyStr); err != nil {
+		patch := metadata.Patch{}
+		if t.BPM > 0 {
+			patch.BPM = metadata.FieldPatch[float64]{Mode: metadata.Set, Value: t.BPM}
+		}
+		if keyStr != "" {
+			patch.Key = metadata.FieldPatch[string]{Mode: metadata.Set, Value: keyStr}
+		}
+		if _, err := a.MetadataApply(t.Path, patch); err != nil {
 			failed++
 			errors = append(errors, fmt.Sprintf("%s: %v", filepath.Base(t.Path), err))
 		} else {
@@ -353,6 +357,18 @@ func (a *App) SyncBPMKeyToTags() map[string]interface{} {
 		"failed":  failed,
 		"errors":  errList,
 	}
+}
+
+// compressCover delegates picture inspection and replacement to the same
+// transactional metadata service used by the editor. A descriptor-only native
+// bridge returns a structured skip rather than pretending that compression
+// succeeded.
+func (a *App) compressCover(path string, maxBytes int64) (metadata.PictureCompressionResult, error) {
+	rt, err := a.metadataServices()
+	if err != nil {
+		return metadata.PictureCompressionResult{}, metadataUnavailable(err)
+	}
+	return rt.service.CompressFrontPicture(context.Background(), path, maxBytes)
 }
 
 func checkIsAdmin() bool {

@@ -1,13 +1,36 @@
+export namespace apperror {
+
+	export class PublicError {
+	    code: string;
+	    messageKey: string;
+	    operationId?: string;
+	    retryable: boolean;
+
+	    static createFrom(source: any = {}) {
+	        return new PublicError(source);
+	    }
+
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.code = source["code"];
+	        this.messageKey = source["messageKey"];
+	        this.operationId = source["operationId"];
+	        this.retryable = source["retryable"];
+	    }
+	}
+
+}
+
 export namespace database {
-	
+
 	export class BPMBucket {
 	    range: string;
 	    count: number;
-	
+
 	    static createFrom(source: any = {}) {
 	        return new BPMBucket(source);
 	    }
-	
+
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.range = source["range"];
@@ -19,11 +42,11 @@ export namespace database {
 	    date: string;
 	    size: number;
 	    note: string;
-	
+
 	    static createFrom(source: any = {}) {
 	        return new BackupInfo(source);
 	    }
-	
+
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.filename = source["filename"];
@@ -35,11 +58,11 @@ export namespace database {
 	export class KVCount {
 	    key: string;
 	    count: number;
-	
+
 	    static createFrom(source: any = {}) {
 	        return new KVCount(source);
 	    }
-	
+
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.key = source["key"];
@@ -56,11 +79,11 @@ export namespace database {
 	    playCount: number;
 	    lastPlayed: string;
 	    dateAdded: string;
-	
+
 	    static createFrom(source: any = {}) {
 	        return new TrackSummary(source);
 	    }
-	
+
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.id = source["id"];
@@ -85,11 +108,11 @@ export namespace database {
 	    topGenres: KVCount[];
 	    bpmDistribution: BPMBucket[];
 	    recentlyAdded: TrackSummary[];
-	
+
 	    static createFrom(source: any = {}) {
 	        return new LibraryStats(source);
 	    }
-	
+
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.totalTracks = source["totalTracks"];
@@ -103,7 +126,7 @@ export namespace database {
 	        this.bpmDistribution = this.convertValues(source["bpmDistribution"], BPMBucket);
 	        this.recentlyAdded = this.convertValues(source["recentlyAdded"], TrackSummary);
 	    }
-	
+
 		convertValues(a: any, classs: any, asMap: boolean = false): any {
 		    if (!a) {
 		        return a;
@@ -128,11 +151,11 @@ export namespace database {
 	    artist: string;
 	    path: string;
 	    filename: string;
-	
+
 	    static createFrom(source: any = {}) {
 	        return new MissingTrack(source);
 	    }
-	
+
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.id = source["id"];
@@ -146,18 +169,18 @@ export namespace database {
 	    mostPlayed: TrackSummary[];
 	    recentPlayed: TrackSummary[];
 	    neverPlayed: TrackSummary[];
-	
+
 	    static createFrom(source: any = {}) {
 	        return new PlayStats(source);
 	    }
-	
+
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.mostPlayed = this.convertValues(source["mostPlayed"], TrackSummary);
 	        this.recentPlayed = this.convertValues(source["recentPlayed"], TrackSummary);
 	        this.neverPlayed = this.convertValues(source["neverPlayed"], TrackSummary);
 	    }
-	
+
 		convertValues(a: any, classs: any, asMap: boolean = false): any {
 		    if (!a) {
 		        return a;
@@ -181,11 +204,11 @@ export namespace database {
 	    title: string;
 	    parentId: number;
 	    count: number;
-	
+
 	    static createFrom(source: any = {}) {
 	        return new PlaylistInfo(source);
 	    }
-	
+
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.id = source["id"];
@@ -203,11 +226,11 @@ export namespace database {
 	    key: number;
 	    keyName: string;
 	    camelot: string;
-	
+
 	    static createFrom(source: any = {}) {
 	        return new SyncableTrack(source);
 	    }
-	
+
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.id = source["id"];
@@ -234,11 +257,11 @@ export namespace database {
 	    keyName: string;
 	    camelot: string;
 	    rating: number;
-	
+
 	    static createFrom(source: any = {}) {
 	        return new TrackInfo(source);
 	    }
-	
+
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.id = source["id"];
@@ -260,7 +283,7 @@ export namespace database {
 }
 
 export namespace i18n {
-	
+
 	export class Messages {
 	    appTitle: string;
 	    installPathLabel: string;
@@ -448,6 +471,70 @@ export namespace i18n {
 	    settingsAboutTitle: string;
 	    settingsAboutDesc: string;
 	    settingsContributors: string;
+	    metadataEditorTitle: string;
+	    metadataChooseFile: string;
+	    metadataDropHint: string;
+	    metadataDropSubhint: string;
+	    metadataFormatLabel: string;
+	    metadataTagVersionLabel: string;
+	    metadataWarnings: string;
+	    metadataAddPicture: string;
+	    metadataPictureCount: string;
+	    metadataReplacePicture: string;
+	    metadataRemovePicture: string;
+	    metadataPicturePayloadMissing: string;
+	    metadataSave: string;
+	    metadataReset: string;
+	    metadataUndo: string;
+	    metadataUnchanged: string;
+	    metadataSet: string;
+	    metadataClear: string;
+	    metadataLoading: string;
+	    metadataSaving: string;
+	    metadataUndoing: string;
+	    metadataUnsaved: string;
+	    metadataReady: string;
+	    metadataUnsupported: string;
+	    metadataTitleLabel: string;
+	    metadataArtistsLabel: string;
+	    metadataAlbumArtistsLabel: string;
+	    metadataAlbumLabel: string;
+	    metadataTrackLabel: string;
+	    metadataDiscLabel: string;
+	    metadataDateLabel: string;
+	    metadataGenresLabel: string;
+	    metadataComposersLabel: string;
+	    metadataCommentLabel: string;
+	    metadataBpmLabel: string;
+	    metadataKeyLabel: string;
+	    metadataRatingLabel: string;
+	    metadataIsrcLabel: string;
+	    metadataLyricsLabel: string;
+	    metadataPicturesLabel: string;
+	    metadataSingleMode: string;
+	    metadataBatchMode: string;
+	    metadataBatchTitle: string;
+	    metadataBatchFiles: string;
+	    metadataBatchNoFiles: string;
+	    metadataBatchChooseFolder: string;
+	    metadataBatchClearFiles: string;
+	    metadataBatchPreview: string;
+	    metadataBatchPreviewTitle: string;
+	    metadataBatchStart: string;
+	    metadataBatchRunning: string;
+	    metadataBatchEligible: string;
+	    metadataBatchResults: string;
+	    metadataBatchUpdated: string;
+	    metadataBatchSkipped: string;
+	    metadataBatchFailed: string;
+	    metadataBatchBlocked: string;
+	    metadataBatchCancelled: string;
+	    metadataBatchStatusUpdated: string;
+	    metadataBatchStatusSkipped: string;
+	    metadataBatchStatusFailed: string;
+	    metadataBatchStatusBlocked: string;
+	    metadataCancel: string;
+
 	    id3DropZoneHint: string;
 	    noCoverLabel: string;
 	    changeCoverLabel: string;
@@ -457,11 +544,11 @@ export namespace i18n {
 	    id3AlbumPlaceholder: string;
 	    id3YearPlaceholder: string;
 	    id3GenrePlaceholder: string;
-	
+
 	    static createFrom(source: any = {}) {
 	        return new Messages(source);
 	    }
-	
+
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.appTitle = source["appTitle"];
@@ -650,6 +737,70 @@ export namespace i18n {
 	        this.settingsAboutTitle = source["settingsAboutTitle"];
 	        this.settingsAboutDesc = source["settingsAboutDesc"];
 	        this.settingsContributors = source["settingsContributors"];
+	        this.metadataEditorTitle = source["metadataEditorTitle"];
+	        this.metadataChooseFile = source["metadataChooseFile"];
+	        this.metadataDropHint = source["metadataDropHint"];
+	        this.metadataDropSubhint = source["metadataDropSubhint"];
+	        this.metadataFormatLabel = source["metadataFormatLabel"];
+	        this.metadataTagVersionLabel = source["metadataTagVersionLabel"];
+	        this.metadataWarnings = source["metadataWarnings"];
+	        this.metadataAddPicture = source["metadataAddPicture"];
+	        this.metadataPictureCount = source["metadataPictureCount"];
+	        this.metadataReplacePicture = source["metadataReplacePicture"];
+	        this.metadataRemovePicture = source["metadataRemovePicture"];
+	        this.metadataPicturePayloadMissing = source["metadataPicturePayloadMissing"];
+	        this.metadataSave = source["metadataSave"];
+	        this.metadataReset = source["metadataReset"];
+	        this.metadataUndo = source["metadataUndo"];
+	        this.metadataUnchanged = source["metadataUnchanged"];
+	        this.metadataSet = source["metadataSet"];
+	        this.metadataClear = source["metadataClear"];
+	        this.metadataLoading = source["metadataLoading"];
+	        this.metadataSaving = source["metadataSaving"];
+	        this.metadataUndoing = source["metadataUndoing"];
+	        this.metadataUnsaved = source["metadataUnsaved"];
+	        this.metadataReady = source["metadataReady"];
+	        this.metadataUnsupported = source["metadataUnsupported"];
+	        this.metadataTitleLabel = source["metadataTitleLabel"];
+	        this.metadataArtistsLabel = source["metadataArtistsLabel"];
+	        this.metadataAlbumArtistsLabel = source["metadataAlbumArtistsLabel"];
+	        this.metadataAlbumLabel = source["metadataAlbumLabel"];
+	        this.metadataTrackLabel = source["metadataTrackLabel"];
+	        this.metadataDiscLabel = source["metadataDiscLabel"];
+	        this.metadataDateLabel = source["metadataDateLabel"];
+	        this.metadataGenresLabel = source["metadataGenresLabel"];
+	        this.metadataComposersLabel = source["metadataComposersLabel"];
+	        this.metadataCommentLabel = source["metadataCommentLabel"];
+	        this.metadataBpmLabel = source["metadataBpmLabel"];
+	        this.metadataKeyLabel = source["metadataKeyLabel"];
+	        this.metadataRatingLabel = source["metadataRatingLabel"];
+	        this.metadataIsrcLabel = source["metadataIsrcLabel"];
+	        this.metadataLyricsLabel = source["metadataLyricsLabel"];
+	        this.metadataPicturesLabel = source["metadataPicturesLabel"];
+	        this.metadataSingleMode = source["metadataSingleMode"];
+	        this.metadataBatchMode = source["metadataBatchMode"];
+	        this.metadataBatchTitle = source["metadataBatchTitle"];
+	        this.metadataBatchFiles = source["metadataBatchFiles"];
+	        this.metadataBatchNoFiles = source["metadataBatchNoFiles"];
+	        this.metadataBatchChooseFolder = source["metadataBatchChooseFolder"];
+	        this.metadataBatchClearFiles = source["metadataBatchClearFiles"];
+	        this.metadataBatchPreview = source["metadataBatchPreview"];
+	        this.metadataBatchPreviewTitle = source["metadataBatchPreviewTitle"];
+	        this.metadataBatchStart = source["metadataBatchStart"];
+	        this.metadataBatchRunning = source["metadataBatchRunning"];
+	        this.metadataBatchEligible = source["metadataBatchEligible"];
+	        this.metadataBatchResults = source["metadataBatchResults"];
+	        this.metadataBatchUpdated = source["metadataBatchUpdated"];
+	        this.metadataBatchSkipped = source["metadataBatchSkipped"];
+	        this.metadataBatchFailed = source["metadataBatchFailed"];
+	        this.metadataBatchBlocked = source["metadataBatchBlocked"];
+	        this.metadataBatchCancelled = source["metadataBatchCancelled"];
+	        this.metadataBatchStatusUpdated = source["metadataBatchStatusUpdated"];
+	        this.metadataBatchStatusSkipped = source["metadataBatchStatusSkipped"];
+	        this.metadataBatchStatusFailed = source["metadataBatchStatusFailed"];
+	        this.metadataBatchStatusBlocked = source["metadataBatchStatusBlocked"];
+	        this.metadataCancel = source["metadataCancel"];
+
 	        this.id3DropZoneHint = source["id3DropZoneHint"];
 	        this.noCoverLabel = source["noCoverLabel"];
 	        this.changeCoverLabel = source["changeCoverLabel"];
@@ -664,37 +815,8 @@ export namespace i18n {
 
 }
 
-export namespace id3 {
-	
-	export class TagInfo {
-	    filePath: string;
-	    title: string;
-	    artist: string;
-	    album: string;
-	    year: string;
-	    genre: string;
-	    hasCover: boolean;
-	
-	    static createFrom(source: any = {}) {
-	        return new TagInfo(source);
-	    }
-	
-	    constructor(source: any = {}) {
-	        if ('string' === typeof source) source = JSON.parse(source);
-	        this.filePath = source["filePath"];
-	        this.title = source["title"];
-	        this.artist = source["artist"];
-	        this.album = source["album"];
-	        this.year = source["year"];
-	        this.genre = source["genre"];
-	        this.hasCover = source["hasCover"];
-	    }
-	}
-
-}
-
 export namespace logs {
-	
+
 	export class LogEntry {
 	    level: string;
 	    // Go type: time
@@ -702,11 +824,11 @@ export namespace logs {
 	    thread: string;
 	    category: string;
 	    message: string;
-	
+
 	    static createFrom(source: any = {}) {
 	        return new LogEntry(source);
 	    }
-	
+
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.level = source["level"];
@@ -715,7 +837,7 @@ export namespace logs {
 	        this.category = source["category"];
 	        this.message = source["message"];
 	    }
-	
+
 		convertValues(a: any, classs: any, asMap: boolean = false): any {
 		    if (!a) {
 		        return a;
@@ -737,11 +859,11 @@ export namespace logs {
 	export class MessageCount {
 	    message: string;
 	    count: number;
-	
+
 	    static createFrom(source: any = {}) {
 	        return new MessageCount(source);
 	    }
-	
+
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.message = source["message"];
@@ -758,11 +880,11 @@ export namespace logs {
 	    topWarnings: MessageCount[];
 	    topErrors: MessageCount[];
 	    recentEntries: LogEntry[];
-	
+
 	    static createFrom(source: any = {}) {
 	        return new LogStats(source);
 	    }
-	
+
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.totalFiles = source["totalFiles"];
@@ -775,7 +897,7 @@ export namespace logs {
 	        this.topErrors = this.convertValues(source["topErrors"], MessageCount);
 	        this.recentEntries = this.convertValues(source["recentEntries"], LogEntry);
 	    }
-	
+
 		convertValues(a: any, classs: any, asMap: boolean = false): any {
 		    if (!a) {
 		        return a;
@@ -798,15 +920,15 @@ export namespace logs {
 }
 
 export namespace main {
-	
+
 	export class DriveInfo {
 	    letter: string;
 	    trackCount: number;
-	
+
 	    static createFrom(source: any = {}) {
 	        return new DriveInfo(source);
 	    }
-	
+
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.letter = source["letter"];
@@ -816,11 +938,11 @@ export namespace main {
 	export class ProcessItem {
 	    name: string;
 	    pid: number;
-	
+
 	    static createFrom(source: any = {}) {
 	        return new ProcessItem(source);
 	    }
-	
+
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.name = source["name"];
@@ -840,11 +962,11 @@ export namespace main {
 	    dbPath: string;
 	    processRunning: boolean;
 	    runningProcesses: ProcessItem[];
-	
+
 	    static createFrom(source: any = {}) {
 	        return new StatusInfo(source);
 	    }
-	
+
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.installPath = source["installPath"];
@@ -860,7 +982,503 @@ export namespace main {
 	        this.processRunning = source["processRunning"];
 	        this.runningProcesses = this.convertValues(source["runningProcesses"], ProcessItem);
 	    }
-	
+
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	export class SystemActionResult {
+	    operationId: string;
+	    changed: number;
+	    publicError?: apperror.PublicError;
+
+	    static createFrom(source: any = {}) {
+	        return new SystemActionResult(source);
+	    }
+
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.operationId = source["operationId"];
+	        this.changed = source["changed"];
+	        this.publicError = this.convertValues(source["publicError"], apperror.PublicError);
+	    }
+
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	export class TagInfo {
+	    filePath: string;
+	    title: string;
+	    artist: string;
+	    album: string;
+	    year: string;
+	    genre: string;
+	    hasCover: boolean;
+
+	    static createFrom(source: any = {}) {
+	        return new TagInfo(source);
+	    }
+
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.filePath = source["filePath"];
+	        this.title = source["title"];
+	        this.artist = source["artist"];
+	        this.album = source["album"];
+	        this.year = source["year"];
+	        this.genre = source["genre"];
+	        this.hasCover = source["hasCover"];
+	    }
+	}
+
+}
+
+export namespace metadata {
+
+	export class BatchItem {
+	    path: string;
+	    status: string;
+	    code?: string;
+	    messageKey?: string;
+	    detail?: string;
+	    snapshotId?: string;
+
+	    static createFrom(source: any = {}) {
+	        return new BatchItem(source);
+	    }
+
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.path = source["path"];
+	        this.status = source["status"];
+	        this.code = source["code"];
+	        this.messageKey = source["messageKey"];
+	        this.detail = source["detail"];
+	        this.snapshotId = source["snapshotId"];
+	    }
+	}
+	export class BatchPreview {
+	    operationId: string;
+	    total: number;
+	    eligible: number;
+	    blocked: number;
+	    items: BatchItem[];
+
+	    static createFrom(source: any = {}) {
+	        return new BatchPreview(source);
+	    }
+
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.operationId = source["operationId"];
+	        this.total = source["total"];
+	        this.eligible = source["eligible"];
+	        this.blocked = source["blocked"];
+	        this.items = this.convertValues(source["items"], BatchItem);
+	    }
+
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	export class BatchResult {
+	    operationId: string;
+	    total: number;
+	    updated: number;
+	    skipped: number;
+	    failed: number;
+	    blocked: number;
+	    cancelled: boolean;
+	    items: BatchItem[];
+
+	    static createFrom(source: any = {}) {
+	        return new BatchResult(source);
+	    }
+
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.operationId = source["operationId"];
+	        this.total = source["total"];
+	        this.updated = source["updated"];
+	        this.skipped = source["skipped"];
+	        this.failed = source["failed"];
+	        this.blocked = source["blocked"];
+	        this.cancelled = source["cancelled"];
+	        this.items = this.convertValues(source["items"], BatchItem);
+	    }
+
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	export class Capabilities {
+	    format: string;
+	    readable: Record<string, boolean>;
+	    writable: Record<string, boolean>;
+	    maxPictures: number;
+	    pictureMIMEs: string[];
+	    tagVersions: string[];
+
+	    static createFrom(source: any = {}) {
+	        return new Capabilities(source);
+	    }
+
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.format = source["format"];
+	        this.readable = source["readable"];
+	        this.writable = source["writable"];
+	        this.maxPictures = source["maxPictures"];
+	        this.pictureMIMEs = source["pictureMIMEs"];
+	        this.tagVersions = source["tagVersions"];
+	    }
+	}
+	export class Warning {
+	    code: string;
+	    messageKey: string;
+
+	    static createFrom(source: any = {}) {
+	        return new Warning(source);
+	    }
+
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.code = source["code"];
+	        this.messageKey = source["messageKey"];
+	    }
+	}
+	export class Picture {
+	    id: string;
+	    type: number;
+	    mime: string;
+	    description?: string;
+	    data?: number[];
+	    thumbnail?: number[];
+	    thumbnailMime?: string;
+	    bytes?: number;
+	    width?: number;
+	    height?: number;
+
+	    static createFrom(source: any = {}) {
+	        return new Picture(source);
+	    }
+
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.id = source["id"];
+	        this.type = source["type"];
+	        this.mime = source["mime"];
+	        this.description = source["description"];
+	        this.data = source["data"];
+	        this.thumbnail = source["thumbnail"];
+	        this.thumbnailMime = source["thumbnailMime"];
+	        this.bytes = source["bytes"];
+	        this.width = source["width"];
+	        this.height = source["height"];
+	    }
+	}
+	export class NumberPair {
+	    value: number;
+	    total?: number;
+
+	    static createFrom(source: any = {}) {
+	        return new NumberPair(source);
+	    }
+
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.value = source["value"];
+	        this.total = source["total"];
+	    }
+	}
+	export class Document {
+	    format: string;
+	    tagVersion: string;
+	    title: string;
+	    artists: string[];
+	    albumArtists: string[];
+	    album: string;
+	    track: NumberPair;
+	    disc: NumberPair;
+	    date: string;
+	    genres: string[];
+	    composers: string[];
+	    comment: string;
+	    bpm: number;
+	    key: string;
+	    rating: number;
+	    isrc: string;
+	    lyrics: string;
+	    pictures: Picture[];
+	    warnings: Warning[];
+	    capabilities?: Capabilities;
+
+	    static createFrom(source: any = {}) {
+	        return new Document(source);
+	    }
+
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.format = source["format"];
+	        this.tagVersion = source["tagVersion"];
+	        this.title = source["title"];
+	        this.artists = source["artists"];
+	        this.albumArtists = source["albumArtists"];
+	        this.album = source["album"];
+	        this.track = this.convertValues(source["track"], NumberPair);
+	        this.disc = this.convertValues(source["disc"], NumberPair);
+	        this.date = source["date"];
+	        this.genres = source["genres"];
+	        this.composers = source["composers"];
+	        this.comment = source["comment"];
+	        this.bpm = source["bpm"];
+	        this.key = source["key"];
+	        this.rating = source["rating"];
+	        this.isrc = source["isrc"];
+	        this.lyrics = source["lyrics"];
+	        this.pictures = this.convertValues(source["pictures"], Picture);
+	        this.warnings = this.convertValues(source["warnings"], Warning);
+	        this.capabilities = this.convertValues(source["capabilities"], Capabilities);
+	    }
+
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	export class FieldPatch_EngineTools_internal_metadata_NumberPair_ {
+	    mode: string;
+	    value?: NumberPair;
+
+	    static createFrom(source: any = {}) {
+	        return new FieldPatch_EngineTools_internal_metadata_NumberPair_(source);
+	    }
+
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.mode = source["mode"];
+	        this.value = this.convertValues(source["value"], NumberPair);
+	    }
+
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	export class FieldPatch___EngineTools_internal_metadata_Picture_ {
+	    mode: string;
+	    value?: Picture[];
+
+	    static createFrom(source: any = {}) {
+	        return new FieldPatch___EngineTools_internal_metadata_Picture_(source);
+	    }
+
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.mode = source["mode"];
+	        this.value = this.convertValues(source["value"], Picture);
+	    }
+
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	export class FieldPatch___string_ {
+	    mode: string;
+	    value?: string[];
+
+	    static createFrom(source: any = {}) {
+	        return new FieldPatch___string_(source);
+	    }
+
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.mode = source["mode"];
+	        this.value = source["value"];
+	    }
+	}
+	export class FieldPatch_float64_ {
+	    mode: string;
+	    value?: number;
+
+	    static createFrom(source: any = {}) {
+	        return new FieldPatch_float64_(source);
+	    }
+
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.mode = source["mode"];
+	        this.value = source["value"];
+	    }
+	}
+	export class FieldPatch_int_ {
+	    mode: string;
+	    value?: number;
+
+	    static createFrom(source: any = {}) {
+	        return new FieldPatch_int_(source);
+	    }
+
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.mode = source["mode"];
+	        this.value = source["value"];
+	    }
+	}
+	export class FieldPatch_string_ {
+	    mode: string;
+	    value?: string;
+
+	    static createFrom(source: any = {}) {
+	        return new FieldPatch_string_(source);
+	    }
+
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.mode = source["mode"];
+	        this.value = source["value"];
+	    }
+	}
+
+	export class Patch {
+	    title: FieldPatch_string_;
+	    artists: FieldPatch___string_;
+	    album: FieldPatch_string_;
+	    albumArtists: FieldPatch___string_;
+	    track: FieldPatch_EngineTools_internal_metadata_NumberPair_;
+	    disc: FieldPatch_EngineTools_internal_metadata_NumberPair_;
+	    date: FieldPatch_string_;
+	    genres: FieldPatch___string_;
+	    composers: FieldPatch___string_;
+	    comment: FieldPatch_string_;
+	    bpm: FieldPatch_float64_;
+	    key: FieldPatch_string_;
+	    rating: FieldPatch_int_;
+	    isrc: FieldPatch_string_;
+	    lyrics: FieldPatch_string_;
+	    pictures: any;
+
+	    static createFrom(source: any = {}) {
+	        return new Patch(source);
+	    }
+
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.title = this.convertValues(source["title"], FieldPatch_string_);
+	        this.artists = this.convertValues(source["artists"], FieldPatch___string_);
+	        this.album = this.convertValues(source["album"], FieldPatch_string_);
+	        this.albumArtists = this.convertValues(source["albumArtists"], FieldPatch___string_);
+	        this.track = this.convertValues(source["track"], FieldPatch_EngineTools_internal_metadata_NumberPair_);
+	        this.disc = this.convertValues(source["disc"], FieldPatch_EngineTools_internal_metadata_NumberPair_);
+	        this.date = this.convertValues(source["date"], FieldPatch_string_);
+	        this.genres = this.convertValues(source["genres"], FieldPatch___string_);
+	        this.composers = this.convertValues(source["composers"], FieldPatch___string_);
+	        this.comment = this.convertValues(source["comment"], FieldPatch_string_);
+	        this.bpm = this.convertValues(source["bpm"], FieldPatch_float64_);
+	        this.key = this.convertValues(source["key"], FieldPatch_string_);
+	        this.rating = this.convertValues(source["rating"], FieldPatch_int_);
+	        this.isrc = this.convertValues(source["isrc"], FieldPatch_string_);
+	        this.lyrics = this.convertValues(source["lyrics"], FieldPatch_string_);
+	        this.pictures = source["pictures"];
+	    }
+
 		convertValues(a: any, classs: any, asMap: boolean = false): any {
 		    if (!a) {
 		        return a;
@@ -880,18 +1498,37 @@ export namespace main {
 		}
 	}
 
+	export class WriteResult {
+	    ok: boolean;
+	    changed: number;
+	    snapshotId?: string;
+	    operationId?: string;
+
+	    static createFrom(source: any = {}) {
+	        return new WriteResult(source);
+	    }
+
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.ok = source["ok"];
+	        this.changed = source["changed"];
+	        this.snapshotId = source["snapshotId"];
+	        this.operationId = source["operationId"];
+	    }
+	}
+
 }
 
 export namespace msi {
-	
+
 	export class OrphanedMSI {
 	    productCode: string;
 	    displayName: string;
-	
+
 	    static createFrom(source: any = {}) {
 	        return new OrphanedMSI(source);
 	    }
-	
+
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.productCode = source["productCode"];
@@ -902,15 +1539,15 @@ export namespace msi {
 }
 
 export namespace unlock {
-	
+
 	export class HandleInfo {
 	    pid: number;
 	    name: string;
-	
+
 	    static createFrom(source: any = {}) {
 	        return new HandleInfo(source);
 	    }
-	
+
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.pid = source["pid"];

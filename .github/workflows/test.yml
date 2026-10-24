@@ -66,14 +66,14 @@ jobs:
           git diff --exit-code -- frontend/wailsjs || (
             echo "::error::bindings drifted; run wails generate module" && exit 1)
 
-      - name: Installer build and smoke assertions
+      # The real installer is produced by the windows-release job, which builds
+      # the native DLLs first. This job only asserts the packaging contract.
+      - name: Installer contract assertions
         shell: bash
         run: |
-          choco install nsis -y --no-progress >/dev/null
-          makensis build/windows/installer/project.nsi
-          ls build/bin/*installer*.exe
-          # main EXE must be present, helper packaged next to it
           grep -q 'EngineTools.Helper.exe' build/windows/installer/project.nsi
+          grep -q 'enginetools_tag.dll' build/windows/installer/project.nsi
+          grep -q 'tag.dll' build/windows/installer/project.nsi
           ! grep -q 'requireAdministrator' build/windows/wails.exe.manifest
 
   id3-preservation:
@@ -95,7 +95,18 @@ jobs:
       - name: Install ffmpeg
         run: choco install ffmpeg -y --no-progress
 
+      - name: Build pinned TagLib and native bridge
+        shell: pwsh
+        run: ./build/windows/build-taglib.ps1
+
+      - name: Native bridge contract test
+        shell: pwsh
+        run: ctest --test-dir build/taglib/bridge-build -C Release --output-on-failure
+
       - name: Go tests (metadata + snapshot + transaction)
+        shell: pwsh
+        env:
+          ET_TAGLIB_DLL: ${{ github.workspace }}\build\bin\enginetools_tag.dll
         run: go test -race ./internal/metadata ./internal/snapshot -v
 
       - name: Frontend unit tests
@@ -110,3 +121,80 @@ jobs:
           if grep -rnE 'MIDI2|midi2|Midi2\.|internal/midi' app.go internal frontend/src; then
             echo '::error::MIDI 2.0 references reappeared'; exit 1
           fi
+
+  windows-release:
+    name: Windows release artifact
+    runs-on: windows-latest
+    defaults:
+      run:
+        shell: pwsh
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-go@v6
+        with:
+          go-version: "1.26"
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install frontend dependencies
+        run: npm --prefix frontend ci
+
+      # Native runtime first: build/bin is the output directory wails build
+      # writes into, so never pass -clean after this point.
+      - name: Build pinned TagLib and native bridge
+        run: ./build/windows/build-taglib.ps1
+
+      - name: Build elevated helper
+        run: ./build/windows/build-helper.ps1
+
+      - name: Install NSIS
+        run: choco install nsis -y --no-progress
+
+      - name: Install Wails CLI
+        run: go install github.com/wailsapp/wails/v2/cmd/wails@v2.12.0
+
+      - name: Regenerate Wails bindings for the artifact
+        run: |
+          $wails = Join-Path (go env GOPATH) 'bin\wails.exe'
+          & $wails generate module
+          if ($LASTEXITCODE -ne 0) { throw "wails generate failed with $LASTEXITCODE" }
+
+      - name: Wails release build with installer
+        run: |
+          $wails = Join-Path (go env GOPATH) 'bin\wails.exe'
+          & $wails build -platform windows/amd64 -nsis -skipbindings
+          if ($LASTEXITCODE -ne 0) { throw "wails build failed with $LASTEXITCODE" }
+
+      - name: Verify packaged binaries
+        run: |
+          $required = @(
+            'build\bin\EngineTools.exe',
+            'build\bin\EngineTools.Helper.exe',
+            'build\bin\enginetools_tag.dll',
+            'build\bin\tag.dll',
+            'build\bin\EngineTools-amd64-installer.exe'
+          )
+          foreach ($path in $required) {
+            if (-not (Test-Path $path)) { throw "missing release artifact: $path" }
+          }
+          Get-ChildItem 'build\bin' | Select-Object Name, Length
+
+      - name: Upload Windows artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: EngineTools-windows-amd64
+          if-no-files-found: error
+          path: |
+            build/bin/EngineTools.exe
+            build/bin/EngineTools.Helper.exe
+            build/bin/enginetools_tag.dll
+            build/bin/tag.dll
+            build/bin/EngineTools-amd64-installer.exe
+            frontend/wailsjs/go/main/App.js
+            frontend/wailsjs/go/main/App.d.ts
+            frontend/wailsjs/go/models.ts

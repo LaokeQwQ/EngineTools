@@ -134,3 +134,25 @@ func TestValidatePictureSet(t *testing.T) {
 		t.Fatal("duplicate IDs accepted")
 	}
 }
+
+func TestSanitizeDocumentForUIBoundsPicturePayload(t *testing.T) {
+	doc := Document{Pictures: []Picture{{
+		ID: "front", Type: 3, MIME: "image/jpeg", Data: makeTestJPEG(64, 32), Bytes: 1234,
+	}}}
+	visible := SanitizeDocumentForUI(doc)
+	if len(visible.Pictures) != 1 {
+		t.Fatalf("pictures = %+v", visible.Pictures)
+	}
+	if len(visible.Pictures[0].Data) != 0 {
+		t.Fatal("full picture payload crossed the UI boundary")
+	}
+	if len(visible.Pictures[0].Thumbnail) == 0 || visible.Pictures[0].ThumbnailMIME != "image/jpeg" {
+		t.Fatalf("thumbnail missing: %+v", visible.Pictures[0])
+	}
+	if len(visible.Pictures[0].Thumbnail) > ThumbnailMaxBytes {
+		t.Fatalf("thumbnail exceeds bound: %d", len(visible.Pictures[0].Thumbnail))
+	}
+	if len(doc.Pictures[0].Data) == 0 {
+		t.Fatal("sanitizing mutated source document")
+	}
+}

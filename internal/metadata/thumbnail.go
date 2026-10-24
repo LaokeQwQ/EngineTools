@@ -20,13 +20,12 @@ func GenerateThumbnail(data []byte) ([]byte, error) {
 	}
 	bounds := img.Bounds()
 	srcW, srcH := bounds.Dx(), bounds.Dy()
+	if srcW <= 0 || srcH <= 0 {
+		return nil, E("thumbnail_decode_failed", nil)
+	}
 
 	if srcW <= ThumbnailMaxSide && srcH <= ThumbnailMaxSide {
-		var buf bytes.Buffer
-		if jerr := jpeg.Encode(&buf, img, &jpeg.Options{Quality: 85}); jerr != nil {
-			return nil, Ef("thumbnail_encode_failed", "%s", jerr.Error())
-		}
-		return buf.Bytes(), nil
+		return encodeBoundedJPEG(img, 85)
 	}
 
 	var newW, newH int
@@ -45,9 +44,18 @@ func GenerateThumbnail(data []byte) ([]byte, error) {
 			dst.Set(x, y, img.At(sx, sy))
 		}
 	}
-	var buf bytes.Buffer
-	if jerr := jpeg.Encode(&buf, dst, &jpeg.Options{Quality: 80}); jerr != nil {
-		return nil, Ef("thumbnail_encode_failed", "%s", jerr.Error())
+	return encodeBoundedJPEG(dst, 80)
+}
+
+func encodeBoundedJPEG(img image.Image, startQuality int) ([]byte, error) {
+	for quality := startQuality; quality >= 30; quality -= 10 {
+		var buf bytes.Buffer
+		if err := jpeg.Encode(&buf, img, &jpeg.Options{Quality: quality}); err != nil {
+			return nil, Ef("thumbnail_encode_failed", "%s", err.Error())
+		}
+		if buf.Len() <= ThumbnailMaxBytes {
+			return buf.Bytes(), nil
+		}
 	}
-	return buf.Bytes(), nil
+	return nil, Ef("thumbnail_too_large", "thumbnail exceeds %d KiB limit", ThumbnailMaxBytes>>10)
 }

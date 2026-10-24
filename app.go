@@ -41,6 +41,13 @@ type App struct {
 		mu          sync.Mutex
 		libraryPath string
 	}
+
+	// metadata is initialized lazily because the native TagLib bridge is an
+	// optional runtime artifact during development. Keeping the runtime behind
+	// a mutex also prevents concurrent Wails calls from creating multiple
+	// snapshot stores.
+	metadataMu sync.Mutex
+	metadata   *metadataRuntime
 }
 
 type StatusInfo struct {

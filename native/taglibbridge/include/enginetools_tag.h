@@ -56,7 +56,7 @@ int et_audio_payload_sha256(const wchar_t *path,
                             uint8_t out_hash[32],
                             et_buffer *error);
 
-void et_buffer_free(et_buffer value);
+void et_buffer_free(et_buffer *value);
 
 #ifdef __cplusplus
 }

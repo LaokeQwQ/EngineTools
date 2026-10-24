@@ -1,6 +1,6 @@
 <script setup>
-defineProps(['activeTab', 'backupNote', 'backups', 'dbBusy', 'dbDetected', 'dbPathDisplay', 'drives', 'editingTrack', 'formatBytes', 'formatDuration', 'formatTime', 'info', 'libraryStats', 'libraryStatsBusy', 'loading', 'missingBusy', 'missingScanned', 'missingSelected', 'missingTracks', 'msgs', 'path', 'playStats', 'playStatsBusy', 'playStatsTab', 'playlistLoading', 'playlistTracks', 'playlists', 'selectedBackup', 'selectedDrive', 'selectedPlaylist', 'status', 'toggleAllMissing', 'toggleMissingTrack'])
-defineEmits(['update:backupNote', 'update:selectedBackup'])
+defineProps(['activeTab', 'backupNote', 'backups', 'dbBusy', 'dbDetected', 'dbPathDisplay', 'drives', 'editingTrack', 'formatBytes', 'formatDuration', 'formatTime', 'handleBackup', 'handleClickDrive', 'handleEditTrackFromPlaylist', 'handleLibraryStats', 'handleOptimize', 'handlePlayStats', 'handleRemoveMissing', 'handleRepair', 'handleRestoreDB', 'handleScanMissing', 'handleSelectPlaylist', 'info', 'libraryStats', 'libraryStatsBusy', 'loading', 'missingBusy', 'missingScanned', 'missingSelected', 'missingTracks', 'msgs', 'openDBDir', 'path', 'playStats', 'playStatsBusy', 'playStatsTab', 'playlistLoading', 'playlistTracks', 'playlists', 'selectedBackup', 'selectedDrive', 'selectedPlaylist', 'status', 'toggleAllMissing', 'toggleMissingTrack'])
+defineEmits(['update:backupNote', 'update:selectedBackup', 'update:playStatsTab'])
 </script>
 <template>
     <div class="content" v-show="activeTab === 'database'">
@@ -209,9 +209,9 @@ defineEmits(['update:backupNote', 'update:selectedBackup'])
             </button>
             <template v-if="playStats">
                 <div class="playlist-chips" style="margin-top:8px;">
-                    <span class="playlist-chip no-drag" :class="{ active: playStatsTab === 'most' }" @click="playStatsTab = 'most'">{{ msgs.playHistoryMostPlayed || '已播放' }}</span>
-                    <span class="playlist-chip no-drag" :class="{ active: playStatsTab === 'recent' }" @click="playStatsTab = 'recent'">{{ msgs.playHistoryRecent || '最近播放' }}</span>
-                    <span class="playlist-chip no-drag" :class="{ active: playStatsTab === 'never' }" @click="playStatsTab = 'never'">{{ msgs.playHistoryNeverPlayed || '从未播放' }}</span>
+                    <span class="playlist-chip no-drag" :class="{ active: playStatsTab === 'most' }" @click="$emit('update:playStatsTab', 'most')">{{ msgs.playHistoryMostPlayed || '已播放' }}</span>
+                    <span class="playlist-chip no-drag" :class="{ active: playStatsTab === 'recent' }" @click="$emit('update:playStatsTab', 'recent')">{{ msgs.playHistoryRecent || '最近播放' }}</span>
+                    <span class="playlist-chip no-drag" :class="{ active: playStatsTab === 'never' }" @click="$emit('update:playStatsTab', 'never')">{{ msgs.playHistoryNeverPlayed || '从未播放' }}</span>
                 </div>
 
                 <!-- Played tracks (sorted by recency — Engine DJ has no per-track play count) -->

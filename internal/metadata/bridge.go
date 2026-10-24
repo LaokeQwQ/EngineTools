@@ -18,8 +18,10 @@ type WriteOptions struct {
 
 // WriteResult is the outcome of one Apply through the bridge.
 type WriteResult struct {
-	OK      bool `json:"ok"`
-	Changed int  `json:"changed"`
+	OK          bool   `json:"ok"`
+	Changed     int    `json:"changed"`
+	SnapshotID  string `json:"snapshotId,omitempty"`
+	OperationID string `json:"operationId,omitempty"`
 }
 
 // capabilitiesForDocument resolves the capability table for whatever

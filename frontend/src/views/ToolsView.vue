@@ -1,6 +1,6 @@
 <script setup>
-defineProps(['activeTab', 'apBusy', 'apDir', 'apFile', 'apIsReady', 'apPlaylistId', 'apScope', 'cacheBusy', 'cacheSizeText', 'coverCompressBusy', 'coverCompressPlaylistId', 'coverCompressResult', 'editingTrack', 'experimentalEnabled', 'files', 'id3Album', 'id3Artist', 'id3Busy', 'id3Cover', 'id3DragOver', 'id3File', 'id3FileName', 'id3Genre', 'id3Title', 'id3Year', 'info', 'loading', 'logBusy', 'logStats', 'msgs', 'msiBusy', 'msiOrphans', 'msiScanned', 'msiSelected', 'playlists', 'status', 'syncBusy', 'syncPreviewLoaded', 'syncPreviewTracks', 'syncResult', 'toggleMSI', 'usbBlockers', 'usbBusy', 'usbDrive'])
-defineEmits(['update:id3Title', 'update:id3Artist', 'update:id3Album', 'update:id3Year', 'update:id3Genre', 'update:apPlaylistId', 'update:coverCompressPlaylistId'])
+defineProps(['activeTab', 'addLog', 'apBusy', 'apDir', 'apFile', 'apIsReady', 'apPlaylistId', 'apScope', 'cacheBusy', 'cacheSizeText', 'coverCompressBusy', 'coverCompressPlaylistId', 'coverCompressResult', 'editingTrack', 'experimentalEnabled', 'files', 'handleAnalyzeLogs', 'handleAntiPiracyRestore', 'handleAntiPiracyV1', 'handleAntiPiracyV2', 'handleClearCache', 'handleCleanMSI', 'handleCompressCovers', 'handleID3ClearAll', 'handleID3ClearCover', 'handleID3FileDrop', 'handleID3Pick', 'handleID3Save', 'handleID3SetCover', 'handleLoadSyncPreview', 'handleOpenLogsDir', 'handlePickApDir', 'handlePickApFile', 'handleScanMSI', 'handleSyncBPMKey', 'handleUSBScan', 'handleUSBUnlock', 'id3Album', 'id3Artist', 'id3Busy', 'id3Cover', 'id3DragOver', 'id3File', 'id3FileName', 'id3Genre', 'id3Title', 'id3Year', 'info', 'loading', 'logBusy', 'logStats', 'msgs', 'msiBusy', 'msiOrphans', 'msiScanned', 'msiSelected', 'playlists', 'status', 'syncBusy', 'syncPreviewLoaded', 'syncPreviewTracks', 'toggleMSI', 'usbBlockers', 'usbBusy', 'usbDrive'])
+defineEmits(['update:id3Title', 'update:id3Artist', 'update:id3Album', 'update:id3Year', 'update:id3Genre', 'update:apPlaylistId', 'update:coverCompressPlaylistId', 'update:apScope', 'update:editingTrack', 'update:id3File', 'update:id3DragOver'])
 </script>
 <template>
     <div class="content" v-show="activeTab === 'tools'">
@@ -54,8 +54,8 @@ defineEmits(['update:id3Title', 'update:id3Artist', 'update:id3Album', 'update:i
             <div class="id3-drop-zone no-drag"
                 :class="{ 'drop-active': id3DragOver }"
                 @click="handleID3Pick"
-                @dragover.prevent="id3DragOver = true"
-                @dragleave="id3DragOver = false"
+                @dragover.prevent="$emit('update:id3DragOver', true)"
+                @dragleave="$emit('update:id3DragOver', false)"
                 @drop.prevent="handleID3FileDrop">
                 <span v-if="id3File" class="id3-drop-filename">{{ id3FileName }}</span>
                 <span v-else class="id3-drop-hint">{{ msgs.id3DropZoneHint || '拖入音频文件，或点击选择' }}</span>
@@ -64,7 +64,7 @@ defineEmits(['update:id3Title', 'update:id3Artist', 'update:id3Album', 'update:i
             <!-- Hint if loaded from playlist -->
             <div v-if="editingTrack" class="library-stats" style="margin-top:4px;font-size:11px;">
                 {{ editingTrack.artist ? editingTrack.artist + ' — ' : '' }}{{ editingTrack.title || editingTrack.filename }}
-                <span style="margin-left:8px;cursor:pointer;color:var(--text-secondary);" @click="editingTrack=null;id3File=''" class="no-drag">✕</span>
+                <span style="margin-left:8px;cursor:pointer;color:var(--text-secondary);" @click="$emit('update:editingTrack', null);$emit('update:id3File', '')" class="no-drag">✕</span>
             </div>
         </div>
 
@@ -102,9 +102,9 @@ defineEmits(['update:id3Title', 'update:id3Artist', 'update:id3Album', 'update:i
 
                 <!-- Scope selector -->
                 <div class="playlist-chips" style="margin-bottom:8px;">
-                    <span class="playlist-chip no-drag" :class="{ active: apScope === 'file' }" @click="apScope = 'file'">单个文件</span>
-                    <span class="playlist-chip no-drag" :class="{ active: apScope === 'folder' }" @click="apScope = 'folder'">文件夹</span>
-                    <span class="playlist-chip no-drag" :class="{ active: apScope === 'playlist' }" @click="apScope = 'playlist'">Playlist</span>
+                    <span class="playlist-chip no-drag" :class="{ active: apScope === 'file' }" @click="$emit('update:apScope', 'file')">单个文件</span>
+                    <span class="playlist-chip no-drag" :class="{ active: apScope === 'folder' }" @click="$emit('update:apScope', 'folder')">文件夹</span>
+                    <span class="playlist-chip no-drag" :class="{ active: apScope === 'playlist' }" @click="$emit('update:apScope', 'playlist')">Playlist</span>
                 </div>
 
                 <!-- File picker -->
@@ -129,13 +129,13 @@ defineEmits(['update:id3Title', 'update:id3Artist', 'update:id3Album', 'update:i
                 <!-- Action buttons -->
                 <template v-if="apIsReady()">
                     <div class="drive-select-row" style="margin-top: 8px;">
-                        <button class="btn btn-restore-all no-drag" style="flex:1" @click="handleAntiPiracyV1" :disabled="apBusy">
+                        <button class="btn btn-restore-all no-drag" style="flex:1" @click="handleAntiPiracyV1" :disabled="apBusy || apScope === 'file'">
                             <span v-if="apBusy" class="loading-spinner"></span>
-                            v1 清除标签
+                            v1 清除文本标签
                         </button>
-                        <button class="btn btn-restore-all no-drag" style="flex:1" @click="handleAntiPiracyV2" :disabled="apBusy">
+                        <button class="btn btn-restore-all no-drag" style="flex:1" @click="handleAntiPiracyV2" :disabled="apBusy || apScope === 'file'">
                             <span v-if="apBusy" class="loading-spinner"></span>
-                            v2 打乱标签
+                            v2 打乱文本标签
                         </button>
                     </div>
                     <button class="btn btn-secondary no-drag" style="margin-top: 6px;width:100%;" @click="handleAntiPiracyRestore" :disabled="apBusy">

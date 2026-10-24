@@ -27,6 +27,31 @@ func TestFieldPatchStates(t *testing.T) {
 	if err := (FieldPatch[string]{Mode: PatchMode("weird")}).Validate(); CodeOf(err) != "patch_mode_invalid" {
 		t.Fatal(err)
 	}
+	if err := (FieldPatch[string]{Value: "implicit value"}).Validate(); CodeOf(err) != "unchanged_has_value" {
+		t.Fatal("omitted mode accepted a value")
+	}
+}
+
+func TestPatchRejectsValuesOnImplicitUnchangedFields(t *testing.T) {
+	cases := []struct {
+		name  string
+		patch Patch
+	}{
+		{"isrc", Patch{ISRC: FieldPatch[string]{Value: "USAT29900309"}}},
+		{"bpm", Patch{BPM: FieldPatch[float64]{Value: 128}}},
+		{"rating", Patch{Rating: FieldPatch[int]{Value: 5}}},
+		{"pictures", Patch{Pictures: FieldPatch[[]Picture]{Value: []Picture{{ID: "x"}}}}},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			if CodeOf(tc.patch.Validate()) != "unchanged_has_value" {
+				t.Fatalf("patch accepted an implicit unchanged value: %v", tc.patch.Validate())
+			}
+		})
+	}
+	if err := (Patch{Rating: FieldPatch[int]{Mode: Set, Value: 0}}).Validate(); err != nil {
+		t.Fatalf("rating zero Set should remain valid: %v", err)
+	}
 }
 
 func TestTrackDiscRanges(t *testing.T) {
@@ -45,6 +70,14 @@ func TestTrackDiscRanges(t *testing.T) {
 	discOver := Patch{Disc: FieldPatch[NumberPair]{Mode: Set, Value: NumberPair{Value: 2, Total: 1}}}
 	if CodeOf(discOver.Validate()) != "disc_out_of_range" {
 		t.Fatal(discOver.Validate())
+	}
+	negTotal := Patch{Track: FieldPatch[NumberPair]{Mode: Set, Value: NumberPair{Value: 3, Total: -1}}}
+	if CodeOf(negTotal.Validate()) != "track_invalid" {
+		t.Fatalf("expected track_invalid for negative total, got %v", negTotal.Validate())
+	}
+	negDiscTotal := Patch{Disc: FieldPatch[NumberPair]{Mode: Set, Value: NumberPair{Value: 1, Total: -5}}}
+	if CodeOf(negDiscTotal.Validate()) != "disc_invalid" {
+		t.Fatalf("expected disc_invalid for negative total, got %v", negDiscTotal.Validate())
 	}
 }
 
@@ -101,6 +134,10 @@ func TestPictureValidation(t *testing.T) {
 	wrongType := []Picture{{ID: "x", Type: 99, MIME: "image/jpeg"}}
 	if CodeOf(ValidatePictures(wrongType)) != "picture_type_invalid" {
 		t.Fatal(wrongType)
+	}
+	wrongType21 := []Picture{{ID: "x", Type: 21, MIME: "image/jpeg"}}
+	if CodeOf(ValidatePictures(wrongType21)) != "picture_type_invalid" {
+		t.Fatalf("expected picture_type_invalid for type 21, got %v", ValidatePictures(wrongType21))
 	}
 	wrongMIME := []Picture{{ID: "x", Type: 3, MIME: "image/webp"}}
 	if CodeOf(ValidatePictures(wrongMIME)) != "picture_mime_invalid" {

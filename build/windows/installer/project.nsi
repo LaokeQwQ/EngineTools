@@ -34,6 +34,26 @@ Unicode true
 ####
 !include "wails_tools.nsh"
 
+; The metadata bridge and its TagLib runtime are release prerequisites.  Fail
+; during installer compilation instead of producing an executable that starts
+; successfully but cannot edit metadata because a dependent DLL is missing.
+!ifexist "..\..\bin\enginetools_tag.dll"
+!else
+    !error "enginetools_tag.dll is missing; run build/windows/build-taglib.ps1 first"
+!endif
+!ifexist "..\..\bin\tag.dll"
+!else
+    !error "tag.dll is missing; run build/windows/build-taglib.ps1 first"
+!endif
+!ifexist "..\..\bin\EngineTools.Helper.exe"
+!else
+    !error "EngineTools.Helper.exe is missing; run build/windows/build-helper.ps1 first"
+!endif
+!ifexist "..\..\..\THIRD_PARTY_NOTICES.md"
+!else
+    !error "THIRD_PARTY_NOTICES.md is missing"
+!endif
+
 # The version information for this two must consist of 4 parts
 VIProductVersion "${INFO_PRODUCTVERSION}.0"
 VIFileVersion    "${INFO_PRODUCTVERSION}.0"
@@ -89,7 +109,11 @@ Section
 
     !insertmacro wails.files
     ; One-shot elevated helper ships next to the main executable.
-    File /oname=EngineTools.Helper.exe "..\..\build\bin\EngineTools.Helper.exe"
+    File /oname=EngineTools.Helper.exe "..\..\bin\EngineTools.Helper.exe"
+    ; Native metadata runtime (TagLib is a transitive DLL dependency).
+    File /oname=enginetools_tag.dll "..\..\bin\enginetools_tag.dll"
+    File /oname=tag.dll "..\..\bin\tag.dll"
+    File /oname=THIRD_PARTY_NOTICES.md "..\..\..\THIRD_PARTY_NOTICES.md"
 
     CreateShortcut "$SMPROGRAMS\${INFO_PRODUCTNAME}.lnk" "$INSTDIR\${PRODUCT_EXECUTABLE}"
     CreateShortCut "$DESKTOP\${INFO_PRODUCTNAME}.lnk" "$INSTDIR\${PRODUCT_EXECUTABLE}"
@@ -105,13 +129,16 @@ Section "uninstall"
 
     RMDir /r "$AppData\${PRODUCT_EXECUTABLE}" # Remove the WebView2 DataPath
 
+    Delete "$INSTDIR\enginetools_tag.dll"
+    Delete "$INSTDIR\tag.dll"
+    Delete "$INSTDIR\THIRD_PARTY_NOTICES.md"
+    Delete "$INSTDIR\EngineTools.Helper.exe"
     RMDir /r $INSTDIR
 
     Delete "$SMPROGRAMS\${INFO_PRODUCTNAME}.lnk"
     Delete "$DESKTOP\${INFO_PRODUCTNAME}.lnk"
 
     !insertmacro wails.unassociateFiles
-    Delete "$INSTDIR\EngineTools.Helper.exe"
     !insertmacro wails.unassociateCustomProtocols
 
     !insertmacro wails.deleteUninstaller

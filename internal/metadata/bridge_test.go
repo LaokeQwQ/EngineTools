@@ -61,7 +61,7 @@ func TestNativeBridgeSmoke(t *testing.T) {
 	}
 	dll := os.Getenv("ET_TAGLIB_DLL")
 	if dll == "" {
-		candidate := filepath.Join("..", "build", "bin", "enginetools_tag.dll")
+		candidate := filepath.Join("..", "..", "build", "bin", "enginetools_tag.dll")
 		if _, err := os.Stat(candidate); err != nil {
 			t.Skip("enginetools_tag.dll not built; skipping native smoke test")
 		}

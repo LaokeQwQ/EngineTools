@@ -1,5 +1,5 @@
 <script setup>
-defineProps(['activeTab', 'adminStatusText', 'engineVersion', 'fixing', 'info', 'installPath', 'isAdmin', 'loading', 'manifestConfigured', 'manifestStatusText', 'msgs', 'path', 'pathDisplay', 'status', 'stemsDetected', 'stemsStatusText', 'utf8Enabled', 'utf8StatusText', 'versionDisplay', 'windowsVersion'])
+defineProps(['activeTab', 'adminStatusText', 'engineVersion', 'fixing', 'handleFix', 'handleOpenRegionSettings', 'handleRestore', 'info', 'installPath', 'isAdmin', 'loading', 'manifestConfigured', 'manifestStatusText', 'msgs', 'openInstallDir', 'openStemsDir', 'path', 'pathDisplay', 'status', 'stemsDetected', 'stemsStatusText', 'utf8Enabled', 'utf8StatusText', 'versionDisplay', 'windowsVersion'])
 </script>
 <template>
     <div class="content" v-show="activeTab === 'status'">

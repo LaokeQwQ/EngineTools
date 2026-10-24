@@ -89,12 +89,9 @@ func TestGoldenRead(t *testing.T) {
 	if !ffmpegAvailable() {
 		t.Skip("ffmpeg not on PATH")
 	}
-	if runtime.GOOS != "windows" {
-		t.Skip("golden fixtures execute on Windows with the bridge DLL")
-	}
 	dll := os.Getenv("ET_TAGLIB_DLL")
 	if dll == "" {
-		candidate := filepath.Join("..", "build", "bin", "enginetools_tag.dll")
+		candidate := filepath.Join("..", "..", "build", "bin", "enginetools_tag.dll")
 		if _, err := os.Stat(candidate); err != nil {
 			t.Skip("enginetools_tag.dll not built")
 		}

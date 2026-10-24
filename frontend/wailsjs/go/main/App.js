@@ -150,8 +150,57 @@ export function LogExperimentalEnabled() {
   return window['go']['main']['App']['LogExperimentalEnabled']();
 }
 
+export function MetadataApply(arg1, arg2) {
+  return window['go']['main']['App']['MetadataApply'](arg1, arg2);
+}
 
+export function MetadataBatchApply(arg1, arg2) {
+  return window['go']['main']['App']['MetadataBatchApply'](arg1, arg2);
+}
 
+export function MetadataBatchPreview(arg1, arg2) {
+  return window['go']['main']['App']['MetadataBatchPreview'](arg1, arg2);
+}
+
+export function MetadataBatchResult(arg1) {
+  return window['go']['main']['App']['MetadataBatchResult'](arg1);
+}
+
+export function MetadataBatchStart(arg1, arg2) {
+  return window['go']['main']['App']['MetadataBatchStart'](arg1, arg2);
+}
+
+export function MetadataCancel(arg1) {
+  return window['go']['main']['App']['MetadataCancel'](arg1);
+}
+
+export function MetadataCapabilities(arg1) {
+  return window['go']['main']['App']['MetadataCapabilities'](arg1);
+}
+
+export function MetadataPickDirectory() {
+  return window['go']['main']['App']['MetadataPickDirectory']();
+}
+
+export function MetadataPickFile() {
+  return window['go']['main']['App']['MetadataPickFile']();
+}
+
+export function MetadataPictures(arg1) {
+  return window['go']['main']['App']['MetadataPictures'](arg1);
+}
+
+export function MetadataRead(arg1) {
+  return window['go']['main']['App']['MetadataRead'](arg1);
+}
+
+export function MetadataScanDirectory(arg1) {
+  return window['go']['main']['App']['MetadataScanDirectory'](arg1);
+}
+
+export function MetadataUndo(arg1, arg2) {
+  return window['go']['main']['App']['MetadataUndo'](arg1, arg2);
+}
 
 export function OpenDBDir() {
   return window['go']['main']['App']['OpenDBDir']();

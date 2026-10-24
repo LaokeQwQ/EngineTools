@@ -211,6 +211,69 @@ type Messages struct {
 	SettingsAboutDesc           string `json:"settingsAboutDesc"`
 	SettingsContributors        string `json:"settingsContributors"`
 	// ID3 editor
+	MetadataEditorTitle      string `json:"metadataEditorTitle"`
+	MetadataChooseFile       string `json:"metadataChooseFile"`
+	MetadataDropHint         string `json:"metadataDropHint"`
+	MetadataDropSubhint      string `json:"metadataDropSubhint"`
+	MetadataFormatLabel      string `json:"metadataFormatLabel"`
+	MetadataTagVersionLabel  string `json:"metadataTagVersionLabel"`
+	MetadataWarnings         string `json:"metadataWarnings"`
+	MetadataAddPicture       string `json:"metadataAddPicture"`
+	MetadataPictureCount     string `json:"metadataPictureCount"`
+	MetadataReplacePicture   string `json:"metadataReplacePicture"`
+	MetadataRemovePicture    string `json:"metadataRemovePicture"`
+	MetadataPicturePayloadMissing string `json:"metadataPicturePayloadMissing"`
+	MetadataSave             string `json:"metadataSave"`
+	MetadataReset            string `json:"metadataReset"`
+	MetadataUndo             string `json:"metadataUndo"`
+	MetadataUnchanged        string `json:"metadataUnchanged"`
+	MetadataSet              string `json:"metadataSet"`
+	MetadataClear            string `json:"metadataClear"`
+	MetadataLoading          string `json:"metadataLoading"`
+	MetadataSaving           string `json:"metadataSaving"`
+	MetadataUndoing          string `json:"metadataUndoing"`
+	MetadataUnsaved          string `json:"metadataUnsaved"`
+	MetadataReady            string `json:"metadataReady"`
+	MetadataUnsupported      string `json:"metadataUnsupported"`
+	MetadataTitleLabel       string `json:"metadataTitleLabel"`
+	MetadataArtistsLabel     string `json:"metadataArtistsLabel"`
+	MetadataAlbumArtistsLabel string `json:"metadataAlbumArtistsLabel"`
+	MetadataAlbumLabel       string `json:"metadataAlbumLabel"`
+	MetadataTrackLabel       string `json:"metadataTrackLabel"`
+	MetadataDiscLabel        string `json:"metadataDiscLabel"`
+	MetadataDateLabel        string `json:"metadataDateLabel"`
+	MetadataGenresLabel      string `json:"metadataGenresLabel"`
+	MetadataComposersLabel   string `json:"metadataComposersLabel"`
+	MetadataCommentLabel     string `json:"metadataCommentLabel"`
+	MetadataBpmLabel         string `json:"metadataBpmLabel"`
+	MetadataKeyLabel         string `json:"metadataKeyLabel"`
+	MetadataRatingLabel      string `json:"metadataRatingLabel"`
+	MetadataIsrcLabel        string `json:"metadataIsrcLabel"`
+	MetadataLyricsLabel      string `json:"metadataLyricsLabel"`
+	MetadataPicturesLabel    string `json:"metadataPicturesLabel"`
+	MetadataSingleMode           string `json:"metadataSingleMode"`
+	MetadataBatchMode            string `json:"metadataBatchMode"`
+	MetadataBatchTitle           string `json:"metadataBatchTitle"`
+	MetadataBatchFiles           string `json:"metadataBatchFiles"`
+	MetadataBatchNoFiles         string `json:"metadataBatchNoFiles"`
+	MetadataBatchChooseFolder    string `json:"metadataBatchChooseFolder"`
+	MetadataBatchClearFiles      string `json:"metadataBatchClearFiles"`
+	MetadataBatchPreview         string `json:"metadataBatchPreview"`
+	MetadataBatchPreviewTitle    string `json:"metadataBatchPreviewTitle"`
+	MetadataBatchStart           string `json:"metadataBatchStart"`
+	MetadataBatchRunning         string `json:"metadataBatchRunning"`
+	MetadataBatchEligible        string `json:"metadataBatchEligible"`
+	MetadataBatchResults         string `json:"metadataBatchResults"`
+	MetadataBatchUpdated         string `json:"metadataBatchUpdated"`
+	MetadataBatchSkipped         string `json:"metadataBatchSkipped"`
+	MetadataBatchFailed          string `json:"metadataBatchFailed"`
+	MetadataBatchBlocked         string `json:"metadataBatchBlocked"`
+	MetadataBatchCancelled       string `json:"metadataBatchCancelled"`
+	MetadataBatchStatusUpdated   string `json:"metadataBatchStatusUpdated"`
+	MetadataBatchStatusSkipped   string `json:"metadataBatchStatusSkipped"`
+	MetadataBatchStatusFailed    string `json:"metadataBatchStatusFailed"`
+	MetadataBatchStatusBlocked   string `json:"metadataBatchStatusBlocked"`
+	MetadataCancel               string `json:"metadataCancel"`
 	ID3DropZoneHint    string `json:"id3DropZoneHint"`
 	NoCoverLabel       string `json:"noCoverLabel"`
 	ChangeCoverLabel   string `json:"changeCoverLabel"`
@@ -415,6 +478,69 @@ var translations = map[Lang]Messages{
 		ID3ArtistPlaceholder: "艺术家",
 		ID3AlbumPlaceholder:  "专辑",
 		ID3YearPlaceholder:   "年份",
+		MetadataEditorTitle: "元数据编辑器",
+		MetadataChooseFile: "选择文件",
+		MetadataDropHint: "将音频文件拖入此处",
+		MetadataDropSubhint: "支持 MP3、FLAC、WAV 和 AIFF",
+		MetadataFormatLabel: "格式",
+		MetadataTagVersionLabel: "标签版本",
+		MetadataWarnings: "条警告已保留",
+		MetadataAddPicture: "添加图片",
+		MetadataPictureCount: "张嵌入图片",
+		MetadataReplacePicture: "替换",
+		MetadataRemovePicture: "移除",
+		MetadataPicturePayloadMissing: "图片数据不可用",
+		MetadataSave: "保存更改",
+		MetadataReset: "重置",
+		MetadataUndo: "撤销上次保存",
+		MetadataUnchanged: "保持不变",
+		MetadataSet: "设置",
+		MetadataClear: "清除",
+		MetadataLoading: "正在读取元数据...",
+		MetadataSaving: "正在保存...",
+		MetadataUndoing: "正在撤销...",
+		MetadataUnsaved: "有未保存的更改",
+		MetadataReady: "就绪",
+		MetadataUnsupported: "当前格式不支持",
+		MetadataTitleLabel: "标题",
+		MetadataArtistsLabel: "艺术家",
+		MetadataAlbumArtistsLabel: "专辑艺术家",
+		MetadataAlbumLabel: "专辑",
+		MetadataTrackLabel: "音轨",
+		MetadataDiscLabel: "碟号",
+		MetadataDateLabel: "日期",
+		MetadataGenresLabel: "流派",
+		MetadataComposersLabel: "作曲家",
+		MetadataCommentLabel: "备注",
+		MetadataBpmLabel: "BPM",
+		MetadataKeyLabel: "调性",
+		MetadataRatingLabel: "评分",
+		MetadataIsrcLabel: "ISRC",
+		MetadataLyricsLabel: "歌词",
+		MetadataPicturesLabel: "图片",
+		MetadataSingleMode: "单文件",
+		MetadataBatchMode: "批量",
+		MetadataBatchTitle: "批量元数据编辑器",
+		MetadataBatchFiles: "个文件",
+		MetadataBatchNoFiles: "选择文件夹以添加文件",
+		MetadataBatchChooseFolder: "选择文件夹",
+		MetadataBatchClearFiles: "清空文件",
+		MetadataBatchPreview: "预览",
+		MetadataBatchPreviewTitle: "预览",
+		MetadataBatchStart: "开始批量处理",
+		MetadataBatchRunning: "处理中...",
+		MetadataBatchEligible: "可处理",
+		MetadataBatchResults: "批量结果",
+		MetadataBatchUpdated: "已更新",
+		MetadataBatchSkipped: "已跳过",
+		MetadataBatchFailed: "失败",
+		MetadataBatchBlocked: "已阻止",
+		MetadataBatchCancelled: "已取消",
+		MetadataBatchStatusUpdated: "已更新",
+		MetadataBatchStatusSkipped: "已跳过",
+		MetadataBatchStatusFailed: "失败",
+		MetadataBatchStatusBlocked: "已阻止",
+		MetadataCancel: "取消",
 		ID3GenrePlaceholder:  "流派",
 	},
 	JA: {
@@ -997,6 +1123,69 @@ var translations = map[Lang]Messages{
 		ID3ArtistPlaceholder: "Artist",
 		ID3AlbumPlaceholder:  "Album",
 		ID3YearPlaceholder:   "Year",
+		MetadataEditorTitle: "Metadata editor",
+		MetadataChooseFile: "Choose file",
+		MetadataDropHint: "Drop an audio file here",
+		MetadataDropSubhint: "MP3, FLAC, WAV and AIFF are supported",
+		MetadataFormatLabel: "Format",
+		MetadataTagVersionLabel: "Tag version",
+		MetadataWarnings: "warnings preserved",
+		MetadataAddPicture: "Add picture",
+		MetadataPictureCount: "embedded",
+		MetadataReplacePicture: "Replace",
+		MetadataRemovePicture: "Remove",
+		MetadataPicturePayloadMissing: "Image payload unavailable",
+		MetadataSave: "Save changes",
+		MetadataReset: "Reset",
+		MetadataUndo: "Undo last save",
+		MetadataUnchanged: "Unchanged",
+		MetadataSet: "Set",
+		MetadataClear: "Clear",
+		MetadataLoading: "Reading metadata...",
+		MetadataSaving: "Saving...",
+		MetadataUndoing: "Undoing...",
+		MetadataUnsaved: "Unsaved changes",
+		MetadataReady: "Ready",
+		MetadataUnsupported: "Not supported by this format",
+		MetadataTitleLabel: "Title",
+		MetadataArtistsLabel: "Artist",
+		MetadataAlbumArtistsLabel: "Album artist",
+		MetadataAlbumLabel: "Album",
+		MetadataTrackLabel: "Track",
+		MetadataDiscLabel: "Disc",
+		MetadataDateLabel: "Date",
+		MetadataGenresLabel: "Genre",
+		MetadataComposersLabel: "Composer",
+		MetadataCommentLabel: "Comment",
+		MetadataBpmLabel: "BPM",
+		MetadataKeyLabel: "Key",
+		MetadataRatingLabel: "Rating",
+		MetadataIsrcLabel: "ISRC",
+		MetadataLyricsLabel: "Lyrics",
+		MetadataPicturesLabel: "Pictures",
+		MetadataSingleMode: "Single file",
+		MetadataBatchMode: "Batch",
+		MetadataBatchTitle: "Batch metadata editor",
+		MetadataBatchFiles: "files",
+		MetadataBatchNoFiles: "Choose a folder to add files",
+		MetadataBatchChooseFolder: "Choose folder",
+		MetadataBatchClearFiles: "Clear files",
+		MetadataBatchPreview: "Preview",
+		MetadataBatchPreviewTitle: "Preview",
+		MetadataBatchStart: "Start batch",
+		MetadataBatchRunning: "Running...",
+		MetadataBatchEligible: "eligible",
+		MetadataBatchResults: "Batch results",
+		MetadataBatchUpdated: "Updated",
+		MetadataBatchSkipped: "Skipped",
+		MetadataBatchFailed: "Failed",
+		MetadataBatchBlocked: "Blocked",
+		MetadataBatchCancelled: "Cancelled",
+		MetadataBatchStatusUpdated: "updated",
+		MetadataBatchStatusSkipped: "skipped",
+		MetadataBatchStatusFailed: "failed",
+		MetadataBatchStatusBlocked: "blocked",
+		MetadataCancel: "Cancel",
 		ID3GenrePlaceholder:  "Genre",
 	},
 }

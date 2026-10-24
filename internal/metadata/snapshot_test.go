@@ -67,3 +67,28 @@ func s_min(a, b int) int {
 	}
 	return b
 }
+
+func TestCopyFileSyncPreservesPermissions(t *testing.T) {
+	if os.PathSeparator == '\\' {
+		t.Skip("POSIX permission bits are not meaningful on Windows")
+	}
+	dir := t.TempDir()
+	src := filepath.Join(dir, "private.flac")
+	dst := filepath.Join(dir, "copy.flac")
+	if err := os.WriteFile(src, []byte("AUDIO"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Chmod(src, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := copyFileSync(src, dst); err != nil {
+		t.Fatal(err)
+	}
+	info, err := os.Stat(dst)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := info.Mode().Perm(); got != 0o600 {
+		t.Fatalf("copied mode = %o, want 600", got)
+	}
+}
