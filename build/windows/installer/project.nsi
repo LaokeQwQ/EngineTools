@@ -37,19 +37,19 @@ Unicode true
 ; The metadata bridge and its TagLib runtime are release prerequisites.  Fail
 ; during installer compilation instead of producing an executable that starts
 ; successfully but cannot edit metadata because a dependent DLL is missing.
-!ifexist "..\..\bin\enginetools_tag.dll"
+!if /FileExists "..\..\bin\enginetools_tag.dll"
 !else
     !error "enginetools_tag.dll is missing; run build/windows/build-taglib.ps1 first"
 !endif
-!ifexist "..\..\bin\tag.dll"
+!if /FileExists "..\..\bin\tag.dll"
 !else
     !error "tag.dll is missing; run build/windows/build-taglib.ps1 first"
 !endif
-!ifexist "..\..\bin\EngineTools.Helper.exe"
+!if /FileExists "..\..\bin\EngineTools.Helper.exe"
 !else
     !error "EngineTools.Helper.exe is missing; run build/windows/build-helper.ps1 first"
 !endif
-!ifexist "..\..\..\THIRD_PARTY_NOTICES.md"
+!if /FileExists "..\..\..\THIRD_PARTY_NOTICES.md"
 !else
     !error "THIRD_PARTY_NOTICES.md is missing"
 !endif
