@@ -7,24 +7,44 @@ $ErrorActionPreference = 'Stop'
 
 $RepoRoot   = (Resolve-Path (Join-Path $PSScriptRoot '..' '..')).Path
 $Pin        = Get-Content (Join-Path $RepoRoot 'build' 'taglib' 'taglib-pin.json') -Raw | ConvertFrom-Json
+$UtfPin     = Get-Content (Join-Path $RepoRoot 'build' 'taglib' 'utfcpp-pin.json') -Raw | ConvertFrom-Json
 $OutDir     = Join-Path $RepoRoot 'build' 'taglib'
 $Tarball    = Join-Path $OutDir ("taglib-" + $Pin.version + ".tar.gz")
 $SrcDir     = Join-Path $OutDir ("taglib-" + $Pin.version)
+$UtfTarball = Join-Path $OutDir ("utfcpp-" + $UtfPin.version + ".tar.gz")
+$UtfSrcDir  = Join-Path $OutDir ("utfcpp-" + $UtfPin.version)
 $InstallDir = Join-Path $OutDir 'install'
 $TagBuild   = Join-Path $OutDir 'taglib-build'
 $BrBuild    = Join-Path $OutDir 'bridge-build'
 
 New-Item -ItemType Directory -Force -Path $OutDir | Out-Null
 
-if (-not (Test-Path $Tarball)) {
-    Invoke-WebRequest -Uri $Pin.url -OutFile $Tarball
+function Get-PinnedArchive([string]$Url, [string]$Destination, [string]$Sha256, [string]$Label) {
+    if (-not (Test-Path $Destination)) {
+        Invoke-WebRequest -Uri $Url -OutFile $Destination
+    }
+    $hash = (Get-FileHash -LiteralPath $Destination -Algorithm SHA256).Hash
+    if ($hash -ne $Sha256) { throw "$Label archive checksum mismatch" }
 }
-$hash = (Get-FileHash -LiteralPath $Tarball -Algorithm SHA256).Hash
-if ($hash -ne $Pin.sha256) { throw "TagLib archive checksum mismatch" }
+
+Get-PinnedArchive $Pin.url $Tarball $Pin.sha256 'TagLib'
+Get-PinnedArchive $UtfPin.url $UtfTarball $UtfPin.sha256 'utfcpp'
 
 if (-not (Test-Path $SrcDir)) {
     tar -xzf $Tarball -C $OutDir
     if ($LASTEXITCODE -ne 0) { throw 'TagLib archive extraction failed' }
+}
+if (-not (Test-Path $UtfSrcDir)) {
+    tar -xzf $UtfTarball -C $OutDir
+    if ($LASTEXITCODE -ne 0) { throw 'utfcpp archive extraction failed' }
+}
+
+# TagLib's CMake looks for a bundled 3rdparty/utfcpp submodule. The release
+# tarball omits it, so wire the pinned copy in before configuring.
+$UtfVendor = Join-Path $SrcDir '3rdparty' 'utfcpp'
+if (-not (Test-Path $UtfVendor)) {
+    New-Item -ItemType Directory -Force -Path (Split-Path $UtfVendor) | Out-Null
+    Copy-Item -LiteralPath $UtfSrcDir -Destination $UtfVendor -Recurse
 }
 
 # The bridge must always consume the pinned install tree.  A package from a
@@ -34,7 +54,14 @@ $tagLibConfig = Join-Path $InstallDir 'lib\cmake\taglib\taglib-config.cmake'
 $tagLibDll = Join-Path $InstallDir 'bin\tag.dll'
 $tagLibImport = Join-Path $InstallDir 'lib\tag.lib'
 
-cmake -S $SrcDir -B $TagBuild -DBUILD_SHARED_LIBS=ON -DBUILD_TESTING=OFF "-DCMAKE_INSTALL_PREFIX=$InstallDir"
+# Warm CMake package discovery with the pinned utfcpp so TagLib never falls
+# back to a machine-wide copy (or fails when none is installed).
+$utfCmake = Join-Path $UtfSrcDir 'CMakeLists.txt'
+if (-not (Test-Path $utfCmake)) { throw "pinned utfcpp is incomplete: $utfCmake" }
+
+cmake -S $SrcDir -B $TagBuild -DBUILD_SHARED_LIBS=ON -DBUILD_TESTING=OFF `
+    "-DCMAKE_INSTALL_PREFIX=$InstallDir" "-DCMAKE_PREFIX_PATH=$InstallDir" `
+    "-Dutf8cpp_INCLUDE_DIR=$UtfSrcDir\source"
 if ($LASTEXITCODE -ne 0) { throw 'TagLib configure failed' }
 cmake --build $TagBuild --config Release --target install
 if ($LASTEXITCODE -ne 0) { throw 'TagLib build failed' }

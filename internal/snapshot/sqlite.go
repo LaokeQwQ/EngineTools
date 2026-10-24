@@ -164,7 +164,9 @@ func integrityCheck(path string) (string, error) {
 }
 
 func syncFile(path string) error {
-	f, err := os.Open(path)
+	// FlushFileBuffers on Windows requires a handle with write access, so a
+	// read-only handle fails with "Access is denied". Open for read+write.
+	f, err := os.OpenFile(path, os.O_RDWR, 0)
 	if err != nil {
 		return err
 	}
