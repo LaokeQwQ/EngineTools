@@ -37,7 +37,7 @@ func ffmpegAvailable() bool {
 
 func generateFixtures(t *testing.T, outDir string) {
 	t.Helper()
-	ps1, absErr := filepath.Abs(filepath.Join("tools", "generate_metadata_fixtures.ps1"))
+	ps1, absErr := filepath.Abs(filepath.Join("..", "..", "tools", "generate_metadata_fixtures.ps1"))
 	if absErr != nil {
 		t.Fatal(absErr)
 	}

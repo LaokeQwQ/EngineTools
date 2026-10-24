@@ -97,6 +97,7 @@ export function MetadataCancel(arg1:string):Promise<boolean>;
 export function MetadataCapabilities(arg1:string):Promise<metadata.Capabilities>;
 
 export function MetadataPickDirectory():Promise<string>;
+
 export function MetadataPickFile():Promise<string>;
 
 export function MetadataPictures(arg1:string):Promise<Array<metadata.Picture>>;
@@ -104,6 +105,7 @@ export function MetadataPictures(arg1:string):Promise<Array<metadata.Picture>>;
 export function MetadataRead(arg1:string):Promise<metadata.Document>;
 
 export function MetadataScanDirectory(arg1:string):Promise<Array<string>>;
+
 export function MetadataUndo(arg1:string,arg2:string):Promise<metadata.WriteResult>;
 
 export function OpenDBDir():Promise<string>;

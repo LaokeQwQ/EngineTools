@@ -1,15 +1,15 @@
 export namespace apperror {
-
+	
 	export class PublicError {
 	    code: string;
 	    messageKey: string;
 	    operationId?: string;
 	    retryable: boolean;
-
+	
 	    static createFrom(source: any = {}) {
 	        return new PublicError(source);
 	    }
-
+	
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.code = source["code"];
@@ -22,15 +22,15 @@ export namespace apperror {
 }
 
 export namespace database {
-
+	
 	export class BPMBucket {
 	    range: string;
 	    count: number;
-
+	
 	    static createFrom(source: any = {}) {
 	        return new BPMBucket(source);
 	    }
-
+	
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.range = source["range"];
@@ -42,11 +42,11 @@ export namespace database {
 	    date: string;
 	    size: number;
 	    note: string;
-
+	
 	    static createFrom(source: any = {}) {
 	        return new BackupInfo(source);
 	    }
-
+	
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.filename = source["filename"];
@@ -58,11 +58,11 @@ export namespace database {
 	export class KVCount {
 	    key: string;
 	    count: number;
-
+	
 	    static createFrom(source: any = {}) {
 	        return new KVCount(source);
 	    }
-
+	
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.key = source["key"];
@@ -79,11 +79,11 @@ export namespace database {
 	    playCount: number;
 	    lastPlayed: string;
 	    dateAdded: string;
-
+	
 	    static createFrom(source: any = {}) {
 	        return new TrackSummary(source);
 	    }
-
+	
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.id = source["id"];
@@ -108,11 +108,11 @@ export namespace database {
 	    topGenres: KVCount[];
 	    bpmDistribution: BPMBucket[];
 	    recentlyAdded: TrackSummary[];
-
+	
 	    static createFrom(source: any = {}) {
 	        return new LibraryStats(source);
 	    }
-
+	
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.totalTracks = source["totalTracks"];
@@ -126,7 +126,7 @@ export namespace database {
 	        this.bpmDistribution = this.convertValues(source["bpmDistribution"], BPMBucket);
 	        this.recentlyAdded = this.convertValues(source["recentlyAdded"], TrackSummary);
 	    }
-
+	
 		convertValues(a: any, classs: any, asMap: boolean = false): any {
 		    if (!a) {
 		        return a;
@@ -151,11 +151,11 @@ export namespace database {
 	    artist: string;
 	    path: string;
 	    filename: string;
-
+	
 	    static createFrom(source: any = {}) {
 	        return new MissingTrack(source);
 	    }
-
+	
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.id = source["id"];
@@ -169,18 +169,18 @@ export namespace database {
 	    mostPlayed: TrackSummary[];
 	    recentPlayed: TrackSummary[];
 	    neverPlayed: TrackSummary[];
-
+	
 	    static createFrom(source: any = {}) {
 	        return new PlayStats(source);
 	    }
-
+	
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.mostPlayed = this.convertValues(source["mostPlayed"], TrackSummary);
 	        this.recentPlayed = this.convertValues(source["recentPlayed"], TrackSummary);
 	        this.neverPlayed = this.convertValues(source["neverPlayed"], TrackSummary);
 	    }
-
+	
 		convertValues(a: any, classs: any, asMap: boolean = false): any {
 		    if (!a) {
 		        return a;
@@ -204,11 +204,11 @@ export namespace database {
 	    title: string;
 	    parentId: number;
 	    count: number;
-
+	
 	    static createFrom(source: any = {}) {
 	        return new PlaylistInfo(source);
 	    }
-
+	
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.id = source["id"];
@@ -226,11 +226,11 @@ export namespace database {
 	    key: number;
 	    keyName: string;
 	    camelot: string;
-
+	
 	    static createFrom(source: any = {}) {
 	        return new SyncableTrack(source);
 	    }
-
+	
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.id = source["id"];
@@ -257,11 +257,11 @@ export namespace database {
 	    keyName: string;
 	    camelot: string;
 	    rating: number;
-
+	
 	    static createFrom(source: any = {}) {
 	        return new TrackInfo(source);
 	    }
-
+	
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.id = source["id"];
@@ -283,7 +283,7 @@ export namespace database {
 }
 
 export namespace i18n {
-
+	
 	export class Messages {
 	    appTitle: string;
 	    installPathLabel: string;
@@ -534,7 +534,6 @@ export namespace i18n {
 	    metadataBatchStatusFailed: string;
 	    metadataBatchStatusBlocked: string;
 	    metadataCancel: string;
-
 	    id3DropZoneHint: string;
 	    noCoverLabel: string;
 	    changeCoverLabel: string;
@@ -544,11 +543,11 @@ export namespace i18n {
 	    id3AlbumPlaceholder: string;
 	    id3YearPlaceholder: string;
 	    id3GenrePlaceholder: string;
-
+	
 	    static createFrom(source: any = {}) {
 	        return new Messages(source);
 	    }
-
+	
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.appTitle = source["appTitle"];
@@ -800,7 +799,6 @@ export namespace i18n {
 	        this.metadataBatchStatusFailed = source["metadataBatchStatusFailed"];
 	        this.metadataBatchStatusBlocked = source["metadataBatchStatusBlocked"];
 	        this.metadataCancel = source["metadataCancel"];
-
 	        this.id3DropZoneHint = source["id3DropZoneHint"];
 	        this.noCoverLabel = source["noCoverLabel"];
 	        this.changeCoverLabel = source["changeCoverLabel"];
@@ -816,7 +814,7 @@ export namespace i18n {
 }
 
 export namespace logs {
-
+	
 	export class LogEntry {
 	    level: string;
 	    // Go type: time
@@ -824,11 +822,11 @@ export namespace logs {
 	    thread: string;
 	    category: string;
 	    message: string;
-
+	
 	    static createFrom(source: any = {}) {
 	        return new LogEntry(source);
 	    }
-
+	
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.level = source["level"];
@@ -837,7 +835,7 @@ export namespace logs {
 	        this.category = source["category"];
 	        this.message = source["message"];
 	    }
-
+	
 		convertValues(a: any, classs: any, asMap: boolean = false): any {
 		    if (!a) {
 		        return a;
@@ -859,11 +857,11 @@ export namespace logs {
 	export class MessageCount {
 	    message: string;
 	    count: number;
-
+	
 	    static createFrom(source: any = {}) {
 	        return new MessageCount(source);
 	    }
-
+	
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.message = source["message"];
@@ -880,11 +878,11 @@ export namespace logs {
 	    topWarnings: MessageCount[];
 	    topErrors: MessageCount[];
 	    recentEntries: LogEntry[];
-
+	
 	    static createFrom(source: any = {}) {
 	        return new LogStats(source);
 	    }
-
+	
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.totalFiles = source["totalFiles"];
@@ -897,7 +895,7 @@ export namespace logs {
 	        this.topErrors = this.convertValues(source["topErrors"], MessageCount);
 	        this.recentEntries = this.convertValues(source["recentEntries"], LogEntry);
 	    }
-
+	
 		convertValues(a: any, classs: any, asMap: boolean = false): any {
 		    if (!a) {
 		        return a;
@@ -920,15 +918,15 @@ export namespace logs {
 }
 
 export namespace main {
-
+	
 	export class DriveInfo {
 	    letter: string;
 	    trackCount: number;
-
+	
 	    static createFrom(source: any = {}) {
 	        return new DriveInfo(source);
 	    }
-
+	
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.letter = source["letter"];
@@ -938,11 +936,11 @@ export namespace main {
 	export class ProcessItem {
 	    name: string;
 	    pid: number;
-
+	
 	    static createFrom(source: any = {}) {
 	        return new ProcessItem(source);
 	    }
-
+	
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.name = source["name"];
@@ -962,11 +960,11 @@ export namespace main {
 	    dbPath: string;
 	    processRunning: boolean;
 	    runningProcesses: ProcessItem[];
-
+	
 	    static createFrom(source: any = {}) {
 	        return new StatusInfo(source);
 	    }
-
+	
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.installPath = source["installPath"];
@@ -982,7 +980,7 @@ export namespace main {
 	        this.processRunning = source["processRunning"];
 	        this.runningProcesses = this.convertValues(source["runningProcesses"], ProcessItem);
 	    }
-
+	
 		convertValues(a: any, classs: any, asMap: boolean = false): any {
 		    if (!a) {
 		        return a;
@@ -1005,18 +1003,18 @@ export namespace main {
 	    operationId: string;
 	    changed: number;
 	    publicError?: apperror.PublicError;
-
+	
 	    static createFrom(source: any = {}) {
 	        return new SystemActionResult(source);
 	    }
-
+	
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.operationId = source["operationId"];
 	        this.changed = source["changed"];
 	        this.publicError = this.convertValues(source["publicError"], apperror.PublicError);
 	    }
-
+	
 		convertValues(a: any, classs: any, asMap: boolean = false): any {
 		    if (!a) {
 		        return a;
@@ -1043,11 +1041,11 @@ export namespace main {
 	    year: string;
 	    genre: string;
 	    hasCover: boolean;
-
+	
 	    static createFrom(source: any = {}) {
 	        return new TagInfo(source);
 	    }
-
+	
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.filePath = source["filePath"];
@@ -1063,7 +1061,7 @@ export namespace main {
 }
 
 export namespace metadata {
-
+	
 	export class BatchItem {
 	    path: string;
 	    status: string;
@@ -1071,11 +1069,11 @@ export namespace metadata {
 	    messageKey?: string;
 	    detail?: string;
 	    snapshotId?: string;
-
+	
 	    static createFrom(source: any = {}) {
 	        return new BatchItem(source);
 	    }
-
+	
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.path = source["path"];
@@ -1092,11 +1090,11 @@ export namespace metadata {
 	    eligible: number;
 	    blocked: number;
 	    items: BatchItem[];
-
+	
 	    static createFrom(source: any = {}) {
 	        return new BatchPreview(source);
 	    }
-
+	
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.operationId = source["operationId"];
@@ -1105,7 +1103,7 @@ export namespace metadata {
 	        this.blocked = source["blocked"];
 	        this.items = this.convertValues(source["items"], BatchItem);
 	    }
-
+	
 		convertValues(a: any, classs: any, asMap: boolean = false): any {
 		    if (!a) {
 		        return a;
@@ -1133,11 +1131,11 @@ export namespace metadata {
 	    blocked: number;
 	    cancelled: boolean;
 	    items: BatchItem[];
-
+	
 	    static createFrom(source: any = {}) {
 	        return new BatchResult(source);
 	    }
-
+	
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.operationId = source["operationId"];
@@ -1149,7 +1147,7 @@ export namespace metadata {
 	        this.cancelled = source["cancelled"];
 	        this.items = this.convertValues(source["items"], BatchItem);
 	    }
-
+	
 		convertValues(a: any, classs: any, asMap: boolean = false): any {
 		    if (!a) {
 		        return a;
@@ -1175,11 +1173,11 @@ export namespace metadata {
 	    maxPictures: number;
 	    pictureMIMEs: string[];
 	    tagVersions: string[];
-
+	
 	    static createFrom(source: any = {}) {
 	        return new Capabilities(source);
 	    }
-
+	
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.format = source["format"];
@@ -1193,11 +1191,11 @@ export namespace metadata {
 	export class Warning {
 	    code: string;
 	    messageKey: string;
-
+	
 	    static createFrom(source: any = {}) {
 	        return new Warning(source);
 	    }
-
+	
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.code = source["code"];
@@ -1215,11 +1213,11 @@ export namespace metadata {
 	    bytes?: number;
 	    width?: number;
 	    height?: number;
-
+	
 	    static createFrom(source: any = {}) {
 	        return new Picture(source);
 	    }
-
+	
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.id = source["id"];
@@ -1237,11 +1235,11 @@ export namespace metadata {
 	export class NumberPair {
 	    value: number;
 	    total?: number;
-
+	
 	    static createFrom(source: any = {}) {
 	        return new NumberPair(source);
 	    }
-
+	
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.value = source["value"];
@@ -1269,11 +1267,11 @@ export namespace metadata {
 	    pictures: Picture[];
 	    warnings: Warning[];
 	    capabilities?: Capabilities;
-
+	
 	    static createFrom(source: any = {}) {
 	        return new Document(source);
 	    }
-
+	
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.format = source["format"];
@@ -1297,7 +1295,7 @@ export namespace metadata {
 	        this.warnings = this.convertValues(source["warnings"], Warning);
 	        this.capabilities = this.convertValues(source["capabilities"], Capabilities);
 	    }
-
+	
 		convertValues(a: any, classs: any, asMap: boolean = false): any {
 		    if (!a) {
 		        return a;
@@ -1319,17 +1317,17 @@ export namespace metadata {
 	export class FieldPatch_EngineTools_internal_metadata_NumberPair_ {
 	    mode: string;
 	    value?: NumberPair;
-
+	
 	    static createFrom(source: any = {}) {
 	        return new FieldPatch_EngineTools_internal_metadata_NumberPair_(source);
 	    }
-
+	
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.mode = source["mode"];
 	        this.value = this.convertValues(source["value"], NumberPair);
 	    }
-
+	
 		convertValues(a: any, classs: any, asMap: boolean = false): any {
 		    if (!a) {
 		        return a;
@@ -1351,17 +1349,17 @@ export namespace metadata {
 	export class FieldPatch___EngineTools_internal_metadata_Picture_ {
 	    mode: string;
 	    value?: Picture[];
-
+	
 	    static createFrom(source: any = {}) {
 	        return new FieldPatch___EngineTools_internal_metadata_Picture_(source);
 	    }
-
+	
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.mode = source["mode"];
 	        this.value = this.convertValues(source["value"], Picture);
 	    }
-
+	
 		convertValues(a: any, classs: any, asMap: boolean = false): any {
 		    if (!a) {
 		        return a;
@@ -1383,11 +1381,11 @@ export namespace metadata {
 	export class FieldPatch___string_ {
 	    mode: string;
 	    value?: string[];
-
+	
 	    static createFrom(source: any = {}) {
 	        return new FieldPatch___string_(source);
 	    }
-
+	
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.mode = source["mode"];
@@ -1397,11 +1395,11 @@ export namespace metadata {
 	export class FieldPatch_float64_ {
 	    mode: string;
 	    value?: number;
-
+	
 	    static createFrom(source: any = {}) {
 	        return new FieldPatch_float64_(source);
 	    }
-
+	
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.mode = source["mode"];
@@ -1411,11 +1409,11 @@ export namespace metadata {
 	export class FieldPatch_int_ {
 	    mode: string;
 	    value?: number;
-
+	
 	    static createFrom(source: any = {}) {
 	        return new FieldPatch_int_(source);
 	    }
-
+	
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.mode = source["mode"];
@@ -1425,18 +1423,18 @@ export namespace metadata {
 	export class FieldPatch_string_ {
 	    mode: string;
 	    value?: string;
-
+	
 	    static createFrom(source: any = {}) {
 	        return new FieldPatch_string_(source);
 	    }
-
+	
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.mode = source["mode"];
 	        this.value = source["value"];
 	    }
 	}
-
+	
 	export class Patch {
 	    title: FieldPatch_string_;
 	    artists: FieldPatch___string_;
@@ -1454,11 +1452,11 @@ export namespace metadata {
 	    isrc: FieldPatch_string_;
 	    lyrics: FieldPatch_string_;
 	    pictures: any;
-
+	
 	    static createFrom(source: any = {}) {
 	        return new Patch(source);
 	    }
-
+	
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.title = this.convertValues(source["title"], FieldPatch_string_);
@@ -1478,7 +1476,7 @@ export namespace metadata {
 	        this.lyrics = this.convertValues(source["lyrics"], FieldPatch_string_);
 	        this.pictures = source["pictures"];
 	    }
-
+	
 		convertValues(a: any, classs: any, asMap: boolean = false): any {
 		    if (!a) {
 		        return a;
@@ -1497,17 +1495,18 @@ export namespace metadata {
 		    return a;
 		}
 	}
-
+	
+	
 	export class WriteResult {
 	    ok: boolean;
 	    changed: number;
 	    snapshotId?: string;
 	    operationId?: string;
-
+	
 	    static createFrom(source: any = {}) {
 	        return new WriteResult(source);
 	    }
-
+	
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.ok = source["ok"];
@@ -1520,15 +1519,15 @@ export namespace metadata {
 }
 
 export namespace msi {
-
+	
 	export class OrphanedMSI {
 	    productCode: string;
 	    displayName: string;
-
+	
 	    static createFrom(source: any = {}) {
 	        return new OrphanedMSI(source);
 	    }
-
+	
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.productCode = source["productCode"];
@@ -1539,15 +1538,15 @@ export namespace msi {
 }
 
 export namespace unlock {
-
+	
 	export class HandleInfo {
 	    pid: number;
 	    name: string;
-
+	
 	    static createFrom(source: any = {}) {
 	        return new HandleInfo(source);
 	    }
-
+	
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.pid = source["pid"];
