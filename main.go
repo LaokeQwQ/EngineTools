@@ -1,10 +1,14 @@
 package main
 
 import (
+	"EngineTools/internal/logs"
+	"EngineTools/internal/storage"
+	"EngineTools/internal/uifix"
 	"embed"
 	"fmt"
 	"os"
 	"syscall"
+	"time"
 	"unsafe"
 
 	"github.com/wailsapp/wails/v2"
@@ -64,7 +68,10 @@ func runAsAdmin(exe string) error {
 }
 
 func main() {
-	if !isAdmin() {
+	if uifix.RunProbeMode(os.Args[1:]) {
+		return
+	}
+	if shouldElevate() && !isAdmin() {
 		exe, err := os.Executable()
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "Failed to get executable path: %v\n", err)
@@ -78,15 +85,25 @@ func main() {
 		return
 	}
 
+	// Binding generation also invokes main, but must not migrate user data.
+	if shouldElevate() {
+		if err := storage.Prepare(); err != nil {
+			_, _ = logs.New(storage.Path("Log")).Write("startup/ERROR", err.Error(), time.Time{})
+			fmt.Fprintln(os.Stderr, "EngineTools storage error:", err)
+			return
+		}
+	}
 	app := NewApp()
 
 	err := wails.Run(&options.App{
-		Title:            "Engine Tools",
-		Width:            640,
-		Height:           820,
-		MinWidth:         600,
-		MinHeight:        720,
-		AssetServer:      &assetserver.Options{
+		Logger:    &logs.Framework{Daily: app.daily},
+		Title:     "Engine Tools",
+		Frameless: true,
+		Width:     1280,
+		Height:    720,
+		MinWidth:  1280,
+		MinHeight: 720,
+		AssetServer: &assetserver.Options{
 			Assets: assets,
 		},
 		BackgroundColour: &options.RGBA{R: 0x1a, G: 0x1a, B: 0x2e, A: 255},
@@ -96,14 +113,16 @@ func main() {
 			app,
 		},
 		Windows: &wailsWindows.Options{
-			WebviewIsTransparent:              false,
-			WindowIsTranslucent:                false,
-			DisableWindowIcon:                  false,
-			WebviewBrowserPath:                 "",
+			WebviewUserDataPath:  storage.Path("WebView"),
+			WebviewIsTransparent: false,
+			WindowIsTranslucent:  false,
+			DisableWindowIcon:    false,
+			WebviewBrowserPath:   "",
 		},
 	})
 
 	if err != nil {
+		app.log("Application error: " + err.Error())
 		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 		os.Exit(1)
 	}

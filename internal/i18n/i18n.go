@@ -211,6 +211,7 @@ type Messages struct {
 	// Settings tab
 	TabSettings                 string `json:"tabSettings"`
 	SettingsLanguageLabel       string `json:"settingsLanguageLabel"`
+    SettingsAlwaysOnTop          string `json:"settingsAlwaysOnTop"`
 	SettingsExperimentalLabel   string `json:"settingsExperimentalLabel"`
 	SettingsExperimentalDesc    string `json:"settingsExperimentalDesc"`
 	SettingsExperimentalConfirmTitle   string `json:"settingsExperimentalConfirmTitle"`
@@ -417,6 +418,7 @@ var translations = map[Lang]Messages{
 		TracksUnit:               "首",
 		TabSettings:                 "设置",
 		SettingsLanguageLabel:       "显示语言",
+        SettingsAlwaysOnTop:        "始终置顶",
 		SettingsExperimentalLabel:   "开启实验性功能",
 		SettingsExperimentalDesc:    "解锁隐藏的开发者功能，请谨慎使用。",
 		SettingsExperimentalConfirmTitle: "开启实验性功能",
@@ -620,6 +622,7 @@ var translations = map[Lang]Messages{
 		TracksUnit:               "曲",
 		TabSettings:                 "設定",
 		SettingsLanguageLabel:       "表示言語",
+        SettingsAlwaysOnTop:        "常に最前面に表示",
 		SettingsExperimentalLabel:   "実験的機能を有効にする",
 		SettingsExperimentalDesc:    "隠された開発者向け機能を解放します。慎重に扱ってください。",
 		SettingsExperimentalConfirmTitle: "実験的機能の有効化",
@@ -823,6 +826,7 @@ var translations = map[Lang]Messages{
 		TracksUnit:               "곡",
 		TabSettings:                 "설정",
 		SettingsLanguageLabel:       "표시 언어",
+        SettingsAlwaysOnTop:        "항상 위에 표시",
 		SettingsExperimentalLabel:   "실험적 기능 활성화",
 		SettingsExperimentalDesc:    "숨겨진 개발자 기능을 활성화합니다. 신중하게 사용하세요.",
 		SettingsExperimentalConfirmTitle: "실험적 기능 활성화",
@@ -1026,6 +1030,7 @@ var translations = map[Lang]Messages{
 		TracksUnit:               "more",
 		TabSettings:                 "Settings",
 		SettingsLanguageLabel:       "Display Language",
+        SettingsAlwaysOnTop:        "Always on top",
 		SettingsExperimentalLabel:   "Enable Experimental Features",
 		SettingsExperimentalDesc:    "Unlock hidden developer features. Handle with care.",
 		SettingsExperimentalConfirmTitle: "Enable Experimental Features",

@@ -1,6 +1,7 @@
 package database
 
 import (
+	"EngineTools/internal/storage"
 	"database/sql"
 	"fmt"
 	"io"
@@ -133,7 +134,7 @@ type BackupInfo struct {
 }
 
 func backupDir() (string, error) {
-	dir := filepath.Join(os.Getenv("LOCALAPPDATA"), "EngineTools", "Backups")
+	dir := storage.Path("Backup", "Database")
 	if err := os.MkdirAll(dir, 0755); err != nil {
 		return "", fmt.Errorf("failed to create backup directory: %w", err)
 	}

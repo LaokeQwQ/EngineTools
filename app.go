@@ -5,7 +5,9 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
+	"sync"
 	"time"
 
 	wailsRuntime "github.com/wailsapp/wails/v2/pkg/runtime"
@@ -21,40 +23,49 @@ import (
 	"EngineTools/internal/msi"
 	"EngineTools/internal/process"
 	"EngineTools/internal/registry"
+	"EngineTools/internal/storage"
+	"EngineTools/internal/uifix"
 	"EngineTools/internal/unlock"
 	"EngineTools/internal/update"
 )
 
 type App struct {
-	ctx                 context.Context
-	lang                i18n.Lang
-	Logs                []string
-	InstallPath         string
-	EngineVersion       string
-	WindowsVersion      string
-	UTF8Enabled         bool
-	ManifestConfigured  bool
-	IsAdmin             bool
-	StemsPath           string
-	StemsDetected       bool
-	DBPath              string
-	DBDetected          bool
-	Progress            float64
+	confirmationMu     sync.Mutex
+	confirmationNext   uint32
+	confirmations      map[uint32]chan bool
+	closing            bool
+	daily              *logs.Daily
+	logsMu             sync.Mutex
+	cache              *uifix.Manager
+	ctx                context.Context
+	lang               i18n.Lang
+	Logs               []string
+	InstallPath        string
+	EngineVersion      string
+	WindowsVersion     string
+	UTF8Enabled        bool
+	ManifestConfigured bool
+	IsAdmin            bool
+	StemsPath          string
+	StemsDetected      bool
+	DBPath             string
+	DBDetected         bool
+	Progress           float64
 }
 
 type StatusInfo struct {
-	InstallPath        string         `json:"installPath"`
-	EngineVersion      string         `json:"engineVersion"`
-	WindowsVersion     string         `json:"windowsVersion"`
-	UTF8Enabled        bool           `json:"utf8Enabled"`
-	ACPValue           string         `json:"acpValue"`
-	ManifestConfigured bool           `json:"manifestConfigured"`
-	IsAdmin            bool           `json:"isAdmin"`
-	StemsDetected      bool           `json:"stemsDetected"`
-	DBDetected         bool           `json:"dbDetected"`
-	DBPath             string         `json:"dbPath"`
-	ProcessRunning     bool           `json:"processRunning"`
-	RunningProcesses   []ProcessItem  `json:"runningProcesses"`
+	InstallPath        string        `json:"installPath"`
+	EngineVersion      string        `json:"engineVersion"`
+	WindowsVersion     string        `json:"windowsVersion"`
+	UTF8Enabled        bool          `json:"utf8Enabled"`
+	ACPValue           string        `json:"acpValue"`
+	ManifestConfigured bool          `json:"manifestConfigured"`
+	IsAdmin            bool          `json:"isAdmin"`
+	StemsDetected      bool          `json:"stemsDetected"`
+	DBDetected         bool          `json:"dbDetected"`
+	DBPath             string        `json:"dbPath"`
+	ProcessRunning     bool          `json:"processRunning"`
+	RunningProcesses   []ProcessItem `json:"runningProcesses"`
 }
 
 type ProcessItem struct {
@@ -68,8 +79,13 @@ type DriveInfo struct {
 }
 
 func NewApp() *App {
+	lang := i18n.DetectLang()
+	if settings, err := storage.ReadSettings(); err == nil && settings.Language != "" {
+		lang = i18n.Lang(settings.Language)
+	}
 	return &App{
-		lang:    i18n.DetectLang(),
+		daily:   logs.New(storage.Path("Log")),
+		lang:    lang,
 		Logs:    []string{},
 		IsAdmin: checkIsAdmin(),
 	}
@@ -77,8 +93,11 @@ func NewApp() *App {
 
 func (a *App) startup(ctx context.Context) {
 	a.ctx = ctx
+	a.cache = uifix.New()
+	a.log("EngineTools started")
 	go a.detectStatus()
 	go a.watchDrives()
+	go a.watchCacheLogs()
 }
 
 // watchDrives polls the set of mounted logical drives and re-runs detection
@@ -128,10 +147,79 @@ func findStemsProcessorDir() (string, bool) {
 }
 
 func (a *App) log(msg string) {
-	timestamp := time.Now().Format("15:04:05")
-	entry := fmt.Sprintf("[%s] %s", timestamp, msg)
+	a.logAt("app", msg, time.Time{})
+}
+
+func (a *App) logAt(source, msg string, at time.Time) {
+	a.logsMu.Lock()
+	defer a.logsMu.Unlock()
+	entry, err := a.daily.Write(source, msg, at)
 	a.Logs = append(a.Logs, entry)
-	wailsRuntime.EventsEmit(a.ctx, "log", entry)
+	if len(a.Logs) > 2000 {
+		a.Logs = slices.Clone(a.Logs[len(a.Logs)-2000:])
+	}
+	if a.ctx != nil {
+		wailsRuntime.EventsEmit(a.ctx, "log", entry)
+	}
+	if err != nil {
+		failure := "Log write failed: " + err.Error()
+		fmt.Fprintln(os.Stderr, failure)
+		if a.ctx != nil {
+			wailsRuntime.EventsEmit(a.ctx, "log", failure)
+		}
+	}
+}
+
+func (a *App) WriteFrontendLog(message string) {
+	a.logAt("frontend", message, time.Time{})
+}
+
+func (a *App) GetLogEntries() []string {
+	a.logsMu.Lock()
+	defer a.logsMu.Unlock()
+	return slices.Clone(a.Logs)
+}
+
+func (a *App) watchCacheLogs() {
+	ticker := time.NewTicker(2 * time.Second)
+	defer ticker.Stop()
+	lastState := ""
+	for {
+		select {
+		case <-a.ctx.Done():
+			return
+		case <-ticker.C:
+			directory, err := registry.FindEngineDJInstallPath()
+			if err != nil {
+				continue
+			}
+			state := a.cache.Status(directory)
+			signature := fmt.Sprintf("%d/%t/%s/%s/%s", state.PID, state.Active, state.InstallStatus, state.Error, state.InstallError)
+			if signature != lastState {
+				a.logAt("uifix", fmt.Sprintf("状态 PID=%d running=%t active=%t installation=%s error=%q installError=%q", state.PID, state.Running, state.Active, state.InstallStatus, state.Error, state.InstallError), time.Time{})
+				lastState = signature
+			}
+			if !state.Running {
+				continue
+			}
+			records, dropped := a.cache.DrainFallbacks(state.PID)
+			if dropped > 0 {
+				a.logAt("uifix", fmt.Sprintf("回退诊断缓冲区已覆盖 %d 条旧记录", dropped), time.Time{})
+			}
+			for _, record := range records {
+				kind := "回退"
+				if record.ExcludedFromStats {
+					kind = "空接口查询"
+				}
+				a.logAt("uifix", fmt.Sprintf("%s PID=%d seq=%d 原因=%s 接口=%q 调用位置=0x%x", kind, state.PID, record.Sequence, record.Reason, record.Interface, record.Caller), record.At)
+			}
+		}
+	}
+}
+
+func (a *App) shutdown(ctx context.Context) {
+	a.cancelConfirmations()
+	a.log("EngineTools stopped")
 }
 
 func (a *App) setProgress(value float64) {
@@ -287,14 +375,7 @@ func (a *App) FixUnicodeIssues() string {
 		}
 
 		confirmMsg := fmt.Sprintf(msgs.ProcessRunningMessage, strings.Join(names, "\n"))
-		result, err := wailsRuntime.MessageDialog(a.ctx, wailsRuntime.MessageDialogOptions{
-			Type:    wailsRuntime.QuestionDialog,
-			Title:   msgs.ProcessRunningTitle,
-			Message: confirmMsg,
-			Buttons: []string{"Yes", "No"},
-		})
-
-		if err != nil || result != "Yes" {
+		if !a.confirm(msgs.ProcessRunningTitle, confirmMsg) {
 			a.log("User cancelled process termination")
 			return "cancelled"
 		}
@@ -354,12 +435,6 @@ func (a *App) FixUnicodeIssues() string {
 
 	wailsRuntime.EventsEmit(a.ctx, "statusUpdate", a.GetStatus())
 
-	_, _ = wailsRuntime.MessageDialog(a.ctx, wailsRuntime.MessageDialogOptions{
-		Type:    wailsRuntime.InfoDialog,
-		Title:   msgs.FixComplete,
-		Message: msgs.FixCompleteTip,
-	})
-
 	return "ok"
 }
 
@@ -368,13 +443,7 @@ func (a *App) FixUnicodeIssues() string {
 func (a *App) RestoreUnicodeFix() string {
 	msgs := i18n.Get(a.lang)
 
-	result, err := wailsRuntime.MessageDialog(a.ctx, wailsRuntime.MessageDialogOptions{
-		Type:    wailsRuntime.QuestionDialog,
-		Title:   msgs.RestoreConfirmTitle,
-		Message: msgs.RestoreConfirmMessage,
-		Buttons: []string{"Yes", "No"},
-	})
-	if err != nil || result != "Yes" {
+	if !a.confirm(msgs.RestoreConfirmTitle, msgs.RestoreConfirmMessage) {
 		a.log("User cancelled restore")
 		return "cancelled"
 	}
@@ -390,13 +459,7 @@ func (a *App) RestoreUnicodeFix() string {
 				names = append(names, fmt.Sprintf("%s (PID: %d)", p.Name, p.PID))
 			}
 			confirmMsg := fmt.Sprintf(msgs.ProcessRunningMessage, strings.Join(names, "\n"))
-			res, err := wailsRuntime.MessageDialog(a.ctx, wailsRuntime.MessageDialogOptions{
-				Type:    wailsRuntime.QuestionDialog,
-				Title:   msgs.ProcessRunningTitle,
-				Message: confirmMsg,
-				Buttons: []string{"Yes", "No"},
-			})
-			if err != nil || res != "Yes" {
+			if !a.confirm(msgs.ProcessRunningTitle, confirmMsg) {
 				a.log("User cancelled process termination")
 				return "cancelled"
 			}
@@ -450,12 +513,6 @@ func (a *App) RestoreUnicodeFix() string {
 
 	wailsRuntime.EventsEmit(a.ctx, "statusUpdate", a.GetStatus())
 
-	_, _ = wailsRuntime.MessageDialog(a.ctx, wailsRuntime.MessageDialogOptions{
-		Type:    wailsRuntime.InfoDialog,
-		Title:   msgs.RestoreComplete,
-		Message: msgs.RestoreCompleteTip,
-	})
-
 	return "ok"
 }
 
@@ -490,13 +547,7 @@ func (a *App) ListBackups() []database.BackupInfo {
 func (a *App) RestoreDatabase(filename string) string {
 	msgs := i18n.Get(a.lang)
 
-	result, err := wailsRuntime.MessageDialog(a.ctx, wailsRuntime.MessageDialogOptions{
-		Type:    wailsRuntime.QuestionDialog,
-		Title:   msgs.DBRestoreConfirmTitle,
-		Message: msgs.DBRestoreConfirmMessage,
-		Buttons: []string{"Yes", "No"},
-	})
-	if err != nil || result != "Yes" {
+	if !a.confirm(msgs.DBRestoreConfirmTitle, msgs.DBRestoreConfirmMessage) {
 		a.log("User cancelled database restore")
 		return "cancelled"
 	}
@@ -688,13 +739,7 @@ func (a *App) ScanMSIOrphans() []msi.OrphanedMSI {
 func (a *App) CleanMSIOrphans(productCodes []string) string {
 	msgs := i18n.Get(a.lang)
 
-	result, err := wailsRuntime.MessageDialog(a.ctx, wailsRuntime.MessageDialogOptions{
-		Type:    wailsRuntime.QuestionDialog,
-		Title:   msgs.MSIConfirmTitle,
-		Message: msgs.MSIConfirmMessage,
-		Buttons: []string{"Yes", "No"},
-	})
-	if err != nil || result != "Yes" {
+	if !a.confirm(msgs.MSIConfirmTitle, msgs.MSIConfirmMessage) {
 		a.log("User cancelled MSI cleanup")
 		return "cancelled"
 	}
@@ -717,13 +762,8 @@ func (a *App) CleanMSIOrphans(productCodes []string) string {
 func (a *App) HandleUTF8AlreadyEnabled() string {
 	msgs := i18n.Get(a.lang)
 
-	_, _ = wailsRuntime.MessageDialog(a.ctx, wailsRuntime.MessageDialogOptions{
-		Type:    wailsRuntime.WarningDialog,
-		Title:   msgs.UTF8AlreadyEnabled,
-		Message: msgs.UTF8AlreadyEnabledTip,
-	})
-
-	return ""
+	a.log(msgs.UTF8AlreadyEnabledTip)
+	return msgs.UTF8AlreadyEnabled + "\n" + msgs.UTF8AlreadyEnabledTip
 }
 
 func (a *App) OpenRegionSettings() string {
@@ -820,12 +860,44 @@ func (a *App) SelectDrive(drive string) string {
 }
 
 func (a *App) SetLanguage(lang string) string {
+	if err := storage.UpdateSettings(func(s *storage.Settings) { s.Language = lang }); err != nil {
+		return err.Error()
+	}
 	a.lang = i18n.Lang(lang)
 	go a.detectStatus()
 	return ""
 }
 
 // ---- ID3 Editor ----
+func (a *App) GetSettings() (storage.Settings, error) {
+	s, err := storage.ReadSettings()
+	if s.Language == "" {
+		s.Language = string(a.lang)
+	}
+	return s, err
+}
+
+func (a *App) ClearCompatibilityRecords(key string) error {
+	return a.cache.ClearCompatibilityRecords(key)
+}
+
+func (a *App) SaveSettings(settings storage.Settings) error {
+	if settings.Theme != "orange" && settings.Theme != "dark" && settings.Theme != "light" {
+		return fmt.Errorf("Unknown UI theme: %s", settings.Theme)
+	}
+	switch settings.Language {
+	case "zh", "en", "ja", "ko":
+	default:
+		return fmt.Errorf("Unknown language: %s", settings.Language)
+	}
+	return storage.UpdateSettings(func(s *storage.Settings) {
+		s.Language = settings.Language
+		s.Theme = settings.Theme
+		s.SquareCorners = settings.SquareCorners
+		s.AlwaysOnTop = settings.AlwaysOnTop
+		s.ExperimentalEnabled = settings.ExperimentalEnabled
+	})
+}
 
 // ID3PickFile opens a native file dialog for the user to select an audio file.
 func (a *App) ID3PickFile() string {
@@ -1159,18 +1231,44 @@ func (a *App) GetAvailableLanguages() []map[string]string {
 	return result
 }
 
-// shutdown is called by Wails when the application is closing.
-// Context cancellation propagates to the watchDrives goroutine via a.ctx.Done().
-func (a *App) shutdown(ctx context.Context) {}
+func (a *App) GetEngineCacheStatus() uifix.State {
+	directory, _ := registry.FindEngineDJInstallPath()
+	return a.cache.Status(directory)
+}
 
-// LogExperimentalEnabled records an activation timestamp in the
-// experimental_allow.xml audit file (hidden + read-only on disk).
+func (a *App) InstallEngineCache() string {
+	directory, err := registry.FindEngineDJInstallPath()
+	if err == nil {
+		err = a.cache.Install(directory)
+	}
+	if err != nil {
+		a.log(err.Error())
+		return err.Error()
+	}
+	a.log("Engine DJ cache installed: version.dll")
+	return ""
+}
+
+func (a *App) UninstallEngineCache() string {
+	directory, err := registry.FindEngineDJInstallPath()
+	if err == nil {
+		err = a.cache.Uninstall(directory)
+	}
+	if err != nil {
+		a.log(err.Error())
+		return err.Error()
+	}
+	a.log("Engine DJ cache uninstalled")
+	return ""
+}
+
+// LogExperimentalEnabled records activation in setting.json.
 func (a *App) LogExperimentalEnabled() string {
 	if err := experimental.LogEnabled(); err != nil {
 		a.log(fmt.Sprintf("experimental log error: %v", err))
 		return err.Error()
 	}
-	a.log("实验性功能已开启（记录已写入审计文件）")
+	a.log("实验性功能已开启（记录已写入 setting.json）")
 	return "ok"
 }
 

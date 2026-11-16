@@ -22,6 +22,10 @@ export function CleanMSIOrphans(arg1) {
   return window['go']['main']['App']['CleanMSIOrphans'](arg1);
 }
 
+export function ClearCompatibilityRecords(arg1) {
+  return window['go']['main']['App']['ClearCompatibilityRecords'](arg1);
+}
+
 export function CompressCovers(arg1, arg2) {
   return window['go']['main']['App']['CompressCovers'](arg1, arg2);
 }
@@ -38,8 +42,16 @@ export function GetCacheSize() {
   return window['go']['main']['App']['GetCacheSize']();
 }
 
+export function GetEngineCacheStatus() {
+  return window['go']['main']['App']['GetEngineCacheStatus']();
+}
+
 export function GetLibraryStats() {
   return window['go']['main']['App']['GetLibraryStats']();
+}
+
+export function GetLogEntries() {
+  return window['go']['main']['App']['GetLogEntries']();
 }
 
 export function GetMessages() {
@@ -52,6 +64,10 @@ export function GetPlayStats() {
 
 export function GetPlaylistTracks(arg1) {
   return window['go']['main']['App']['GetPlaylistTracks'](arg1);
+}
+
+export function GetSettings() {
+  return window['go']['main']['App']['GetSettings']();
 }
 
 export function GetStatus() {
@@ -134,6 +150,10 @@ export function ID3WriteTag(arg1, arg2, arg3, arg4, arg5, arg6) {
   return window['go']['main']['App']['ID3WriteTag'](arg1, arg2, arg3, arg4, arg5, arg6);
 }
 
+export function InstallEngineCache() {
+  return window['go']['main']['App']['InstallEngineCache']();
+}
+
 export function ListBackups() {
   return window['go']['main']['App']['ListBackups']();
 }
@@ -202,12 +222,20 @@ export function RepairDatabase() {
   return window['go']['main']['App']['RepairDatabase']();
 }
 
+export function RespondToConfirmation(arg1, arg2) {
+  return window['go']['main']['App']['RespondToConfirmation'](arg1, arg2);
+}
+
 export function RestoreDatabase(arg1) {
   return window['go']['main']['App']['RestoreDatabase'](arg1);
 }
 
 export function RestoreUnicodeFix() {
   return window['go']['main']['App']['RestoreUnicodeFix']();
+}
+
+export function SaveSettings(arg1) {
+  return window['go']['main']['App']['SaveSettings'](arg1);
 }
 
 export function ScanMSIOrphans() {
@@ -240,4 +268,12 @@ export function USBUnlockKill(arg1) {
 
 export function USBUnlockScan(arg1) {
   return window['go']['main']['App']['USBUnlockScan'](arg1);
+}
+
+export function UninstallEngineCache() {
+  return window['go']['main']['App']['UninstallEngineCache']();
+}
+
+export function WriteFrontendLog(arg1) {
+  return window['go']['main']['App']['WriteFrontendLog'](arg1);
 }
