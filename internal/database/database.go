@@ -360,3 +360,17 @@ func RepairDatabase() (string, error) {
 
 	return report, nil
 }
+
+func resolveOperationLibrary(target []string) (string, error) {
+	if len(target) == 0 {
+		return ResolveLibrary()
+	}
+	path := target[0]
+	if !filepath.IsAbs(path) || !strings.EqualFold(filepath.Base(path), "m.db") {
+		return "", fmt.Errorf("invalid target library: %q", path)
+	}
+	if _, err := os.Stat(path); err != nil {
+		return "", err
+	}
+	return path, nil
+}

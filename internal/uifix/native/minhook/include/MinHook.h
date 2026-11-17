@@ -79,7 +79,9 @@ typedef enum MH_STATUS
     MH_ERROR_MODULE_NOT_FOUND,
 
     // The specified function is not found.
-    MH_ERROR_FUNCTION_NOT_FOUND
+    MH_ERROR_FUNCTION_NOT_FOUND,
+    MH_ERROR_THREAD_CONTROL,
+    MH_ERROR_THREAD_BUSY
 }
 MH_STATUS;
 

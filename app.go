@@ -36,6 +36,7 @@ type App struct {
 	closing            bool
 	daily              *logs.Daily
 	logsMu             sync.Mutex
+	syncTagsMu         sync.Mutex
 	cache              *uifix.Manager
 	ctx                context.Context
 	lang               i18n.Lang
@@ -596,8 +597,8 @@ func (a *App) OptimizeDatabase() string {
 	return "ok"
 }
 
-func (a *App) ListPlaylists() []database.PlaylistInfo {
-	playlists, err := database.ListPlaylists()
+func (a *App) ListPlaylists(targetLibrary string) []database.PlaylistInfo {
+	playlists, err := database.ListPlaylists(targetLibrary)
 	if err != nil {
 		a.log(fmt.Sprintf("Playlist error: %v", err))
 		return []database.PlaylistInfo{}
@@ -1047,8 +1048,8 @@ func (a *App) ID3AntiPiracyRestorePaths(backupKey string) string {
 }
 
 // ID3AntiPiracyV1Playlist clears tags for all tracks in the given playlist.
-func (a *App) ID3AntiPiracyV1Playlist(playlistID int) string {
-	tracks, err := database.GetPlaylistTrackPaths(playlistID)
+func (a *App) ID3AntiPiracyV1Playlist(playlistID int, targetLibrary string) string {
+	tracks, err := database.GetPlaylistTrackPaths(playlistID, targetLibrary)
 	if err != nil || len(tracks) == 0 {
 		a.log(fmt.Sprintf("Anti-piracy playlist fetch error: %v", err))
 		return ""
@@ -1068,8 +1069,8 @@ func (a *App) ID3AntiPiracyV1Playlist(playlistID int) string {
 }
 
 // ID3AntiPiracyV2Playlist shuffles tags among all tracks in the given playlist.
-func (a *App) ID3AntiPiracyV2Playlist(playlistID int) string {
-	tracks, err := database.GetPlaylistTrackPaths(playlistID)
+func (a *App) ID3AntiPiracyV2Playlist(playlistID int, targetLibrary string) string {
+	tracks, err := database.GetPlaylistTrackPaths(playlistID, targetLibrary)
 	if err != nil || len(tracks) == 0 {
 		a.log(fmt.Sprintf("Anti-piracy playlist fetch error: %v", err))
 		return ""
@@ -1278,7 +1279,7 @@ func (a *App) LogExperimentalEnabled() string {
 // or in a specific playlist. Covers larger than maxKB kilobytes are
 // re-encoded as JPEG at progressively lower quality until they fit.
 // Returns a JSON-serialisable summary of the operation.
-func (a *App) CompressCovers(playlistID int, maxKB int) map[string]interface{} {
+func (a *App) CompressCovers(playlistID int, maxKB int, targetLibrary string) map[string]interface{} {
 	const defaultMaxKB = 1024
 	if maxKB <= 0 {
 		maxKB = defaultMaxKB
@@ -1290,10 +1291,10 @@ func (a *App) CompressCovers(playlistID int, maxKB int) map[string]interface{} {
 	var err error
 	if playlistID < 0 {
 		a.log(fmt.Sprintf("封面压缩：加载全库曲目..."))
-		tracks, err = database.GetAllTrackPaths()
+		tracks, err = database.GetAllTrackPaths(targetLibrary)
 	} else {
 		a.log(fmt.Sprintf("封面压缩：加载播放列表 %d 的曲目...", playlistID))
-		tracks, err = database.GetPlaylistTrackPaths(playlistID)
+		tracks, err = database.GetPlaylistTrackPaths(playlistID, targetLibrary)
 	}
 	if err != nil {
 		a.log(fmt.Sprintf("CompressCovers fetch error: %v", err))
@@ -1382,8 +1383,8 @@ func (a *App) GetPlayStats() *database.PlayStats {
 // ---- Missing Track Scanner ----
 
 // ScanMissingTracks returns all tracks where the file is no longer available.
-func (a *App) ScanMissingTracks() []database.MissingTrack {
-	tracks, err := database.FindMissingTracks()
+func (a *App) ScanMissingTracks(targetLibrary string) []database.MissingTrack {
+	tracks, err := database.FindMissingTracks(targetLibrary)
 	if err != nil {
 		a.log(fmt.Sprintf("ScanMissingTracks error: %v", err))
 		return []database.MissingTrack{}
@@ -1393,7 +1394,7 @@ func (a *App) ScanMissingTracks() []database.MissingTrack {
 }
 
 // RemoveMissingTracks deletes the given track IDs from the library (only if unavailable).
-func (a *App) RemoveMissingTracks(ids []int) string {
+func (a *App) RemoveMissingTracks(ids []int, targetLibrary string) string {
 	msgs := i18n.Get(a.lang)
 
 	if a.InstallPath != "" {
@@ -1407,7 +1408,7 @@ func (a *App) RemoveMissingTracks(ids []int) string {
 		}
 	}
 
-	n, err := database.RemoveMissingTracks(ids)
+	n, err := database.RemoveMissingTracks(ids, targetLibrary)
 	if err != nil {
 		a.log(fmt.Sprintf("RemoveMissingTracks error: %v", err))
 		return ""
@@ -1419,8 +1420,8 @@ func (a *App) RemoveMissingTracks(ids []int) string {
 // ---- BPM / Key Sync ----
 
 // GetSyncableTracks returns all analyzed tracks with BPM/Key data ready for write-back.
-func (a *App) GetSyncableTracks() []database.SyncableTrack {
-	tracks, err := database.GetSyncableTracks()
+func (a *App) GetSyncableTracks(targetLibrary string) []database.SyncableTrack {
+	tracks, err := database.GetSyncableTracks(targetLibrary)
 	if err != nil {
 		a.log(fmt.Sprintf("GetSyncableTracks error: %v", err))
 		return []database.SyncableTrack{}
@@ -1431,9 +1432,13 @@ func (a *App) GetSyncableTracks() []database.SyncableTrack {
 // SyncBPMKeyToTags writes Engine DJ's BPM and musical key analysis back into
 // each track file's ID3/RIFF tags. Only available, analyzed tracks are processed.
 // Returns a JSON-serialisable summary of successes and failures.
-func (a *App) SyncBPMKeyToTags() map[string]interface{} {
+func (a *App) SyncBPMKeyToTags(targetLibrary string) map[string]interface{} {
+	if !a.syncTagsMu.TryLock() {
+		return map[string]interface{}{"error": "BPM/Key write-back is already running"}
+	}
+	defer a.syncTagsMu.Unlock()
 	a.log("正在获取分析数据...")
-	tracks, err := database.GetSyncableTracks()
+	tracks, err := database.GetSyncableTracks(targetLibrary)
 	if err != nil {
 		a.log(fmt.Sprintf("SyncBPMKeyToTags: fetch error: %v", err))
 		return map[string]interface{}{"error": err.Error()}

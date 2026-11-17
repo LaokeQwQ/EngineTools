@@ -28,8 +28,8 @@ type TrackInfo struct {
 	Rating   int     `json:"rating"`
 }
 
-func ListPlaylists() ([]PlaylistInfo, error) {
-	dbPath, err := ResolveLibrary()
+func ListPlaylists(target ...string) ([]PlaylistInfo, error) {
+	dbPath, err := resolveOperationLibrary(target)
 	if err != nil {
 		return nil, err
 	}

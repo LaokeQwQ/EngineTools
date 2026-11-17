@@ -263,6 +263,7 @@ const playStatsTab = ref('most') // 'most' | 'recent' | 'never'
 // Missing tracks state
 const missingTracks = ref([])
 const missingSelected = ref([])
+const missingTracksLibrary = ref('')
 const missingBusy = ref(false)
 const missingScanned = ref(false)
 
@@ -271,6 +272,7 @@ const syncBusy = ref(false)
 const syncResult = ref(null)
 const syncPreviewTracks = ref([])
 const syncPreviewLoaded = ref(false)
+const syncPreviewLibrary = ref('')
 
 // Cover compression state
 const coverCompressBusy = ref(false)
@@ -364,6 +366,7 @@ const konamiProgress = ref([])
 
 // Playlist viewer state
 const playlists = ref([])
+const playlistsLibrary = ref('')
 const selectedPlaylist = ref(null)
 const playlistTracks = ref([])
 const playlistLoading = ref(false)
@@ -717,7 +720,14 @@ async function handleScanMissing() {
     missingBusy.value = true
     missingSelected.value = []
     try {
-        missingTracks.value = await ScanMissingTracks()
+        const library = dbPath.value
+        const tracks = await ScanMissingTracks(library)
+        if (dbPath.value !== library) {
+            missingBusy.value = false
+            return
+        }
+        missingTracksLibrary.value = library
+        missingTracks.value = tracks
         missingScanned.value = true
     } catch (e) {
         addLog('Error: ' + e)
@@ -742,6 +752,8 @@ function toggleAllMissing() {
 
 async function handleRemoveMissing() {
     if (missingBusy.value) return
+    const library = missingTracksLibrary.value
+    if (library !== dbPath.value) return
     const ids = [...missingSelected.value]
     if (ids.length === 0) return
     missingBusy.value = true
@@ -751,7 +763,7 @@ async function handleRemoveMissing() {
         return
     }
     try {
-        await RemoveMissingTracks(ids)
+        if (await RemoveMissingTracks(ids, library) !== 'ok') throw new Error('删除缺失记录失败')
         showToast(`已删除 ${ids.length} 条记录`)
         await handleScanMissing()
     } catch (e) {
@@ -766,7 +778,11 @@ async function handleRemoveMissing() {
 async function handleLoadSyncPreview() {
     syncPreviewLoaded.value = false
     try {
-        syncPreviewTracks.value = await GetSyncableTracks()
+        const library = dbPath.value
+        const tracks = await GetSyncableTracks(library)
+        if (dbPath.value !== library) return
+        syncPreviewLibrary.value = library
+        syncPreviewTracks.value = tracks
         syncPreviewLoaded.value = true
     } catch (e) {
         addLog('Error: ' + e)
@@ -774,13 +790,18 @@ async function handleLoadSyncPreview() {
 }
 
 async function handleSyncBPMKey() {
-    if (!syncPreviewLoaded.value) return
-    const ok = await confirmAction(`将向 ${syncPreviewTracks.value.length} 个文件写回 BPM 和 Key 标签。确认继续？`)
-    if (!ok) return
+    if (!syncPreviewLoaded.value || syncBusy.value || syncPreviewLibrary.value !== dbPath.value) return
+    const library = syncPreviewLibrary.value
     syncBusy.value = true
+    const ok = await confirmAction(`将向 ${syncPreviewTracks.value.length} 个文件写回 BPM 和 Key 标签。确认继续？`)
+    if (!ok) {
+        syncBusy.value = false
+        return
+    }
     syncResult.value = null
     try {
-        syncResult.value = await SyncBPMKeyToTags()
+        syncResult.value = await SyncBPMKeyToTags(library)
+        if (syncResult.value.error) throw new Error(syncResult.value.error)
         if (syncResult.value.success > 0) {
             showToast(`写回完成：${syncResult.value.success} 成功`)
         }
@@ -798,7 +819,9 @@ async function handleSyncBPMKey() {
 
 async function handleCompressCovers() {
     if (coverCompressBusy.value) return
+    const library = dbPath.value
     const playlistId = coverCompressPlaylistId.value
+    if (playlistId >= 0 && playlistsLibrary.value !== library) return
     const scope = playlistId < 0 ? (msgs.value.coverCompressAllLibrary || '全部曲库') : `播放列表 ${playlistId}`
     coverCompressBusy.value = true
     const ok = await confirmAction(`将压缩 ${scope} 中所有大于 1 MB 的封面至 1 MB 以内。此操作会修改音频文件的 ID3 标签。\n\n确认继续？`)
@@ -808,8 +831,9 @@ async function handleCompressCovers() {
     }
     coverCompressResult.value = null
     try {
-        coverCompressResult.value = await CompressCovers(playlistId, 1024)
+        coverCompressResult.value = await CompressCovers(playlistId, 1024, library)
         const r = coverCompressResult.value
+        if (r.error) throw new Error(r.error)
         if (r.compressed > 0) {
             const saved = r.savedBytes > 1048576
                 ? (r.savedBytes / 1048576).toFixed(1) + ' MB'
@@ -941,7 +965,9 @@ function apIsReady() {
 async function handleAntiPiracyV1() {
     if (apBusy.value) return
     if (!apIsReady()) return
+    const library = dbPath.value
     const scope = apScope.value
+    if (scope === 'playlist' && playlistsLibrary.value !== library) return
     const directory = apDir.value
     const file = apFile.value
     const playlistId = apPlaylistId.value
@@ -970,7 +996,9 @@ async function handleAntiPiracyV1() {
 async function handleAntiPiracyV2() {
     if (apBusy.value) return
     if (!apIsReady()) return
+    const library = dbPath.value
     const scope = apScope.value
+    if (scope === 'playlist' && playlistsLibrary.value !== library) return
     const directory = apDir.value
     const file = apFile.value
     const playlistId = apPlaylistId.value
@@ -1017,7 +1045,16 @@ async function handleAntiPiracyRestore() {
 async function loadPlaylists() {
     playlistLoading.value = true
     try {
-        playlists.value = await ListPlaylists()
+        const library = dbPath.value
+        const items = await ListPlaylists(library)
+        if (dbPath.value === library) {
+            if (playlistsLibrary.value !== library) {
+                apPlaylistId.value = -1
+                coverCompressPlaylistId.value = -1
+            }
+            playlistsLibrary.value = library
+            playlists.value = items
+        }
     } catch (e) {
         addLog('Error: ' + e)
         playlists.value = []

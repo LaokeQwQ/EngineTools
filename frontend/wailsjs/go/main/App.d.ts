@@ -22,7 +22,7 @@ export function CleanMSIOrphans(arg1:Array<string>):Promise<string>;
 
 export function ClearCompatibilityRecords(arg1:string):Promise<void>;
 
-export function CompressCovers(arg1:number,arg2:number):Promise<Record<string, any>>;
+export function CompressCovers(arg1:number,arg2:number,arg3:string):Promise<Record<string, any>>;
 
 export function FixUnicodeIssues():Promise<string>;
 
@@ -46,7 +46,7 @@ export function GetSettings():Promise<storage.Settings>;
 
 export function GetStatus():Promise<main.StatusInfo>;
 
-export function GetSyncableTracks():Promise<Array<database.SyncableTrack>>;
+export function GetSyncableTracks(arg1:string):Promise<Array<database.SyncableTrack>>;
 
 export function HandleUTF8AlreadyEnabled():Promise<string>;
 
@@ -60,13 +60,13 @@ export function ID3AntiPiracyV1(arg1:string):Promise<string>;
 
 export function ID3AntiPiracyV1Paths(arg1:Array<string>,arg2:string):Promise<string>;
 
-export function ID3AntiPiracyV1Playlist(arg1:number):Promise<string>;
+export function ID3AntiPiracyV1Playlist(arg1:number,arg2:string):Promise<string>;
 
 export function ID3AntiPiracyV2(arg1:string):Promise<string>;
 
 export function ID3AntiPiracyV2Paths(arg1:Array<string>,arg2:string):Promise<string>;
 
-export function ID3AntiPiracyV2Playlist(arg1:number):Promise<string>;
+export function ID3AntiPiracyV2Playlist(arg1:number,arg2:string):Promise<string>;
 
 export function ID3ClearAll(arg1:string):Promise<string>;
 
@@ -90,7 +90,7 @@ export function ListBackups():Promise<Array<database.BackupInfo>>;
 
 export function ListDrives():Promise<Array<main.DriveInfo>>;
 
-export function ListPlaylists():Promise<Array<database.PlaylistInfo>>;
+export function ListPlaylists(arg1:string):Promise<Array<database.PlaylistInfo>>;
 
 export function LogExperimentalEnabled():Promise<string>;
 
@@ -116,7 +116,7 @@ export function OptimizeDatabase():Promise<string>;
 
 export function Refresh():Promise<main.StatusInfo>;
 
-export function RemoveMissingTracks(arg1:Array<number>):Promise<string>;
+export function RemoveMissingTracks(arg1:Array<number>,arg2:string):Promise<string>;
 
 export function RepairDatabase():Promise<string>;
 
@@ -130,13 +130,13 @@ export function SaveSettings(arg1:storage.Settings):Promise<void>;
 
 export function ScanMSIOrphans():Promise<Array<msi.OrphanedMSI>>;
 
-export function ScanMissingTracks():Promise<Array<database.MissingTrack>>;
+export function ScanMissingTracks(arg1:string):Promise<Array<database.MissingTrack>>;
 
 export function SelectDrive(arg1:string):Promise<string>;
 
 export function SetLanguage(arg1:string):Promise<string>;
 
-export function SyncBPMKeyToTags():Promise<Record<string, any>>;
+export function SyncBPMKeyToTags(arg1:string):Promise<Record<string, any>>;
 
 export function USBUnlockAvailable():Promise<string>;
 

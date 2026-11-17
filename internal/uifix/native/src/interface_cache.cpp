@@ -291,6 +291,13 @@ static bool verifiedCallBoundary(uintptr_t call) {
     return cursor == call;
 }
 
+static MH_STATUS changeHook(bool enable) {
+    for (unsigned attempt = 0; ; ++attempt) {
+        const auto status = enable ? MH_EnableHook(hookTarget) : MH_DisableHook(hookTarget);
+        if (status != MH_ERROR_THREAD_BUSY || attempt == 7) return status;
+        Sleep(1);
+    }
+}
 extern "C" DWORD WINAPI RunInstalledCache() {
     bool expected = false;
     if (!controllerRunning.compare_exchange_strong(expected, true)) return 10;
@@ -351,7 +358,7 @@ extern "C" DWORD WINAPI RunInstalledCache() {
             }
         }
         if (!error) {
-            const auto status = MH_EnableHook(hookTarget);
+            const auto status = changeHook(true);
             if (status != MH_OK) error = 260 + status;
             else enabled = true;
         }
@@ -367,7 +374,7 @@ extern "C" DWORD WINAPI RunInstalledCache() {
     }
     InterlockedExchange64(shared + 4, 5); // Stopping.
     if (enabled) {
-        const auto status = MH_DisableHook(hookTarget);
+        const auto status = changeHook(false);
         if (status != MH_OK) error = 330 + status;
     }
     // Do not delete the trampoline or unload this DLL: a concurrent caller may

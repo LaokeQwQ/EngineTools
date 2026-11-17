@@ -48,10 +48,6 @@
 #define INVALID_HOOK_POS UINT_MAX
 #define ALL_HOOKS_POS    UINT_MAX
 
-// Freeze() action argument defines.
-#define ACTION_DISABLE      0
-#define ACTION_ENABLE       1
-#define ACTION_APPLY_QUEUED 2
 
 // Thread access rights for suspending/resuming threads.
 #define THREAD_ACCESS \
@@ -75,9 +71,11 @@ typedef struct _HOOK_ENTRY
 } HOOK_ENTRY, *PHOOK_ENTRY;
 
 // Suspended threads for Freeze()/Unfreeze().
+typedef struct { DWORD id; HANDLE handle; } FROZEN_THREAD;
+
 typedef struct _FROZEN_THREADS
 {
-    LPDWORD pItems;         // Data heap
+    FROZEN_THREAD *pItems;         // Data heap
     UINT    capacity;       // Size of allocated data heap, items
     UINT    size;           // Actual number of data items
 } FROZEN_THREADS, *PFROZEN_THREADS;
@@ -196,70 +194,6 @@ static DWORD_PTR FindNewIP(PHOOK_ENTRY pHook, DWORD_PTR ip)
 }
 
 //-------------------------------------------------------------------------
-static VOID ProcessThreadIPs(HANDLE hThread, UINT pos, UINT action)
-{
-    // If the thread suspended in the overwritten area,
-    // move IP to the proper address.
-
-    CONTEXT c;
-#if defined(_M_X64) || defined(__x86_64__)
-    DWORD64 *pIP = &c.Rip;
-#else
-    DWORD   *pIP = &c.Eip;
-#endif
-    UINT count;
-
-    c.ContextFlags = CONTEXT_CONTROL;
-    if (!GetThreadContext(hThread, &c))
-        return;
-
-    if (pos == ALL_HOOKS_POS)
-    {
-        pos = 0;
-        count = g_hooks.size;
-    }
-    else
-    {
-        count = pos + 1;
-    }
-
-    for (; pos < count; ++pos)
-    {
-        PHOOK_ENTRY pHook = &g_hooks.pItems[pos];
-        BOOL        enable;
-        DWORD_PTR   ip;
-
-        switch (action)
-        {
-        case ACTION_DISABLE:
-            enable = FALSE;
-            break;
-
-        case ACTION_ENABLE:
-            enable = TRUE;
-            break;
-
-        default: // ACTION_APPLY_QUEUED
-            enable = pHook->queueEnable;
-            break;
-        }
-        if (pHook->isEnabled == enable)
-            continue;
-
-        if (enable)
-            ip = FindNewIP(pHook, *pIP);
-        else
-            ip = FindOldIP(pHook, *pIP);
-
-        if (ip != 0)
-        {
-            *pIP = ip;
-            SetThreadContext(hThread, &c);
-        }
-    }
-}
-
-//-------------------------------------------------------------------------
 static BOOL EnumerateThreads(PFROZEN_THREADS pThreads)
 {
     BOOL succeeded = FALSE;
@@ -282,7 +216,7 @@ static BOOL EnumerateThreads(PFROZEN_THREADS pThreads)
                     {
                         pThreads->capacity = INITIAL_THREAD_CAPACITY;
                         pThreads->pItems
-                            = (LPDWORD)HeapAlloc(g_hHeap, 0, pThreads->capacity * sizeof(DWORD));
+                            = HeapAlloc(g_hHeap, HEAP_ZERO_MEMORY, pThreads->capacity * sizeof(FROZEN_THREAD));
                         if (pThreads->pItems == NULL)
                         {
                             succeeded = FALSE;
@@ -291,10 +225,10 @@ static BOOL EnumerateThreads(PFROZEN_THREADS pThreads)
                     }
                     else if (pThreads->size >= pThreads->capacity)
                     {
-                        LPDWORD p;
+                        FROZEN_THREAD *p;
                         pThreads->capacity *= 2;
-                        p = (LPDWORD)HeapReAlloc(
-                            g_hHeap, 0, pThreads->pItems, pThreads->capacity * sizeof(DWORD));
+                        p = HeapReAlloc(
+                            g_hHeap, HEAP_ZERO_MEMORY, pThreads->pItems, pThreads->capacity * sizeof(FROZEN_THREAD));
                         if (p == NULL)
                         {
                             succeeded = FALSE;
@@ -303,7 +237,7 @@ static BOOL EnumerateThreads(PFROZEN_THREADS pThreads)
 
                         pThreads->pItems = p;
                     }
-                    pThreads->pItems[pThreads->size++] = te.th32ThreadID;
+                    pThreads->pItems[pThreads->size++].id = te.th32ThreadID;
                 }
 
                 te.dwSize = sizeof(THREADENTRY32);
@@ -325,72 +259,48 @@ static BOOL EnumerateThreads(PFROZEN_THREADS pThreads)
 }
 
 //-------------------------------------------------------------------------
-static MH_STATUS Freeze(PFROZEN_THREADS pThreads, UINT pos, UINT action)
+static VOID Unfreeze(PFROZEN_THREADS threads)
 {
-    MH_STATUS status = MH_OK;
-
-    pThreads->pItems   = NULL;
-    pThreads->capacity = 0;
-    pThreads->size     = 0;
-    if (!EnumerateThreads(pThreads))
+    for (UINT i = 0; i < threads->size; ++i)
     {
-        status = MH_ERROR_MEMORY_ALLOC;
-    }
-    else if (pThreads->pItems != NULL)
-    {
-        UINT i;
-        for (i = 0; i < pThreads->size; ++i)
+        HANDLE thread = threads->pItems[i].handle;
+        if (thread != NULL)
         {
-            HANDLE hThread = OpenThread(THREAD_ACCESS, FALSE, pThreads->pItems[i]);
-            BOOL suspended = FALSE;
-            if (hThread != NULL)
-            {
-                DWORD result = SuspendThread(hThread);
-                if (result != 0xFFFFFFFF)
-                {
-                    suspended = TRUE;
-                    ProcessThreadIPs(hThread, pos, action);
-                }
-                CloseHandle(hThread);
-            }
-
-            if (!suspended)
-            {
-                // Mark thread as not suspended, so it's not resumed later on.
-                pThreads->pItems[i] = 0;
-            }
+            ResumeThread(thread);
+            CloseHandle(thread);
         }
     }
-
-    return status;
+    if (threads->pItems != NULL)
+        HeapFree(g_hHeap, 0, threads->pItems);
 }
 
-//-------------------------------------------------------------------------
-static VOID Unfreeze(PFROZEN_THREADS pThreads)
+static MH_STATUS Freeze(PFROZEN_THREADS threads)
 {
-    if (pThreads->pItems != NULL)
+    ZeroMemory(threads, sizeof(*threads));
+    if (!EnumerateThreads(threads))
+        return MH_ERROR_THREAD_CONTROL;
+
+    for (UINT i = 0; i < threads->size; ++i)
     {
-        UINT i;
-        for (i = 0; i < pThreads->size; ++i)
+        HANDLE thread = OpenThread(THREAD_ACCESS, FALSE, threads->pItems[i].id);
+        if (thread == NULL)
         {
-            DWORD threadId = pThreads->pItems[i];
-            if (threadId != 0)
-            {
-                HANDLE hThread = OpenThread(THREAD_ACCESS, FALSE, threadId);
-                if (hThread != NULL)
-                {
-                    ResumeThread(hThread);
-                    CloseHandle(hThread);
-                }
-            }
+            if (GetLastError() == ERROR_INVALID_PARAMETER)
+                continue; // Exited after the snapshot.
+            Unfreeze(threads);
+            return MH_ERROR_THREAD_CONTROL;
         }
-
-        HeapFree(g_hHeap, 0, pThreads->pItems);
+        if (SuspendThread(thread) == (DWORD)-1)
+        {
+            CloseHandle(thread);
+            Unfreeze(threads);
+            return MH_ERROR_THREAD_CONTROL;
+        }
+        threads->pItems[i].handle = thread;
     }
+    return MH_OK;
 }
-
-//-------------------------------------------------------------------------
-static MH_STATUS EnableHookLL(UINT pos, BOOL enable)
+static MH_STATUS EnableHookLL(UINT pos, BOOL enable, const FROZEN_THREADS *threads)
 {
     PHOOK_ENTRY pHook = &g_hooks.pItems[pos];
     DWORD  oldProtect;
@@ -403,9 +313,37 @@ static MH_STATUS EnableHookLL(UINT pos, BOOL enable)
         patchSize    += sizeof(JMP_REL_SHORT);
     }
 
+    // Inspect every suspended thread before changing either code or registers.
+    // A single context write can commit atomically with the byte patch. Multiple
+    // writes could fail halfway through, so let the caller retry after resuming.
+    HANDLE moving = NULL;
+    CONTEXT next;
+    for (UINT i = 0; i < threads->size; ++i)
+    {
+        HANDLE thread = threads->pItems[i].handle;
+        if (thread == NULL)
+            continue;
+        CONTEXT context;
+        context.ContextFlags = CONTEXT_CONTROL;
+        if (!GetThreadContext(thread, &context))
+            return MH_ERROR_THREAD_CONTROL;
+        DWORD64 ip = enable ? FindNewIP(pHook, context.Rip) : FindOldIP(pHook, context.Rip);
+        if (ip != 0)
+        {
+            if (moving != NULL)
+                return MH_ERROR_THREAD_BUSY;
+            moving = thread;
+            next = context;
+            next.Rip = ip;
+        }
+    }
     if (!VirtualProtect(pPatchTarget, patchSize, PAGE_EXECUTE_READWRITE, &oldProtect))
         return MH_ERROR_MEMORY_PROTECT;
-
+    if (moving != NULL && !SetThreadContext(moving, &next))
+    {
+        VirtualProtect(pPatchTarget, patchSize, oldProtect, &oldProtect);
+        return MH_ERROR_THREAD_CONTROL;
+    }
     if (enable)
     {
         PJMP_REL pJmp = (PJMP_REL)pPatchTarget;
@@ -456,14 +394,14 @@ static MH_STATUS EnableAllHooksLL(BOOL enable)
     if (first != INVALID_HOOK_POS)
     {
         FROZEN_THREADS threads;
-        status = Freeze(&threads, ALL_HOOKS_POS, enable ? ACTION_ENABLE : ACTION_DISABLE);
+        status = Freeze(&threads);
         if (status == MH_OK)
         {
             for (i = first; i < g_hooks.size; ++i)
             {
                 if (g_hooks.pItems[i].isEnabled != enable)
                 {
-                    status = EnableHookLL(i, enable);
+                    status = EnableHookLL(i, enable, &threads);
                     if (status != MH_OK)
                         break;
                 }
@@ -688,10 +626,10 @@ MH_STATUS WINAPI MH_RemoveHook(LPVOID pTarget)
             if (g_hooks.pItems[pos].isEnabled)
             {
                 FROZEN_THREADS threads;
-                status = Freeze(&threads, pos, ACTION_DISABLE);
+                status = Freeze(&threads);
                 if (status == MH_OK)
                 {
-                    status = EnableHookLL(pos, FALSE);
+                    status = EnableHookLL(pos, FALSE, &threads);
 
                     Unfreeze(&threads);
                 }
@@ -739,10 +677,10 @@ static MH_STATUS EnableHook(LPVOID pTarget, BOOL enable)
                 if (g_hooks.pItems[pos].isEnabled != enable)
                 {
                     FROZEN_THREADS threads;
-                    status = Freeze(&threads, pos, enable ? ACTION_ENABLE : ACTION_DISABLE);
+                    status = Freeze(&threads);
                     if (status == MH_OK)
                     {
-                        status = EnableHookLL(pos, enable);
+                        status = EnableHookLL(pos, enable, &threads);
 
                         Unfreeze(&threads);
                     }
@@ -852,7 +790,7 @@ MH_STATUS WINAPI MH_ApplyQueued(VOID)
         if (first != INVALID_HOOK_POS)
         {
             FROZEN_THREADS threads;
-            status = Freeze(&threads, ALL_HOOKS_POS, ACTION_APPLY_QUEUED);
+            status = Freeze(&threads);
             if (status == MH_OK)
             {
                 for (i = first; i < g_hooks.size; ++i)
@@ -860,7 +798,7 @@ MH_STATUS WINAPI MH_ApplyQueued(VOID)
                     PHOOK_ENTRY pHook = &g_hooks.pItems[i];
                     if (pHook->isEnabled != pHook->queueEnable)
                     {
-                        status = EnableHookLL(i, pHook->queueEnable);
+                        status = EnableHookLL(i, pHook->queueEnable, &threads);
                         if (status != MH_OK)
                             break;
                     }
@@ -931,6 +869,8 @@ const char *WINAPI MH_StatusToString(MH_STATUS status)
         MH_ST2STR(MH_ERROR_MEMORY_PROTECT)
         MH_ST2STR(MH_ERROR_MODULE_NOT_FOUND)
         MH_ST2STR(MH_ERROR_FUNCTION_NOT_FOUND)
+        MH_ST2STR(MH_ERROR_THREAD_CONTROL)
+        MH_ST2STR(MH_ERROR_THREAD_BUSY)
     }
 
 #undef MH_ST2STR

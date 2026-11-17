@@ -12,8 +12,8 @@ type TrackPath struct {
 }
 
 // GetAllTrackPaths returns the file paths of every available, analyzed track.
-func GetAllTrackPaths() ([]TrackPath, error) {
-	dbPath, err := ResolveLibrary()
+func GetAllTrackPaths(target ...string) ([]TrackPath, error) {
+	dbPath, err := resolveOperationLibrary(target)
 	if err != nil {
 		return nil, fmt.Errorf("no Engine Library found: %w", err)
 	}
@@ -50,8 +50,8 @@ func GetAllTrackPaths() ([]TrackPath, error) {
 }
 
 // GetPlaylistTrackPaths returns file paths for all tracks in the given playlist.
-func GetPlaylistTrackPaths(playlistID int) ([]TrackPath, error) {
-	dbPath, err := ResolveLibrary()
+func GetPlaylistTrackPaths(playlistID int, target ...string) ([]TrackPath, error) {
+	dbPath, err := resolveOperationLibrary(target)
 	if err != nil {
 		return nil, fmt.Errorf("no Engine Library found: %w", err)
 	}
