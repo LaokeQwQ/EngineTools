@@ -52,6 +52,11 @@ static Snapshot& cache = *new Snapshot;
 using LookupFn = void* (*)(Interface*, const String*);
 static std::atomic<LookupFn> originalLookup{nullptr};
 static std::atomic<ULONGLONG> lastSuccess{0};
+
+static uint64_t snapshotAge() {
+    const auto refreshed = lastSuccess.load();
+    return refreshed ? GetTickCount64() - refreshed : UINT64_MAX;
+}
 static uintptr_t engineBase;
 static uint32_t allowedCallers[16]{};
 static size_t allowedCallerCount = 0;
@@ -217,7 +222,7 @@ extern "C" __declspec(dllexport) void* CachedInterfaceFromName(Interface* result
         return makeDefault(result);
     }
     ++counters[0];
-    if (GetTickCount64() - lastSuccess.load() > 3000) return fallback(result, name, 1, caller);
+    if (snapshotAge() > 3000) return fallback(result, name, 1, caller);
     try {
         const std::wstring key(name->data ? name->data : L"", size_t(name->size));
         AcquireSRWLockShared(&cacheLock);
@@ -236,7 +241,7 @@ extern "C" __declspec(dllexport) void* CachedInterfaceFromName(Interface* result
 
 extern "C" __declspec(dllexport) void GetCacheStats(uint64_t* output) {
     for (int i = 0; i < 8; ++i) output[i] = counters[i].load();
-    output[8] = lastSuccess.load() ? GetTickCount64() - lastSuccess.load() : UINT64_MAX;
+    output[8] = snapshotAge();
 }
 
 extern "C" __declspec(dllexport) int StopCache() {
@@ -357,7 +362,7 @@ extern "C" DWORD WINAPI RunInstalledCache() {
         while (InterlockedCompareExchange64(shared + 3, 0, 0) == 0) {
             publish(shared);
             Sleep(100);
-            if (GetTickCount64() - lastSuccess.load() > 3000) { error = 302; break; }
+            if (snapshotAge() > 3000) { error = 302; break; }
         }
     }
     InterlockedExchange64(shared + 4, 5); // Stopping.

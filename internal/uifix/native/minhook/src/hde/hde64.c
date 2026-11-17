@@ -1,4 +1,4 @@
-﻿/*
+/*
  * Hacker Disassembler Engine 64 C
  * Copyright (c) 2008-2009, Vyacheslav Patkov.
  * All rights reserved.
@@ -72,12 +72,6 @@ unsigned int hde64_disasm(const void *code, hde64s *hs)
     if ((hs->opcode = c) == 0x0f) {
         hs->opcode2 = c = *p++;
         ht += DELTA_OPCODES;
-    } else if (c >= 0xa0 && c <= 0xa3) {
-        op64++;
-        if (pref & PRE_67)
-            pref |= PRE_66;
-        else
-            pref &= ~PRE_66;
     }
 
     opcode = c;
@@ -232,20 +226,14 @@ unsigned int hde64_disasm(const void *code, hde64s *hs)
 
         switch (m_mod) {
             case 0:
-                if (pref & PRE_67) {
-                    if (m_rm == 6)
-                        disp_size = 2;
-                } else
-                    if (m_rm == 5)
-                        disp_size = 4;
+                if (m_rm == 5)
+                    disp_size = 4;
                 break;
             case 1:
                 disp_size = 1;
                 break;
             case 2:
-                disp_size = 2;
-                if (!(pref & PRE_67))
-                    disp_size <<= 1;
+                disp_size = 4;
                 break;
         }
 
@@ -255,7 +243,7 @@ unsigned int hde64_disasm(const void *code, hde64s *hs)
             hs->sib = c;
             hs->sib_scale = c >> 6;
             hs->sib_index = (c & 0x3f) >> 3;
-            if ((hs->sib_base = c & 7) == 5 && !(m_mod & 1))
+            if ((hs->sib_base = c & 7) == 5 && m_mod == 0)
                 disp_size = 4;
         }
 
@@ -278,6 +266,19 @@ unsigned int hde64_disasm(const void *code, hde64s *hs)
     } else if (pref & PRE_LOCK)
         hs->flags |= F_ERROR | F_ERROR_LOCK;
 
+    if (hs->opcode >= 0xa0 && hs->opcode <= 0xa3) {
+        if (pref & PRE_67) {
+            hs->flags |= F_IMM32;
+            hs->imm.imm32 = *(uint32_t *)p;
+            p += 4;
+        } else {
+            hs->flags |= F_IMM64;
+            hs->imm.imm64 = *(uint64_t *)p;
+            p += 8;
+        }
+        goto disasm_done;
+    }
+
     if (cflags & C_IMM_P66) {
         if (cflags & C_REL32) {
             if (pref & PRE_66) {
@@ -292,7 +293,7 @@ unsigned int hde64_disasm(const void *code, hde64s *hs)
             hs->flags |= F_IMM64;
             hs->imm.imm64 = *(uint64_t *)p;
             p += 8;
-        } else if (!(pref & PRE_66)) {
+        } else if (!(pref & PRE_66) || hs->rex_w) {
             hs->flags |= F_IMM32;
             hs->imm.imm32 = *(uint32_t *)p;
             p += 4;

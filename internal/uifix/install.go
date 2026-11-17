@@ -8,6 +8,7 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 	"sync/atomic"
@@ -165,20 +166,17 @@ func (m *Manager) Install(directory string) error {
 	} else if pid != 0 {
 		return errors.New("Engine DJ started during installation; close it and retry")
 	}
-	flags := uint32(windows.MOVEFILE_WRITE_THROUGH)
 	if exists {
-		current, err := os.ReadFile(target)
-		if err != nil {
+		if err := removeOwnedProxy(target, previous); err != nil {
 			return err
 		}
-		if !bytes.Equal(current, previous) {
-			return errors.New("version.dll changed during installation; file left unchanged")
-		}
-		flags |= windows.MOVEFILE_REPLACE_EXISTING
 	}
 	from, _ := windows.UTF16PtrFromString(file.Name())
 	to, _ := windows.UTF16PtrFromString(target)
-	if err = windows.MoveFileEx(from, to, flags); err != nil {
+	if err = windows.MoveFileEx(from, to, windows.MOVEFILE_WRITE_THROUGH); err != nil {
+		if exists {
+			return fmt.Errorf("Previous EngineTools DLL removed, but replacement failed; close Engine DJ and retry: %w", err)
+		}
 		return err
 	}
 	return nil
@@ -196,20 +194,37 @@ func (m *Manager) Uninstall(directory string) error {
 		return errors.New("Close Engine DJ before uninstalling the cache")
 	}
 	target := filepath.Join(directory, "version.dll")
-	data, err := os.ReadFile(target)
+	err := removeOwnedProxy(target, nil)
 	if os.IsNotExist(err) {
 		return nil
 	}
+	return err
+}
+
+// Validate and mark the same file for deletion while denying write/delete sharing.
+func removeOwnedProxy(path string, expected []byte) error {
+	name, err := windows.UTF16PtrFromString(path)
+	if err != nil {
+		return err
+	}
+	handle, err := windows.CreateFile(name, windows.GENERIC_READ|windows.DELETE, windows.FILE_SHARE_READ, nil, windows.OPEN_EXISTING, windows.FILE_FLAG_OPEN_REPARSE_POINT, 0)
+	if err != nil {
+		return err
+	}
+	file := os.NewFile(uintptr(handle), path)
+	defer file.Close()
+	data, err := io.ReadAll(file)
 	if err != nil {
 		return err
 	}
 	if _, err = parseProxy(data); err != nil {
 		return err
 	}
-	if err = os.Remove(target); err != nil {
-		return err
+	if expected != nil && !bytes.Equal(data, expected) {
+		return errors.New("version.dll changed during installation; file left unchanged")
 	}
-	return nil
+	deleteFile := byte(1) // FILE_DISPOSITION_INFO.DeleteFile is a Win32 BOOLEAN.
+	return windows.SetFileInformationByHandle(handle, windows.FileDispositionInfo, &deleteFile, 1)
 }
 
 func readStandalone(pid uint32, state *State) bool {

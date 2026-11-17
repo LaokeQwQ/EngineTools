@@ -8,6 +8,7 @@ import (
 	"math/rand"
 	"os"
 	"path/filepath"
+	"runtime"
 	"time"
 )
 
@@ -44,9 +45,26 @@ func backupKeyPath(key string) (string, error) {
 		if err != nil {
 			return "", err
 		}
-		digest := sha256.Sum256([]byte(filepath.Clean(absolute)))
+		identity := filepath.Clean(absolute)
+		if runtime.GOOS == "windows" {
+			identity, err = filepath.EvalSymlinks(identity)
+			if err != nil {
+				return "", err
+			}
+		}
+		digest := sha256.Sum256([]byte(identity))
 		target := filepath.Join(dir, fmt.Sprintf("directory-%x_backup.json", digest[:12]))
-		// Import a legacy per-directory backup without removing the original.
+		// Retain access to backups created with the previous path spelling.
+		if identity != absolute {
+			oldDigest := sha256.Sum256([]byte(absolute))
+			oldTarget := filepath.Join(dir, fmt.Sprintf("directory-%x_backup.json", oldDigest[:12]))
+			if _, err := os.Stat(target); os.IsNotExist(err) {
+				if err := storage.Migrate(oldTarget, target); err != nil {
+					return "", err
+				}
+			}
+		}
+		// Import a legacy backup from beside the audio files.
 		if err := storage.Migrate(filepath.Join(absolute, ".id3_backup.json"), target); err != nil {
 			return "", err
 		}

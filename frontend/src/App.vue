@@ -343,7 +343,6 @@ async function loadSettings() {
     squareCorners.value = !!settings.squareCorners
     alwaysOnTop.value = !!settings.alwaysOnTop
     experimentalEnabled.value = !!settings.experimentalEnabled
-    await SaveSettings(settingsSnapshot())
     settingsReady = true
 }
 const showExperimentalConfirm = ref(false)
@@ -742,13 +741,18 @@ function toggleAllMissing() {
 }
 
 async function handleRemoveMissing() {
-    if (missingSelected.value.length === 0) return
-    const ok = await confirmAction(`确认从数据库删除 ${missingSelected.value.length} 条缺失记录？此操作不可撤销。`)
-    if (!ok) return
+    if (missingBusy.value) return
+    const ids = [...missingSelected.value]
+    if (ids.length === 0) return
     missingBusy.value = true
+    const ok = await confirmAction(`确认从数据库删除 ${ids.length} 条缺失记录？此操作不可撤销。`)
+    if (!ok) {
+        missingBusy.value = false
+        return
+    }
     try {
-        await RemoveMissingTracks(missingSelected.value)
-        showToast(`已删除 ${missingSelected.value.length} 条记录`)
+        await RemoveMissingTracks(ids)
+        showToast(`已删除 ${ids.length} 条记录`)
         await handleScanMissing()
     } catch (e) {
         addLog('Error: ' + e)
@@ -793,13 +797,18 @@ async function handleSyncBPMKey() {
 // ---- Cover Art Compression ----
 
 async function handleCompressCovers() {
-    const scope = coverCompressPlaylistId.value < 0 ? (msgs.value.coverCompressAllLibrary || '全部曲库') : `播放列表 ${coverCompressPlaylistId.value}`
-    const ok = await confirmAction(`将压缩 ${scope} 中所有大于 1 MB 的封面至 1 MB 以内。此操作会修改音频文件的 ID3 标签。\n\n确认继续？`)
-    if (!ok) return
+    if (coverCompressBusy.value) return
+    const playlistId = coverCompressPlaylistId.value
+    const scope = playlistId < 0 ? (msgs.value.coverCompressAllLibrary || '全部曲库') : `播放列表 ${playlistId}`
     coverCompressBusy.value = true
+    const ok = await confirmAction(`将压缩 ${scope} 中所有大于 1 MB 的封面至 1 MB 以内。此操作会修改音频文件的 ID3 标签。\n\n确认继续？`)
+    if (!ok) {
+        coverCompressBusy.value = false
+        return
+    }
     coverCompressResult.value = null
     try {
-        coverCompressResult.value = await CompressCovers(coverCompressPlaylistId.value, 1024)
+        coverCompressResult.value = await CompressCovers(playlistId, 1024)
         const r = coverCompressResult.value
         if (r.compressed > 0) {
             const saved = r.savedBytes > 1048576
@@ -930,17 +939,26 @@ function apIsReady() {
 }
 
 async function handleAntiPiracyV1() {
+    if (apBusy.value) return
     if (!apIsReady()) return
-    const ok = await confirmAction('防偷歌 v1：清除所选范围内所有音频文件的ID3标签（操作前自动备份）。确认执行？')
-    if (!ok) return
+    const scope = apScope.value
+    const directory = apDir.value
+    const file = apFile.value
+    const playlistId = apPlaylistId.value
+    const backupKey = apBackupKey()
     apBusy.value = true
+    const ok = await confirmAction('防偷歌 v1：清除所选范围内所有音频文件的ID3标签（操作前自动备份）。确认执行？')
+    if (!ok) {
+        apBusy.value = false
+        return
+    }
     try {
-        if (apScope.value === 'folder') {
-            await ID3AntiPiracyV1(apDir.value)
-        } else if (apScope.value === 'file') {
-            await ID3AntiPiracyV1Paths([apFile.value], apBackupKey())
+        if (scope === 'folder') {
+            await ID3AntiPiracyV1(directory)
+        } else if (scope === 'file') {
+            await ID3AntiPiracyV1Paths([file], backupKey)
         } else {
-            await ID3AntiPiracyV1Playlist(apPlaylistId.value)
+            await ID3AntiPiracyV1Playlist(playlistId)
         }
         showToast('v1 执行完成')
     } catch (e) {
@@ -950,17 +968,26 @@ async function handleAntiPiracyV1() {
 }
 
 async function handleAntiPiracyV2() {
+    if (apBusy.value) return
     if (!apIsReady()) return
-    const ok = await confirmAction('防偷歌 v2：随机打乱所选范围内所有音频文件的ID3标签（操作前自动备份）。确认执行？')
-    if (!ok) return
+    const scope = apScope.value
+    const directory = apDir.value
+    const file = apFile.value
+    const playlistId = apPlaylistId.value
+    const backupKey = apBackupKey()
     apBusy.value = true
+    const ok = await confirmAction('防偷歌 v2：随机打乱所选范围内所有音频文件的ID3标签（操作前自动备份）。确认执行？')
+    if (!ok) {
+        apBusy.value = false
+        return
+    }
     try {
-        if (apScope.value === 'folder') {
-            await ID3AntiPiracyV2(apDir.value)
-        } else if (apScope.value === 'file') {
-            await ID3AntiPiracyV2Paths([apFile.value], apBackupKey())
+        if (scope === 'folder') {
+            await ID3AntiPiracyV2(directory)
+        } else if (scope === 'file') {
+            await ID3AntiPiracyV2Paths([file], backupKey)
         } else {
-            await ID3AntiPiracyV2Playlist(apPlaylistId.value)
+            await ID3AntiPiracyV2Playlist(playlistId)
         }
         showToast('v2 执行完成')
     } catch (e) {
