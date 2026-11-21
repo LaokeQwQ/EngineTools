@@ -290,6 +290,12 @@ static MH_STATUS Freeze(PFROZEN_THREADS threads)
             Unfreeze(threads);
             return MH_ERROR_THREAD_CONTROL;
         }
+        if (GetProcessIdOfThread(thread) != GetCurrentProcessId())
+        {
+            // The ID was reused by another process after the snapshot.
+            CloseHandle(thread);
+            continue;
+        }
         if (SuspendThread(thread) == (DWORD)-1)
         {
             CloseHandle(thread);
@@ -300,10 +306,60 @@ static MH_STATUS Freeze(PFROZEN_THREADS threads)
     }
     return MH_OK;
 }
+#define MAX_PATCH_PAGES 2
+typedef struct
+{
+    PVOID  address;
+    SIZE_T size;
+    DWORD  protect;
+} PATCH_PAGE;
+
+static VOID RestorePatchRange(const PATCH_PAGE *pages, UINT pageCount)
+{
+    DWORD ignored;
+    for (UINT i = 0; i < pageCount; ++i)
+        VirtualProtect(pages[i].address, pages[i].size, pages[i].protect, &ignored);
+}
+
+static BOOL ProtectPatchRange(LPBYTE address, SIZE_T size, DWORD newProtect, PATCH_PAGE *pages, UINT *pageCount)
+{
+    LPBYTE current = address;
+    LPBYTE end     = address + size;
+    *pageCount     = 0;
+
+    while (current < end)
+    {
+        if (*pageCount == MAX_PATCH_PAGES)
+        {
+            RestorePatchRange(pages, *pageCount);
+            return FALSE;
+        }
+
+        ULONG_PTR pageEnd = ((ULONG_PTR)current | 0xFFF) + 1;
+        SIZE_T part = (SIZE_T)(pageEnd - (ULONG_PTR)current);
+        if (part > (SIZE_T)(end - current))
+            part = (SIZE_T)(end - current);
+
+        DWORD oldProtect;
+        if (!VirtualProtect(current, part, newProtect, &oldProtect))
+        {
+            RestorePatchRange(pages, *pageCount);
+            return FALSE;
+        }
+        pages[*pageCount].address = current;
+        pages[*pageCount].size    = part;
+        pages[*pageCount].protect = oldProtect;
+        ++*pageCount;
+        current += part;
+    }
+    return TRUE;
+}
+
 static MH_STATUS EnableHookLL(UINT pos, BOOL enable, const FROZEN_THREADS *threads)
 {
     PHOOK_ENTRY pHook = &g_hooks.pItems[pos];
-    DWORD  oldProtect;
+    PATCH_PAGE pages[MAX_PATCH_PAGES];
+    UINT   pageCount    = 0;
     SIZE_T patchSize    = sizeof(JMP_REL);
     LPBYTE pPatchTarget = (LPBYTE)pHook->pTarget;
 
@@ -337,11 +393,11 @@ static MH_STATUS EnableHookLL(UINT pos, BOOL enable, const FROZEN_THREADS *threa
             next.Rip = ip;
         }
     }
-    if (!VirtualProtect(pPatchTarget, patchSize, PAGE_EXECUTE_READWRITE, &oldProtect))
+    if (!ProtectPatchRange(pPatchTarget, patchSize, PAGE_EXECUTE_READWRITE, pages, &pageCount))
         return MH_ERROR_MEMORY_PROTECT;
     if (moving != NULL && !SetThreadContext(moving, &next))
     {
-        VirtualProtect(pPatchTarget, patchSize, oldProtect, &oldProtect);
+        RestorePatchRange(pages, pageCount);
         return MH_ERROR_THREAD_CONTROL;
     }
     if (enable)
@@ -365,7 +421,7 @@ static MH_STATUS EnableHookLL(UINT pos, BOOL enable, const FROZEN_THREADS *threa
             memcpy(pPatchTarget, pHook->backup, sizeof(JMP_REL));
     }
 
-    VirtualProtect(pPatchTarget, patchSize, oldProtect, &oldProtect);
+    RestorePatchRange(pages, pageCount);
 
     // Just-in-case measure.
     FlushInstructionCache(GetCurrentProcess(), pPatchTarget, patchSize);

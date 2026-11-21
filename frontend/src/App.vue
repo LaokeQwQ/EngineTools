@@ -1040,19 +1040,25 @@ async function handleAntiPiracyV2() {
 }
 
 async function handleAntiPiracyRestore() {
+    if (apBusy.value) return
     if (!apIsReady()) return
+    const library = dbPath.value
+    if (apScope.value === 'playlist' && playlistsLibrary.value !== library) return
     apBusy.value = true
     try {
+        let result
         if (apScope.value === 'folder') {
-            await ID3AntiPiracyRestore(apDir.value)
+            result = await ID3AntiPiracyRestore(apDir.value)
         } else if (apScope.value === 'file') {
-            await ID3AntiPiracyRestorePaths(apBackupKey())
+            result = await ID3AntiPiracyRestorePaths(apBackupKey())
         } else {
-            await ID3AntiPiracyRestorePlaylist(apPlaylistId.value)
+            result = await ID3AntiPiracyRestorePlaylist(apPlaylistId.value, library)
         }
+        if (result !== 'ok') throw new Error('防偷歌恢复失败，请查看日志')
         showToast('恢复完成')
     } catch (e) {
         addLog('Error: ' + e)
+        showErrorToast(String(e))
     }
     apBusy.value = false
 }
@@ -1374,7 +1380,7 @@ async function changeLanguage(lang) {
 async function checkForUpdates() {
     checkingUpdate.value = true
     try {
-        const result = await CheckForUpdates(APP_VERSION)
+        const result = await CheckForUpdates(APP_VERSION_LABEL)
         if (result.error) {
             addLog('Update check failed: ' + result.error)
         } else if (result.hasUpdate) {

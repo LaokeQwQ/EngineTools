@@ -54,7 +54,7 @@ export function ID3AntiPiracyRestore(arg1:string):Promise<string>;
 
 export function ID3AntiPiracyRestorePaths(arg1:string):Promise<string>;
 
-export function ID3AntiPiracyRestorePlaylist(arg1:number):Promise<string>;
+export function ID3AntiPiracyRestorePlaylist(arg1:number,arg2:string):Promise<string>;
 
 export function ID3AntiPiracyV1(arg1:string):Promise<string>;
 

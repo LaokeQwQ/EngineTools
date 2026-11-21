@@ -53,9 +53,17 @@ using LookupFn = void* (*)(Interface*, const String*);
 static std::atomic<LookupFn> originalLookup{nullptr};
 static std::atomic<ULONGLONG> lastSuccess{0};
 
+// GetTickCount64 includes system suspend time, but worker waits do not, so the
+// age of a snapshot must use a clock that also stops while the system sleeps.
+static uint64_t monotonicMs() {
+    ULONGLONG ticks = 0;
+    QueryUnbiasedInterruptTime(&ticks);
+    return ticks / 10000;
+}
+
 static uint64_t snapshotAge() {
     const auto refreshed = lastSuccess.load();
-    return refreshed ? GetTickCount64() - refreshed : UINT64_MAX;
+    return refreshed ? monotonicMs() - refreshed : UINT64_MAX;
 }
 static uintptr_t engineBase;
 static uint32_t allowedCallers[16]{};
@@ -123,7 +131,7 @@ struct OwnedList {
 };
 
 static bool refresh() {
-    const auto begin = GetTickCount64();
+    const auto begin = monotonicMs();
     try {
         OwnedList list;
         getAll(&list.value);
@@ -150,8 +158,8 @@ static bool refresh() {
         ReleaseSRWLockExclusive(&cacheLock);
         // Old snapshot destruction happens outside the GUI reader's lock.
         counters[6] = uint64_t(list.value.size);
-        counters[5] = GetTickCount64() - begin;
-        lastSuccess = GetTickCount64();
+        counters[5] = monotonicMs() - begin;
+        lastSuccess = monotonicMs();
         ++counters[3];
         return true;
     } catch (...) {
@@ -226,6 +234,10 @@ extern "C" __declspec(dllexport) void* CachedInterfaceFromName(Interface* result
     try {
         const std::wstring key(name->data ? name->data : L"", size_t(name->size));
         AcquireSRWLockShared(&cacheLock);
+        if (snapshotAge() > 3000) {
+            ReleaseSRWLockShared(&cacheLock);
+            return fallback(result, name, 1, caller);
+        }
         auto found = cache.find(key);
         if (found != cache.end()) {
             // Copy only the implicitly-shared Qt interface handle under the lock.
@@ -294,7 +306,10 @@ static bool verifiedCallBoundary(uintptr_t call) {
 static MH_STATUS changeHook(bool enable) {
     for (unsigned attempt = 0; ; ++attempt) {
         const auto status = enable ? MH_EnableHook(hookTarget) : MH_DisableHook(hookTarget);
-        if (status != MH_ERROR_THREAD_BUSY || attempt == 7) return status;
+        // A thread that exited between OpenThread and SuspendThread also yields
+        // THREAD_CONTROL; retry so the next freeze works on the remaining set.
+        if (status != MH_ERROR_THREAD_BUSY && status != MH_ERROR_THREAD_CONTROL) return status;
+        if (attempt == 7) return status;
         Sleep(1);
     }
 }

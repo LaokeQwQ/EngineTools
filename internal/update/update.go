@@ -40,8 +40,8 @@ func CheckUpdate(currentVersion string) (*Release, bool, error) {
 }
 
 func isNewer(remote, local string) bool {
-	rv := parseVersion(remote)
-	lv := parseVersion(local)
+	rv, remotePre := parseVersion(remote)
+	lv, localPre := parseVersion(local)
 	for i := 0; i < 3; i++ {
 		if rv[i] > lv[i] {
 			return true
@@ -50,18 +50,25 @@ func isNewer(remote, local string) bool {
 			return false
 		}
 	}
-	return false
+	// The same numeric version is still an update when the local build is a
+	// preview and the published release is the final one.
+	return localPre != "" && remotePre == ""
 }
 
-func parseVersion(v string) [3]int {
+func parseVersion(v string) ([3]int, string) {
 	v = strings.TrimPrefix(v, "v")
-	parts := strings.SplitN(v, ".", 3)
 	var result [3]int
+	prerelease := ""
+	if i := strings.IndexAny(v, "-+ "); i >= 0 {
+		prerelease = strings.TrimSpace(v[i+1:])
+		v = v[:i]
+	}
+	parts := strings.SplitN(v, ".", 3)
 	for i := 0; i < len(parts) && i < 3; i++ {
 		n, _ := strconv.Atoi(parts[i])
 		result[i] = n
 	}
-	return result
+	return result, prerelease
 }
 
 func fetchRelease(apiURL string) (*Release, error) {

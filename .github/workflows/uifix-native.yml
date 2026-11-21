@@ -1,0 +1,40 @@
+name: uifix native
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - "internal/uifix/native/**"
+      - ".github/workflows/uifix-native.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Build version.dll
+        shell: cmd
+        run: internal\uifix\native\build.cmd
+
+      - name: Record payload hash
+        shell: pwsh
+        run: |
+          $hash = (Get-FileHash internal/uifix/assets/version.bin -Algorithm SHA256).Hash
+          "version.bin sha256: $hash" | Tee-Object -FilePath $env:GITHUB_STEP_SUMMARY -Append
+
+      - name: Upload payload
+        uses: actions/upload-artifact@v4
+        with:
+          name: version-bin
+          path: internal/uifix/assets/version.bin
+          if-no-files-found: error
+
+      - name: Check embedded payload is current
+        shell: pwsh
+        run: |
+          git diff --stat
+          git diff --exit-code -- internal/uifix/assets/version.bin

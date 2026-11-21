@@ -58,9 +58,32 @@
 #endif
 
 //-------------------------------------------------------------------------
+static BOOL IsReadableRange(LPCVOID pAddress, SIZE_T size)
+{
+    ULONG_PTR current = (ULONG_PTR)pAddress;
+    ULONG_PTR end     = current + size;
+
+    while (current < end)
+    {
+        MEMORY_BASIC_INFORMATION mi;
+        if (!VirtualQuery((LPCVOID)current, &mi, sizeof(mi)))
+            return FALSE;
+        if (mi.State != MEM_COMMIT || (mi.Protect & (PAGE_NOACCESS | PAGE_GUARD)))
+            return FALSE;
+        if ((ULONG_PTR)mi.BaseAddress + mi.RegionSize <= current)
+            return FALSE;
+        current = (ULONG_PTR)mi.BaseAddress + mi.RegionSize;
+    }
+    return TRUE;
+}
+
+//-------------------------------------------------------------------------
 static BOOL IsCodePadding(LPBYTE pInst, UINT size)
 {
     UINT i;
+
+    if (!IsReadableRange(pInst, size))
+        return FALSE;
 
     if (pInst[0] != 0x00 && pInst[0] != 0x90 && pInst[0] != 0xCC)
         return FALSE;
@@ -162,8 +185,13 @@ BOOL CreateTrampolineFunction(PTRAMPOLINE ct)
 
             // Relative address is stored at (instruction length - immediate value length - 4).
             pRelAddr = (PUINT32)(instBuf + hs.len - ((hs.flags & 0x3C) >> 2) - 4);
-            *pRelAddr
-                = (UINT32)((pOldInst + hs.len + (INT32)hs.disp.disp32) - (pNewInst + hs.len));
+            {
+                INT64 reloc = (INT64)((pOldInst + hs.len + (INT32)hs.disp.disp32)
+                    - (pNewInst + hs.len));
+                if (reloc < -2147483648LL || reloc > 2147483647LL)
+                    return FALSE;
+                *pRelAddr = (UINT32)reloc;
+            }
 
             // Complete the function if JMP (FF /4).
             if (hs.opcode == 0xFF && hs.modrm_reg == 4)
@@ -196,6 +224,10 @@ BOOL CreateTrampolineFunction(PTRAMPOLINE ct)
             if ((ULONG_PTR)ct->pTarget <= dest
                 && dest < ((ULONG_PTR)ct->pTarget + sizeof(JMP_REL)))
             {
+                // A verbatim copy keeps the original distance only while no
+                // earlier instruction has changed size.
+                if (newPos != oldPos)
+                    return FALSE;
                 if (jmpDest < dest)
                     jmpDest = dest;
             }
@@ -230,6 +262,10 @@ BOOL CreateTrampolineFunction(PTRAMPOLINE ct)
             if ((ULONG_PTR)ct->pTarget <= dest
                 && dest < ((ULONG_PTR)ct->pTarget + sizeof(JMP_REL)))
             {
+                // A verbatim copy keeps the original distance only while no
+                // earlier instruction has changed size.
+                if (newPos != oldPos)
+                    return FALSE;
                 if (jmpDest < dest)
                     jmpDest = dest;
             }
