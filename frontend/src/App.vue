@@ -808,15 +808,17 @@ async function handleSyncBPMKey() {
     }
     syncResult.value = null
     try {
-        syncResult.value = await SyncBPMKeyToTags(library)
-        if (syncResult.value.error) throw new Error(syncResult.value.error)
-        if (syncResult.value.success > 0) {
-            showToast(`写回完成：${syncResult.value.success} 成功`)
+        const result = await SyncBPMKeyToTags(library)
+        if (result.error) throw new Error(result.error)
+        syncResult.value = result
+        if (result.success > 0) {
+            showToast(`写回完成：${result.success} 成功`)
         }
-        if (syncResult.value.failed > 0) {
-            showErrorToast(`${syncResult.value.failed} 个文件写入失败`)
+        if (result.failed > 0) {
+            showErrorToast(`${result.failed} 个文件写入失败`)
         }
     } catch (e) {
+        syncResult.value = null
         addLog('Error: ' + e)
         showErrorToast(msgs.value.bpmKeySyncTitle || '写回失败')
     }
@@ -839,9 +841,9 @@ async function handleCompressCovers() {
     }
     coverCompressResult.value = null
     try {
-        coverCompressResult.value = await CompressCovers(playlistId, 1024, library)
-        const r = coverCompressResult.value
+        const r = await CompressCovers(playlistId, 1024, library)
         if (r.error) throw new Error(r.error)
+        coverCompressResult.value = r
         if (r.compressed > 0) {
             const saved = r.savedBytes > 1048576
                 ? (r.savedBytes / 1048576).toFixed(1) + ' MB'
@@ -851,6 +853,7 @@ async function handleCompressCovers() {
             showToast('所有封面已在 1 MB 以内，无需压缩')
         }
     } catch (e) {
+        coverCompressResult.value = null
         addLog('Error: ' + e)
         showErrorToast(msgs.value.coverCompressTitle || '封面压缩失败')
     }

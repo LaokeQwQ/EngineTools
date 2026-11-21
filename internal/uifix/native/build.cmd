@@ -16,6 +16,10 @@ if errorlevel 1 exit /b 1
 :build
 if not exist "%~dp0build" mkdir "%~dp0build"
 cd /d "%~dp0build"
+if errorlevel 1 (
+    echo [ERROR] Cannot enter "%~dp0build".
+    exit /b 1
+)
 cl /nologo /O2 /MT /W4 /c ..\minhook\src\buffer.c ..\minhook\src\hook.c ..\minhook\src\trampoline.c ..\minhook\src\hde\hde64.c
 if errorlevel 1 exit /b 1
 ml64 /nologo /c ..\src\version_exports.asm

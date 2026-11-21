@@ -116,21 +116,35 @@ func CopyMissing(source, destination string) error {
 			return err
 		}
 		defer input.Close()
-		output, err := os.OpenFile(target, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0600)
-		if os.IsExist(err) {
+		if _, err := os.Stat(target); err == nil {
 			return sameFile(path, target)
+		} else if !os.IsNotExist(err) {
+			return err
 		}
+		// Copy beside the target first so an interrupted run never leaves a
+		// partial file that later starts as a migration conflict.
+		output, err := os.CreateTemp(filepath.Dir(target), ".migration-*")
 		if err != nil {
 			return err
 		}
-		_, err = io.Copy(output, input)
-		closeErr := output.Close()
-		if err != nil {
-			os.Remove(target)
+		temp := output.Name()
+		defer os.Remove(temp)
+		if _, err = io.Copy(output, input); err != nil {
+			output.Close()
 			return err
 		}
-		if closeErr != nil {
-			return closeErr
+		if err = output.Sync(); err != nil {
+			output.Close()
+			return err
+		}
+		if err = output.Close(); err != nil {
+			return err
+		}
+		if err = os.Rename(temp, target); err != nil {
+			if _, statErr := os.Stat(target); statErr == nil {
+				return sameFile(path, target)
+			}
+			return err
 		}
 		return sameFile(path, target)
 	})
