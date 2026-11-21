@@ -90,8 +90,8 @@ export function ID3AntiPiracyRestorePaths(arg1) {
   return window['go']['main']['App']['ID3AntiPiracyRestorePaths'](arg1);
 }
 
-export function ID3AntiPiracyRestorePlaylist(arg1) {
-  return window['go']['main']['App']['ID3AntiPiracyRestorePlaylist'](arg1);
+export function ID3AntiPiracyRestorePlaylist(arg1, arg2) {
+  return window['go']['main']['App']['ID3AntiPiracyRestorePlaylist'](arg1, arg2);
 }
 
 export function ID3AntiPiracyV1(arg1) {

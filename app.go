@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"crypto/sha256"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -1047,6 +1048,16 @@ func (a *App) ID3AntiPiracyRestorePaths(backupKey string) string {
 	return "ok"
 }
 
+// playlistBackupKey scopes a playlist backup to one library so two libraries
+// with the same playlist ID cannot overwrite each other's backup.
+func playlistBackupKey(playlistID int, targetLibrary string) string {
+	if targetLibrary == "" {
+		return fmt.Sprintf("playlist_%d", playlistID)
+	}
+	sum := sha256.Sum256([]byte(strings.ToLower(filepath.Clean(targetLibrary))))
+	return fmt.Sprintf("playlist_%x_%d", sum[:6], playlistID)
+}
+
 // ID3AntiPiracyV1Playlist clears tags for all tracks in the given playlist.
 func (a *App) ID3AntiPiracyV1Playlist(playlistID int, targetLibrary string) string {
 	tracks, err := database.GetPlaylistTrackPaths(playlistID, targetLibrary)
@@ -1058,7 +1069,7 @@ func (a *App) ID3AntiPiracyV1Playlist(playlistID int, targetLibrary string) stri
 	for i, t := range tracks {
 		paths[i] = t.Path
 	}
-	key := fmt.Sprintf("playlist_%d", playlistID)
+	key := playlistBackupKey(playlistID, targetLibrary)
 	count, err := id3.AntiPiracyV1Files(paths, key)
 	if err != nil {
 		a.log(fmt.Sprintf("Anti-piracy v1 playlist error: %v", err))
@@ -1079,7 +1090,7 @@ func (a *App) ID3AntiPiracyV2Playlist(playlistID int, targetLibrary string) stri
 	for i, t := range tracks {
 		paths[i] = t.Path
 	}
-	key := fmt.Sprintf("playlist_%d", playlistID)
+	key := playlistBackupKey(playlistID, targetLibrary)
 	count, err := id3.AntiPiracyV2Files(paths, key)
 	if err != nil {
 		a.log(fmt.Sprintf("Anti-piracy v2 playlist error: %v", err))
@@ -1090,9 +1101,14 @@ func (a *App) ID3AntiPiracyV2Playlist(playlistID int, targetLibrary string) stri
 }
 
 // ID3AntiPiracyRestorePlaylist restores from the playlist backup.
-func (a *App) ID3AntiPiracyRestorePlaylist(playlistID int) string {
-	key := fmt.Sprintf("playlist_%d", playlistID)
+func (a *App) ID3AntiPiracyRestorePlaylist(playlistID int, targetLibrary string) string {
+	key := playlistBackupKey(playlistID, targetLibrary)
 	count, err := id3.AntiPiracyRestoreFiles(key)
+	if err != nil && targetLibrary != "" {
+		// Backups written before the library became part of the key.
+		legacy := fmt.Sprintf("playlist_%d", playlistID)
+		count, err = id3.AntiPiracyRestoreFiles(legacy)
+	}
 	if err != nil {
 		a.log(fmt.Sprintf("Anti-piracy restore playlist error: %v", err))
 		return ""

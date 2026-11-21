@@ -217,7 +217,8 @@ unsigned int hde64_disasm(const void *code, hde64s *hs)
       no_error_operand:
 
         c = *p++;
-        if (m_reg <= 1) {
+        // TEST imm8/imm32 only exists for the single-byte F6/F7 opcodes.
+        if (!hs->opcode2 && m_reg <= 1) {
             if (opcode == 0xf6)
                 cflags |= C_IMM8;
             else if (opcode == 0xf7)
@@ -281,12 +282,7 @@ unsigned int hde64_disasm(const void *code, hde64s *hs)
 
     if (cflags & C_IMM_P66) {
         if (cflags & C_REL32) {
-            if (pref & PRE_66) {
-                hs->flags |= F_IMM16 | F_RELATIVE;
-                hs->imm.imm16 = *(uint16_t *)p;
-                p += 2;
-                goto disasm_done;
-            }
+            // Intel 64 ignores the operand-size prefix for near branches.
             goto rel32_ok;
         }
         if (op64) {
