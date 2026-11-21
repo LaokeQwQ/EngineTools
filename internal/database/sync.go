@@ -8,14 +8,14 @@ import (
 
 // SyncableTrack holds the analysis data that can be written back to a file's tags.
 type SyncableTrack struct {
-	ID       int     `json:"id"`
-	Title    string  `json:"title"`
-	Artist   string  `json:"artist"`
-	Path     string  `json:"path"`
-	BPM      float64 `json:"bpm"`
-	Key      int     `json:"key"`
-	KeyName  string  `json:"keyName"`
-	Camelot  string  `json:"camelot"`
+	ID      int     `json:"id"`
+	Title   string  `json:"title"`
+	Artist  string  `json:"artist"`
+	Path    string  `json:"path"`
+	BPM     float64 `json:"bpm"`
+	Key     int     `json:"key"`
+	KeyName string  `json:"keyName"`
+	Camelot string  `json:"camelot"`
 }
 
 // SyncResult summarises the outcome of a BPM/Key write-back operation.
@@ -28,13 +28,13 @@ type SyncResult struct {
 
 // GetSyncableTracks returns all available, analyzed tracks that have BPM or
 // key data from Engine DJ, ready for write-back to ID3 tags.
-func GetSyncableTracks() ([]SyncableTrack, error) {
-	dbPath, err := ResolveLibrary()
+func GetSyncableTracks(target ...string) ([]SyncableTrack, error) {
+	dbPath, err := resolveOperationLibrary(target)
 	if err != nil {
 		return nil, fmt.Errorf("no Engine Library found: %w", err)
 	}
 
-	db, err := sql.Open("sqlite3", "file:"+dbPath+"?mode=ro&cache=shared")
+	db, err := sql.Open("sqlite3", sqliteURI(dbPath, "mode=ro&cache=shared"))
 	if err != nil {
 		return nil, fmt.Errorf("failed to open database: %w", err)
 	}

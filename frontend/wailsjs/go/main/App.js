@@ -22,8 +22,12 @@ export function CleanMSIOrphans(arg1) {
   return window['go']['main']['App']['CleanMSIOrphans'](arg1);
 }
 
-export function CompressCovers(arg1, arg2) {
-  return window['go']['main']['App']['CompressCovers'](arg1, arg2);
+export function ClearCompatibilityRecords(arg1) {
+  return window['go']['main']['App']['ClearCompatibilityRecords'](arg1);
+}
+
+export function CompressCovers(arg1, arg2, arg3) {
+  return window['go']['main']['App']['CompressCovers'](arg1, arg2, arg3);
 }
 
 export function FixUnicodeIssues() {
@@ -38,8 +42,16 @@ export function GetCacheSize() {
   return window['go']['main']['App']['GetCacheSize']();
 }
 
+export function GetEngineCacheStatus() {
+  return window['go']['main']['App']['GetEngineCacheStatus']();
+}
+
 export function GetLibraryStats() {
   return window['go']['main']['App']['GetLibraryStats']();
+}
+
+export function GetLogEntries() {
+  return window['go']['main']['App']['GetLogEntries']();
 }
 
 export function GetMessages() {
@@ -54,12 +66,16 @@ export function GetPlaylistTracks(arg1) {
   return window['go']['main']['App']['GetPlaylistTracks'](arg1);
 }
 
+export function GetSettings() {
+  return window['go']['main']['App']['GetSettings']();
+}
+
 export function GetStatus() {
   return window['go']['main']['App']['GetStatus']();
 }
 
-export function GetSyncableTracks() {
-  return window['go']['main']['App']['GetSyncableTracks']();
+export function GetSyncableTracks(arg1) {
+  return window['go']['main']['App']['GetSyncableTracks'](arg1);
 }
 
 export function HandleUTF8AlreadyEnabled() {
@@ -86,8 +102,8 @@ export function ID3AntiPiracyV1Paths(arg1, arg2) {
   return window['go']['main']['App']['ID3AntiPiracyV1Paths'](arg1, arg2);
 }
 
-export function ID3AntiPiracyV1Playlist(arg1) {
-  return window['go']['main']['App']['ID3AntiPiracyV1Playlist'](arg1);
+export function ID3AntiPiracyV1Playlist(arg1, arg2) {
+  return window['go']['main']['App']['ID3AntiPiracyV1Playlist'](arg1, arg2);
 }
 
 export function ID3AntiPiracyV2(arg1) {
@@ -98,8 +114,8 @@ export function ID3AntiPiracyV2Paths(arg1, arg2) {
   return window['go']['main']['App']['ID3AntiPiracyV2Paths'](arg1, arg2);
 }
 
-export function ID3AntiPiracyV2Playlist(arg1) {
-  return window['go']['main']['App']['ID3AntiPiracyV2Playlist'](arg1);
+export function ID3AntiPiracyV2Playlist(arg1, arg2) {
+  return window['go']['main']['App']['ID3AntiPiracyV2Playlist'](arg1, arg2);
 }
 
 export function ID3ClearAll(arg1) {
@@ -134,6 +150,10 @@ export function ID3WriteTag(arg1, arg2, arg3, arg4, arg5, arg6) {
   return window['go']['main']['App']['ID3WriteTag'](arg1, arg2, arg3, arg4, arg5, arg6);
 }
 
+export function InstallEngineCache() {
+  return window['go']['main']['App']['InstallEngineCache']();
+}
+
 export function ListBackups() {
   return window['go']['main']['App']['ListBackups']();
 }
@@ -142,8 +162,8 @@ export function ListDrives() {
   return window['go']['main']['App']['ListDrives']();
 }
 
-export function ListPlaylists() {
-  return window['go']['main']['App']['ListPlaylists']();
+export function ListPlaylists(arg1) {
+  return window['go']['main']['App']['ListPlaylists'](arg1);
 }
 
 export function LogExperimentalEnabled() {
@@ -194,12 +214,16 @@ export function Refresh() {
   return window['go']['main']['App']['Refresh']();
 }
 
-export function RemoveMissingTracks(arg1) {
-  return window['go']['main']['App']['RemoveMissingTracks'](arg1);
+export function RemoveMissingTracks(arg1, arg2) {
+  return window['go']['main']['App']['RemoveMissingTracks'](arg1, arg2);
 }
 
 export function RepairDatabase() {
   return window['go']['main']['App']['RepairDatabase']();
+}
+
+export function RespondToConfirmation(arg1, arg2) {
+  return window['go']['main']['App']['RespondToConfirmation'](arg1, arg2);
 }
 
 export function RestoreDatabase(arg1) {
@@ -210,12 +234,16 @@ export function RestoreUnicodeFix() {
   return window['go']['main']['App']['RestoreUnicodeFix']();
 }
 
+export function SaveSettings(arg1) {
+  return window['go']['main']['App']['SaveSettings'](arg1);
+}
+
 export function ScanMSIOrphans() {
   return window['go']['main']['App']['ScanMSIOrphans']();
 }
 
-export function ScanMissingTracks() {
-  return window['go']['main']['App']['ScanMissingTracks']();
+export function ScanMissingTracks(arg1) {
+  return window['go']['main']['App']['ScanMissingTracks'](arg1);
 }
 
 export function SelectDrive(arg1) {
@@ -226,8 +254,8 @@ export function SetLanguage(arg1) {
   return window['go']['main']['App']['SetLanguage'](arg1);
 }
 
-export function SyncBPMKeyToTags() {
-  return window['go']['main']['App']['SyncBPMKeyToTags']();
+export function SyncBPMKeyToTags(arg1) {
+  return window['go']['main']['App']['SyncBPMKeyToTags'](arg1);
 }
 
 export function USBUnlockAvailable() {
@@ -240,4 +268,12 @@ export function USBUnlockKill(arg1) {
 
 export function USBUnlockScan(arg1) {
   return window['go']['main']['App']['USBUnlockScan'](arg1);
+}
+
+export function UninstallEngineCache() {
+  return window['go']['main']['App']['UninstallEngineCache']();
+}
+
+export function WriteFrontendLog(arg1) {
+  return window['go']['main']['App']['WriteFrontendLog'](arg1);
 }

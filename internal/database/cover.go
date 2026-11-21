@@ -12,13 +12,13 @@ type TrackPath struct {
 }
 
 // GetAllTrackPaths returns the file paths of every available, analyzed track.
-func GetAllTrackPaths() ([]TrackPath, error) {
-	dbPath, err := ResolveLibrary()
+func GetAllTrackPaths(target ...string) ([]TrackPath, error) {
+	dbPath, err := resolveOperationLibrary(target)
 	if err != nil {
 		return nil, fmt.Errorf("no Engine Library found: %w", err)
 	}
 
-	db, err := sql.Open("sqlite3", "file:"+dbPath+"?mode=ro&cache=shared")
+	db, err := sql.Open("sqlite3", sqliteURI(dbPath, "mode=ro&cache=shared"))
 	if err != nil {
 		return nil, fmt.Errorf("failed to open database: %w", err)
 	}
@@ -50,13 +50,13 @@ func GetAllTrackPaths() ([]TrackPath, error) {
 }
 
 // GetPlaylistTrackPaths returns file paths for all tracks in the given playlist.
-func GetPlaylistTrackPaths(playlistID int) ([]TrackPath, error) {
-	dbPath, err := ResolveLibrary()
+func GetPlaylistTrackPaths(playlistID int, target ...string) ([]TrackPath, error) {
+	dbPath, err := resolveOperationLibrary(target)
 	if err != nil {
 		return nil, fmt.Errorf("no Engine Library found: %w", err)
 	}
 
-	db, err := sql.Open("sqlite3", "file:"+dbPath+"?mode=ro&cache=shared")
+	db, err := sql.Open("sqlite3", sqliteURI(dbPath, "mode=ro&cache=shared"))
 	if err != nil {
 		return nil, fmt.Errorf("failed to open database: %w", err)
 	}

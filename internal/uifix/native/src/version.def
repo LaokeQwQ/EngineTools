@@ -1,0 +1,19 @@
+LIBRARY version
+EXPORTS
+    GetFileVersionInfoA=VersionProxy0 @1
+    GetFileVersionInfoByHandle=VersionProxy1 @2
+    GetFileVersionInfoExA=VersionProxy2 @3
+    GetFileVersionInfoExW=VersionProxy3 @4
+    GetFileVersionInfoSizeA=VersionProxy4 @5
+    GetFileVersionInfoSizeExA=VersionProxy5 @6
+    GetFileVersionInfoSizeExW=VersionProxy6 @7
+    GetFileVersionInfoSizeW=VersionProxy7 @8
+    GetFileVersionInfoW=VersionProxy8 @9
+    VerFindFileA=VersionProxy9 @10
+    VerFindFileW=VersionProxy10 @11
+    VerInstallFileA=VersionProxy11 @12
+    VerInstallFileW=VersionProxy12 @13
+    VerLanguageNameA=VersionProxy13 @14
+    VerLanguageNameW=VersionProxy14 @15
+    VerQueryValueA=VersionProxy15 @16
+    VerQueryValueW=VersionProxy16 @17

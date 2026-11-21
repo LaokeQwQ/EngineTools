@@ -1,6 +1,7 @@
 package database
 
 import (
+	"EngineTools/internal/storage"
 	"database/sql"
 	"fmt"
 	"io"
@@ -133,7 +134,7 @@ type BackupInfo struct {
 }
 
 func backupDir() (string, error) {
-	dir := filepath.Join(os.Getenv("LOCALAPPDATA"), "EngineTools", "Backups")
+	dir := storage.Path("Backup", "Database")
 	if err := os.MkdirAll(dir, 0755); err != nil {
 		return "", fmt.Errorf("failed to create backup directory: %w", err)
 	}
@@ -281,7 +282,7 @@ func OptimizeDatabase() error {
 
 // CountTracks returns the number of tracks in the given database.
 func CountTracks(dbPath string) int {
-	db, err := sql.Open("sqlite3", "file:"+dbPath+"?mode=ro&cache=shared")
+	db, err := sql.Open("sqlite3", sqliteURI(dbPath, "mode=ro&cache=shared"))
 	if err != nil {
 		return 0
 	}
@@ -358,4 +359,25 @@ func RepairDatabase() (string, error) {
 	}
 
 	return report, nil
+}
+
+func resolveOperationLibrary(target []string) (string, error) {
+	if len(target) == 0 {
+		return ResolveLibrary()
+	}
+	path := target[0]
+	if !filepath.IsAbs(path) || !strings.EqualFold(filepath.Base(path), "m.db") {
+		return "", fmt.Errorf("invalid target library: %q", path)
+	}
+	if _, err := os.Stat(path); err != nil {
+		return "", err
+	}
+	return path, nil
+}
+
+// sqliteURI opens exactly the given file. SQLite decodes %HH escapes in file
+// URIs, so a literal name such as "DJ%20Set" must keep its percent signs.
+func sqliteURI(path, query string) string {
+	escaped := strings.NewReplacer("%", "%25", "#", "%23", "?", "%3F").Replace(path)
+	return "file:" + escaped + "?" + query
 }

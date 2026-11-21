@@ -17,3 +17,12 @@ frontend/dist
 *~
 .DS_Store
 vendor/
+setting.json
+Backup/
+WebView/
+Log/
+.setting-*.tmp
+# Native cache build intermediates
+*.lib
+*.exp
+*.syso

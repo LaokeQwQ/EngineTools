@@ -28,13 +28,13 @@ type TrackInfo struct {
 	Rating   int     `json:"rating"`
 }
 
-func ListPlaylists() ([]PlaylistInfo, error) {
-	dbPath, err := ResolveLibrary()
+func ListPlaylists(target ...string) ([]PlaylistInfo, error) {
+	dbPath, err := resolveOperationLibrary(target)
 	if err != nil {
 		return nil, err
 	}
 
-	db, err := sql.Open("sqlite3", "file:"+dbPath+"?mode=ro&cache=shared")
+	db, err := sql.Open("sqlite3", sqliteURI(dbPath, "mode=ro&cache=shared"))
 	if err != nil {
 		return nil, fmt.Errorf("failed to open database: %w", err)
 	}
@@ -72,7 +72,7 @@ func GetPlaylistTracks(playlistID int) ([]TrackInfo, error) {
 		return nil, err
 	}
 
-	db, err := sql.Open("sqlite3", "file:"+dbPath+"?mode=ro&cache=shared")
+	db, err := sql.Open("sqlite3", sqliteURI(dbPath, "mode=ro&cache=shared"))
 	if err != nil {
 		return nil, fmt.Errorf("failed to open database: %w", err)
 	}

@@ -1,13 +1,13 @@
 export namespace database {
-	
+
 	export class BPMBucket {
 	    range: string;
 	    count: number;
-	
+
 	    static createFrom(source: any = {}) {
 	        return new BPMBucket(source);
 	    }
-	
+
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.range = source["range"];
@@ -19,11 +19,11 @@ export namespace database {
 	    date: string;
 	    size: number;
 	    note: string;
-	
+
 	    static createFrom(source: any = {}) {
 	        return new BackupInfo(source);
 	    }
-	
+
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.filename = source["filename"];
@@ -35,11 +35,11 @@ export namespace database {
 	export class KVCount {
 	    key: string;
 	    count: number;
-	
+
 	    static createFrom(source: any = {}) {
 	        return new KVCount(source);
 	    }
-	
+
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.key = source["key"];
@@ -56,11 +56,11 @@ export namespace database {
 	    playCount: number;
 	    lastPlayed: string;
 	    dateAdded: string;
-	
+
 	    static createFrom(source: any = {}) {
 	        return new TrackSummary(source);
 	    }
-	
+
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.id = source["id"];
@@ -85,11 +85,11 @@ export namespace database {
 	    topGenres: KVCount[];
 	    bpmDistribution: BPMBucket[];
 	    recentlyAdded: TrackSummary[];
-	
+
 	    static createFrom(source: any = {}) {
 	        return new LibraryStats(source);
 	    }
-	
+
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.totalTracks = source["totalTracks"];
@@ -103,7 +103,7 @@ export namespace database {
 	        this.bpmDistribution = this.convertValues(source["bpmDistribution"], BPMBucket);
 	        this.recentlyAdded = this.convertValues(source["recentlyAdded"], TrackSummary);
 	    }
-	
+
 		convertValues(a: any, classs: any, asMap: boolean = false): any {
 		    if (!a) {
 		        return a;
@@ -128,11 +128,11 @@ export namespace database {
 	    artist: string;
 	    path: string;
 	    filename: string;
-	
+
 	    static createFrom(source: any = {}) {
 	        return new MissingTrack(source);
 	    }
-	
+
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.id = source["id"];
@@ -146,18 +146,18 @@ export namespace database {
 	    mostPlayed: TrackSummary[];
 	    recentPlayed: TrackSummary[];
 	    neverPlayed: TrackSummary[];
-	
+
 	    static createFrom(source: any = {}) {
 	        return new PlayStats(source);
 	    }
-	
+
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.mostPlayed = this.convertValues(source["mostPlayed"], TrackSummary);
 	        this.recentPlayed = this.convertValues(source["recentPlayed"], TrackSummary);
 	        this.neverPlayed = this.convertValues(source["neverPlayed"], TrackSummary);
 	    }
-	
+
 		convertValues(a: any, classs: any, asMap: boolean = false): any {
 		    if (!a) {
 		        return a;
@@ -181,11 +181,11 @@ export namespace database {
 	    title: string;
 	    parentId: number;
 	    count: number;
-	
+
 	    static createFrom(source: any = {}) {
 	        return new PlaylistInfo(source);
 	    }
-	
+
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.id = source["id"];
@@ -203,11 +203,11 @@ export namespace database {
 	    key: number;
 	    keyName: string;
 	    camelot: string;
-	
+
 	    static createFrom(source: any = {}) {
 	        return new SyncableTrack(source);
 	    }
-	
+
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.id = source["id"];
@@ -234,11 +234,11 @@ export namespace database {
 	    keyName: string;
 	    camelot: string;
 	    rating: number;
-	
+
 	    static createFrom(source: any = {}) {
 	        return new TrackInfo(source);
 	    }
-	
+
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.id = source["id"];
@@ -260,7 +260,7 @@ export namespace database {
 }
 
 export namespace i18n {
-	
+
 	export class Messages {
 	    appTitle: string;
 	    installPathLabel: string;
@@ -449,6 +449,7 @@ export namespace i18n {
 	    tracksUnit: string;
 	    tabSettings: string;
 	    settingsLanguageLabel: string;
+	    settingsAlwaysOnTop: string;
 	    settingsExperimentalLabel: string;
 	    settingsExperimentalDesc: string;
 	    settingsExperimentalConfirmTitle: string;
@@ -466,11 +467,11 @@ export namespace i18n {
 	    id3AlbumPlaceholder: string;
 	    id3YearPlaceholder: string;
 	    id3GenrePlaceholder: string;
-	
+
 	    static createFrom(source: any = {}) {
 	        return new Messages(source);
 	    }
-	
+
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.appTitle = source["appTitle"];
@@ -660,6 +661,7 @@ export namespace i18n {
 	        this.tracksUnit = source["tracksUnit"];
 	        this.tabSettings = source["tabSettings"];
 	        this.settingsLanguageLabel = source["settingsLanguageLabel"];
+	        this.settingsAlwaysOnTop = source["settingsAlwaysOnTop"];
 	        this.settingsExperimentalLabel = source["settingsExperimentalLabel"];
 	        this.settingsExperimentalDesc = source["settingsExperimentalDesc"];
 	        this.settingsExperimentalConfirmTitle = source["settingsExperimentalConfirmTitle"];
@@ -683,7 +685,7 @@ export namespace i18n {
 }
 
 export namespace id3 {
-	
+
 	export class TagInfo {
 	    filePath: string;
 	    title: string;
@@ -692,11 +694,11 @@ export namespace id3 {
 	    year: string;
 	    genre: string;
 	    hasCover: boolean;
-	
+
 	    static createFrom(source: any = {}) {
 	        return new TagInfo(source);
 	    }
-	
+
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.filePath = source["filePath"];
@@ -712,7 +714,7 @@ export namespace id3 {
 }
 
 export namespace logs {
-	
+
 	export class LogEntry {
 	    level: string;
 	    // Go type: time
@@ -720,11 +722,11 @@ export namespace logs {
 	    thread: string;
 	    category: string;
 	    message: string;
-	
+
 	    static createFrom(source: any = {}) {
 	        return new LogEntry(source);
 	    }
-	
+
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.level = source["level"];
@@ -733,7 +735,7 @@ export namespace logs {
 	        this.category = source["category"];
 	        this.message = source["message"];
 	    }
-	
+
 		convertValues(a: any, classs: any, asMap: boolean = false): any {
 		    if (!a) {
 		        return a;
@@ -755,11 +757,11 @@ export namespace logs {
 	export class MessageCount {
 	    message: string;
 	    count: number;
-	
+
 	    static createFrom(source: any = {}) {
 	        return new MessageCount(source);
 	    }
-	
+
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.message = source["message"];
@@ -776,11 +778,11 @@ export namespace logs {
 	    topWarnings: MessageCount[];
 	    topErrors: MessageCount[];
 	    recentEntries: LogEntry[];
-	
+
 	    static createFrom(source: any = {}) {
 	        return new LogStats(source);
 	    }
-	
+
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.totalFiles = source["totalFiles"];
@@ -793,7 +795,7 @@ export namespace logs {
 	        this.topErrors = this.convertValues(source["topErrors"], MessageCount);
 	        this.recentEntries = this.convertValues(source["recentEntries"], LogEntry);
 	    }
-	
+
 		convertValues(a: any, classs: any, asMap: boolean = false): any {
 		    if (!a) {
 		        return a;
@@ -816,15 +818,15 @@ export namespace logs {
 }
 
 export namespace main {
-	
+
 	export class DriveInfo {
 	    letter: string;
 	    trackCount: number;
-	
+
 	    static createFrom(source: any = {}) {
 	        return new DriveInfo(source);
 	    }
-	
+
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.letter = source["letter"];
@@ -834,11 +836,11 @@ export namespace main {
 	export class ProcessItem {
 	    name: string;
 	    pid: number;
-	
+
 	    static createFrom(source: any = {}) {
 	        return new ProcessItem(source);
 	    }
-	
+
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.name = source["name"];
@@ -858,11 +860,11 @@ export namespace main {
 	    dbPath: string;
 	    processRunning: boolean;
 	    runningProcesses: ProcessItem[];
-	
+
 	    static createFrom(source: any = {}) {
 	        return new StatusInfo(source);
 	    }
-	
+
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.installPath = source["installPath"];
@@ -878,7 +880,7 @@ export namespace main {
 	        this.processRunning = source["processRunning"];
 	        this.runningProcesses = this.convertValues(source["runningProcesses"], ProcessItem);
 	    }
-	
+
 		convertValues(a: any, classs: any, asMap: boolean = false): any {
 		    if (!a) {
 		        return a;
@@ -901,15 +903,15 @@ export namespace main {
 }
 
 export namespace msi {
-	
+
 	export class OrphanedMSI {
 	    productCode: string;
 	    displayName: string;
-	
+
 	    static createFrom(source: any = {}) {
 	        return new OrphanedMSI(source);
 	    }
-	
+
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.productCode = source["productCode"];
@@ -919,16 +921,162 @@ export namespace msi {
 
 }
 
+export namespace storage {
+
+	export class CompatibilityResult {
+	    hashes: Record<string, string>;
+	    callers: number[];
+	    validator: string;
+	    checkedAt: string;
+
+	    static createFrom(source: any = {}) {
+	        return new CompatibilityResult(source);
+	    }
+
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.hashes = source["hashes"];
+	        this.callers = source["callers"];
+	        this.validator = source["validator"];
+	        this.checkedAt = source["checkedAt"];
+	    }
+	}
+	export class Settings {
+	    engineDJCompatibility?: Record<string, CompatibilityResult>;
+	    language: string;
+	    theme: string;
+	    squareCorners: boolean;
+	    alwaysOnTop: boolean;
+	    experimentalEnabled: boolean;
+	    experimentalActivations?: string[];
+	    termsAccepted: boolean;
+
+	    static createFrom(source: any = {}) {
+	        return new Settings(source);
+	    }
+
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.engineDJCompatibility = this.convertValues(source["engineDJCompatibility"], CompatibilityResult, true);
+	        this.language = source["language"];
+	        this.theme = source["theme"];
+	        this.squareCorners = source["squareCorners"];
+	        this.alwaysOnTop = source["alwaysOnTop"];
+	        this.experimentalEnabled = source["experimentalEnabled"];
+	        this.experimentalActivations = source["experimentalActivations"];
+	        this.termsAccepted = source["termsAccepted"];
+	    }
+
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+
+}
+
+export namespace uifix {
+
+	export class Stats {
+	    lookups: number;
+	    hits: number;
+	    misses: number;
+	    refreshes: number;
+	    errors: number;
+	    ageMs: number;
+	    interfaces: number;
+
+	    static createFrom(source: any = {}) {
+	        return new Stats(source);
+	    }
+
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.lookups = source["lookups"];
+	        this.hits = source["hits"];
+	        this.misses = source["misses"];
+	        this.refreshes = source["refreshes"];
+	        this.errors = source["errors"];
+	        this.ageMs = source["ageMs"];
+	        this.interfaces = source["interfaces"];
+	    }
+	}
+	export class State {
+	    installed: boolean;
+	    installStatus: string;
+	    installError: string;
+	    proxyVersion: string;
+	    running: boolean;
+	    pid: number;
+	    active: boolean;
+	    busy: boolean;
+	    phase: string;
+	    error: string;
+	    stats: Stats;
+
+	    static createFrom(source: any = {}) {
+	        return new State(source);
+	    }
+
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.installed = source["installed"];
+	        this.installStatus = source["installStatus"];
+	        this.installError = source["installError"];
+	        this.proxyVersion = source["proxyVersion"];
+	        this.running = source["running"];
+	        this.pid = source["pid"];
+	        this.active = source["active"];
+	        this.busy = source["busy"];
+	        this.phase = source["phase"];
+	        this.error = source["error"];
+	        this.stats = this.convertValues(source["stats"], Stats);
+	    }
+
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+
+}
+
 export namespace unlock {
-	
+
 	export class HandleInfo {
 	    pid: number;
 	    name: string;
-	
+
 	    static createFrom(source: any = {}) {
 	        return new HandleInfo(source);
 	    }
-	
+
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.pid = source["pid"];

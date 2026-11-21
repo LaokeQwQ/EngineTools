@@ -1,11 +1,15 @@
 package id3
 
 import (
+	"EngineTools/internal/storage"
+	"crypto/sha256"
 	"encoding/json"
 	"fmt"
 	"math/rand"
 	"os"
 	"path/filepath"
+	"runtime"
+	"strings"
 	"time"
 )
 
@@ -25,24 +29,61 @@ type BackupData struct {
 	Tags      []TagBackup `json:"tags"`
 }
 
-func backupPath(dir string) string {
-	return filepath.Join(dir, ".id3_backup.json")
+func backupPath(dir string) (string, error) {
+	return backupKeyPath(dir)
 }
 
 // backupKeyPath returns the backup file path given an arbitrary key.
-// For directories, the backup sits inside the dir; for other keys (e.g.
-// a playlist ID), it sits in the system's EngineTools data directory.
-func backupKeyPath(key string) string {
-	if info, err := os.Stat(key); err == nil && info.IsDir() {
-		return filepath.Join(key, ".id3_backup.json")
+// All new backups live beside the executable. Directory keys include a hash
+// so different music directories with the same name cannot collide.
+func backupKeyPath(key string) (string, error) {
+	dir := storage.Path("Backup", "ID3")
+	if err := os.MkdirAll(dir, 0755); err != nil {
+		return "", err
 	}
-	dir := filepath.Join(os.Getenv("LOCALAPPDATA"), "EngineTools", "ap_backups")
-	os.MkdirAll(dir, 0755)
+	if info, err := os.Stat(key); err == nil && info.IsDir() {
+		absolute, err := filepath.Abs(key)
+		if err != nil {
+			return "", err
+		}
+		identity := filepath.Clean(absolute)
+		evaluated := ""
+		if runtime.GOOS == "windows" {
+			evaluated, err = filepath.EvalSymlinks(identity)
+			if err != nil {
+				return "", err
+			}
+			// EvalSymlinks fixes drive letters and directory entries but keeps a
+			// UNC volume exactly as written, so fold case for a stable identity.
+			identity = strings.ToLower(evaluated)
+		}
+		digest := sha256.Sum256([]byte(identity))
+		target := filepath.Join(dir, fmt.Sprintf("directory-%x_backup.json", digest[:12]))
+		// Retain backups created with an earlier identity spelling.
+		for _, legacy := range []string{evaluated, absolute} {
+			if legacy == "" || legacy == identity {
+				continue
+			}
+			if _, err := os.Stat(target); err == nil {
+				break
+			}
+			legacyDigest := sha256.Sum256([]byte(legacy))
+			legacyTarget := filepath.Join(dir, fmt.Sprintf("directory-%x_backup.json", legacyDigest[:12]))
+			if err := storage.Migrate(legacyTarget, target); err != nil {
+				return "", err
+			}
+		}
+		// Import a legacy backup from beside the audio files.
+		if err := storage.Migrate(filepath.Join(absolute, ".id3_backup.json"), target); err != nil {
+			return "", err
+		}
+		return target, nil
+	}
 	safe := filepath.Base(key)
 	if safe == "" || safe == "." {
 		safe = "default"
 	}
-	return filepath.Join(dir, safe+"_backup.json")
+	return filepath.Join(dir, safe+"_backup.json"), nil
 }
 
 // AntiPiracyV1Files clears all ID3 tags for the given list of file paths.
@@ -61,7 +102,11 @@ func AntiPiracyV1Files(paths []string, backupKey string) (int, error) {
 	}
 	bd := BackupData{Mode: "v1", Timestamp: time.Now().Format(time.RFC3339), Dir: backupKey, Tags: backups}
 	data, _ := json.MarshalIndent(bd, "", "  ")
-	if err := os.WriteFile(backupKeyPath(backupKey), data, 0644); err != nil {
+	path, err := backupKeyPath(backupKey)
+	if err != nil {
+		return 0, err
+	}
+	if err := os.WriteFile(path, data, 0644); err != nil {
 		return 0, fmt.Errorf("backup failed: %w", err)
 	}
 	count := 0
@@ -88,7 +133,11 @@ func AntiPiracyV2Files(paths []string, backupKey string) (int, error) {
 	}
 	bd := BackupData{Mode: "v2", Timestamp: time.Now().Format(time.RFC3339), Dir: backupKey, Tags: tags}
 	data, _ := json.MarshalIndent(bd, "", "  ")
-	if err := os.WriteFile(backupKeyPath(backupKey), data, 0644); err != nil {
+	path, err := backupKeyPath(backupKey)
+	if err != nil {
+		return 0, err
+	}
+	if err := os.WriteFile(path, data, 0644); err != nil {
 		return 0, fmt.Errorf("backup failed: %w", err)
 	}
 	r := rand.New(rand.NewSource(time.Now().UnixNano()))
@@ -113,7 +162,11 @@ func AntiPiracyV2Files(paths []string, backupKey string) (int, error) {
 
 // AntiPiracyRestoreFiles restores tags from the backup identified by backupKey.
 func AntiPiracyRestoreFiles(backupKey string) (int, error) {
-	data, err := os.ReadFile(backupKeyPath(backupKey))
+	path, err := backupKeyPath(backupKey)
+	if err != nil {
+		return 0, err
+	}
+	data, err := os.ReadFile(path)
 	if err != nil {
 		return 0, fmt.Errorf("no backup found for key %q", backupKey)
 	}
@@ -127,7 +180,7 @@ func AntiPiracyRestoreFiles(backupKey string) (int, error) {
 			count++
 		}
 	}
-	os.Remove(backupKeyPath(backupKey))
+	os.Remove(path)
 	return count, nil
 }
 
@@ -163,7 +216,11 @@ func AntiPiracyV1(dir string) (int, error) {
 		Tags:      backups,
 	}
 	data, _ := json.MarshalIndent(bd, "", "  ")
-	if err := os.WriteFile(backupPath(dir), data, 0644); err != nil {
+	path, err := backupPath(dir)
+	if err != nil {
+		return 0, err
+	}
+	if err := os.WriteFile(path, data, 0644); err != nil {
 		return 0, fmt.Errorf("failed to save backup: %w", err)
 	}
 
@@ -213,7 +270,11 @@ func AntiPiracyV2(dir string) (int, error) {
 		Tags:      backups,
 	}
 	data, _ := json.MarshalIndent(bd, "", "  ")
-	if err := os.WriteFile(backupPath(dir), data, 0644); err != nil {
+	path, err := backupPath(dir)
+	if err != nil {
+		return 0, err
+	}
+	if err := os.WriteFile(path, data, 0644); err != nil {
 		return 0, fmt.Errorf("failed to save backup: %w", err)
 	}
 
@@ -241,7 +302,10 @@ func AntiPiracyV2(dir string) (int, error) {
 }
 
 func AntiPiracyRestore(dir string) (int, error) {
-	bp := backupPath(dir)
+	bp, err := backupPath(dir)
+	if err != nil {
+		return 0, err
+	}
 	data, err := os.ReadFile(bp)
 	if err != nil {
 		return 0, fmt.Errorf("no backup found in this directory")
@@ -265,6 +329,10 @@ func AntiPiracyRestore(dir string) (int, error) {
 }
 
 func HasAntiPiracyBackup(dir string) bool {
-	_, err := os.Stat(backupPath(dir))
+	path, err := backupPath(dir)
+	if err != nil {
+		return false
+	}
+	_, err = os.Stat(path)
 	return err == nil
 }
