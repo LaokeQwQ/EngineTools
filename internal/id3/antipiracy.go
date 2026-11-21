@@ -47,25 +47,30 @@ func backupKeyPath(key string) (string, error) {
 			return "", err
 		}
 		identity := filepath.Clean(absolute)
+		evaluated := ""
 		if runtime.GOOS == "windows" {
-			identity, err = filepath.EvalSymlinks(identity)
+			evaluated, err = filepath.EvalSymlinks(identity)
 			if err != nil {
 				return "", err
 			}
 			// EvalSymlinks fixes drive letters and directory entries but keeps a
 			// UNC volume exactly as written, so fold case for a stable identity.
-			identity = strings.ToLower(identity)
+			identity = strings.ToLower(evaluated)
 		}
 		digest := sha256.Sum256([]byte(identity))
 		target := filepath.Join(dir, fmt.Sprintf("directory-%x_backup.json", digest[:12]))
-		// Retain access to backups created with the previous path spelling.
-		if identity != absolute {
-			oldDigest := sha256.Sum256([]byte(absolute))
-			oldTarget := filepath.Join(dir, fmt.Sprintf("directory-%x_backup.json", oldDigest[:12]))
-			if _, err := os.Stat(target); os.IsNotExist(err) {
-				if err := storage.Migrate(oldTarget, target); err != nil {
-					return "", err
-				}
+		// Retain backups created with an earlier identity spelling.
+		for _, legacy := range []string{evaluated, absolute} {
+			if legacy == "" || legacy == identity {
+				continue
+			}
+			if _, err := os.Stat(target); err == nil {
+				break
+			}
+			legacyDigest := sha256.Sum256([]byte(legacy))
+			legacyTarget := filepath.Join(dir, fmt.Sprintf("directory-%x_backup.json", legacyDigest[:12]))
+			if err := storage.Migrate(legacyTarget, target); err != nil {
+				return "", err
 			}
 		}
 		// Import a legacy backup from beside the audio files.

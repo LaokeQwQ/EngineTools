@@ -535,7 +535,15 @@ async function detectStatus() {
         isAdmin.value = status.isAdmin || false
         stemsDetected.value = status.stemsDetected || false
         dbDetected.value = status.dbDetected || false
+        const previousLibrary = dbPath.value
         dbPath.value = status.dbPath || ''
+        if (dbPath.value !== previousLibrary) {
+            playlistsLibrary.value = ''
+            playlists.value = []
+            apPlaylistId.value = -1
+            coverCompressPlaylistId.value = -1
+            if (dbPath.value) await loadPlaylists()
+        }
         processRunning.value = status.processRunning || false
         runningProcesses.value = status.runningProcesses || []
     } catch (e) {

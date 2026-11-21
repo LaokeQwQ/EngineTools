@@ -21,7 +21,7 @@ func FindMissingTracks(target ...string) ([]MissingTrack, error) {
 		return nil, fmt.Errorf("no Engine Library found: %w", err)
 	}
 
-	db, err := sql.Open("sqlite3", "file:"+dbPath+"?mode=ro&cache=shared")
+	db, err := sql.Open("sqlite3", sqliteURI(dbPath, "mode=ro&cache=shared"))
 	if err != nil {
 		return nil, fmt.Errorf("failed to open database: %w", err)
 	}
@@ -68,7 +68,7 @@ func RemoveMissingTracks(ids []int, target ...string) (int, error) {
 		return 0, fmt.Errorf("no Engine Library found: %w", err)
 	}
 
-	db, err := sql.Open("sqlite3", "file:"+dbPath+"?mode=rw")
+	db, err := sql.Open("sqlite3", sqliteURI(dbPath, "mode=rw"))
 	if err != nil {
 		return 0, fmt.Errorf("failed to open database: %w", err)
 	}

@@ -282,7 +282,7 @@ func OptimizeDatabase() error {
 
 // CountTracks returns the number of tracks in the given database.
 func CountTracks(dbPath string) int {
-	db, err := sql.Open("sqlite3", "file:"+dbPath+"?mode=ro&cache=shared")
+	db, err := sql.Open("sqlite3", sqliteURI(dbPath, "mode=ro&cache=shared"))
 	if err != nil {
 		return 0
 	}
@@ -373,4 +373,11 @@ func resolveOperationLibrary(target []string) (string, error) {
 		return "", err
 	}
 	return path, nil
+}
+
+// sqliteURI opens exactly the given file. SQLite decodes %HH escapes in file
+// URIs, so a literal name such as "DJ%20Set" must keep its percent signs.
+func sqliteURI(path, query string) string {
+	escaped := strings.NewReplacer("%", "%25", "#", "%23", "?", "%3F").Replace(path)
+	return "file:" + escaped + "?" + query
 }

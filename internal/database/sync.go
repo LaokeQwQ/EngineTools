@@ -34,7 +34,7 @@ func GetSyncableTracks(target ...string) ([]SyncableTrack, error) {
 		return nil, fmt.Errorf("no Engine Library found: %w", err)
 	}
 
-	db, err := sql.Open("sqlite3", "file:"+dbPath+"?mode=ro&cache=shared")
+	db, err := sql.Open("sqlite3", sqliteURI(dbPath, "mode=ro&cache=shared"))
 	if err != nil {
 		return nil, fmt.Errorf("failed to open database: %w", err)
 	}
