@@ -86,9 +86,9 @@ Native directory layout:
 - `native/build.cmd`: x64 MSVC build entry point.
 - `assets/version.bin`: embedded DLL payload used by the Go installer.
 
-Critical install protection tests live in `test/uifix_test.go` at the
-project root. Run `go test ./test` to check that foreign DLLs are preserved and
-unsupported installations are rejected. These tests do not start Engine DJ.
+Install protection is covered by runtime checks against a closed Engine DJ
+installation; the repository has no automated tests for these paths. Run
+`go test ./...` to compile the packages. These checks do not start Engine DJ.
 Network switching and hardware reconnection require runtime verification.
 
 MinHook v1.3.4 is vendored at native/minhook; its license is in THIRD_PARTY.txt.
