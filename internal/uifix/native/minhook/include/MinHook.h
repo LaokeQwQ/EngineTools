@@ -28,8 +28,8 @@
 
 #pragma once
 
-#if !(defined _M_X64) && !(defined __x86_64__)
-    #error This vendored MinHook copy supports only x64 targets.
+#if !(defined _M_IX86) && !(defined _M_X64) && !(defined __i386__) && !(defined __x86_64__)
+    #error MinHook supports only x86 and x64 systems.
 #endif
 
 #include <windows.h>
