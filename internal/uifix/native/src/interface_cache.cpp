@@ -294,7 +294,10 @@ static bool verifiedCallBoundary(uintptr_t call) {
 static MH_STATUS changeHook(bool enable) {
     for (unsigned attempt = 0; ; ++attempt) {
         const auto status = enable ? MH_EnableHook(hookTarget) : MH_DisableHook(hookTarget);
-        if (status != MH_ERROR_THREAD_BUSY || attempt == 7) return status;
+        // A thread that exited between OpenThread and SuspendThread also yields
+        // THREAD_CONTROL; retry so the next freeze works on the remaining set.
+        if (status != MH_ERROR_THREAD_BUSY && status != MH_ERROR_THREAD_CONTROL) return status;
+        if (attempt == 7) return status;
         Sleep(1);
     }
 }

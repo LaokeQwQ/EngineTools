@@ -290,6 +290,12 @@ static MH_STATUS Freeze(PFROZEN_THREADS threads)
             Unfreeze(threads);
             return MH_ERROR_THREAD_CONTROL;
         }
+        if (GetProcessIdOfThread(thread) != GetCurrentProcessId())
+        {
+            // The ID was reused by another process after the snapshot.
+            CloseHandle(thread);
+            continue;
+        }
         if (SuspendThread(thread) == (DWORD)-1)
         {
             CloseHandle(thread);
