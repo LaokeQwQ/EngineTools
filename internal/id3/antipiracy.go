@@ -9,6 +9,7 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"strings"
 	"time"
 )
 
@@ -51,6 +52,9 @@ func backupKeyPath(key string) (string, error) {
 			if err != nil {
 				return "", err
 			}
+			// EvalSymlinks fixes drive letters and directory entries but keeps a
+			// UNC volume exactly as written, so fold case for a stable identity.
+			identity = strings.ToLower(identity)
 		}
 		digest := sha256.Sum256([]byte(identity))
 		target := filepath.Join(dir, fmt.Sprintf("directory-%x_backup.json", digest[:12]))
