@@ -5,6 +5,7 @@ on:
   push:
     paths:
       - "internal/uifix/native/**"
+      - "internal/uifix/assets/version.bin"
       - ".github/workflows/uifix-native.yml"
 
 permissions:
