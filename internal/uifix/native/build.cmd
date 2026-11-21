@@ -24,7 +24,7 @@ cl /nologo /O2 /MT /W4 /c ..\minhook\src\buffer.c ..\minhook\src\hook.c ..\minho
 if errorlevel 1 exit /b 1
 ml64 /nologo /c ..\src\version_exports.asm
 if errorlevel 1 exit /b 1
-cl /nologo /std:c++17 /EHsc /O2 /MT /W4 /LD ..\src\interface_cache.cpp ..\src\version_proxy.cpp version_exports.obj buffer.obj hook.obj trampoline.obj hde64.obj bcrypt.lib /link /DEF:..\src\version.def /OUT:version.dll /IMPLIB:version.lib
+cl /nologo /std:c++17 /EHsc /O2 /MT /W4 /LD ..\src\interface_cache.cpp ..\src\version_proxy.cpp version_exports.obj buffer.obj hook.obj trampoline.obj hde64.obj bcrypt.lib /link /Brepro /DEF:..\src\version.def /OUT:version.dll /IMPLIB:version.lib
 if errorlevel 1 exit /b 1
 copy /y version.dll ..\..\assets\version.bin >nul
 if errorlevel 1 exit /b 1
