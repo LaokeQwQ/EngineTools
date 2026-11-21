@@ -984,11 +984,13 @@ async function handleAntiPiracyV1() {
         } else if (scope === 'file') {
             await ID3AntiPiracyV1Paths([file], backupKey)
         } else {
-            await ID3AntiPiracyV1Playlist(playlistId)
+            const result = await ID3AntiPiracyV1Playlist(playlistId, library)
+            if (result !== 'ok') throw new Error('播放列表防偷歌执行失败，请查看日志')
         }
         showToast('v1 执行完成')
     } catch (e) {
         addLog('Error: ' + e)
+        showErrorToast(String(e))
     }
     apBusy.value = false
 }
@@ -1015,11 +1017,13 @@ async function handleAntiPiracyV2() {
         } else if (scope === 'file') {
             await ID3AntiPiracyV2Paths([file], backupKey)
         } else {
-            await ID3AntiPiracyV2Playlist(playlistId)
+            const result = await ID3AntiPiracyV2Playlist(playlistId, library)
+            if (result !== 'ok') throw new Error('播放列表防偷歌执行失败，请查看日志')
         }
         showToast('v2 执行完成')
     } catch (e) {
         addLog('Error: ' + e)
+        showErrorToast(String(e))
     }
     apBusy.value = false
 }
